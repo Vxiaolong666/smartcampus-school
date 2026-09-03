@@ -29,11 +29,24 @@ include_once(SYSTEM_ROOT."Core_Functions.php");
 session_start();
 
 $siteBasePath = '';
-$tmpUrl = conf('Url');
-if (!empty($tmpUrl)) {
-    $parsed = parse_url($tmpUrl);
-    if (isset($parsed['path'])) {
-        $siteBasePath = rtrim($parsed['path'], '/');
+// 根据实际访问路径推导站点子目录前缀（兼容子目录部署，如 /csgocs）
+$scriptName = isset($_SERVER['SCRIPT_NAME']) ? $_SERVER['SCRIPT_NAME'] : '';
+if ($scriptName !== '') {
+    // 当前脚本位于 {子目录}/{Adminq|user}/xxx.php，向上两级即为站点根
+    $appBase = dirname(dirname($scriptName));
+    if ($appBase === '/' || $appBase === '\\' || $appBase === '') {
+        $appBase = '';
+    }
+    $siteBasePath = $appBase;
+}
+// 回退：使用站点配置地址中的路径部分
+if ($siteBasePath === '') {
+    $tmpUrl = conf('Url');
+    if (!empty($tmpUrl)) {
+        $parsed = parse_url($tmpUrl);
+        if (isset($parsed['path'])) {
+            $siteBasePath = rtrim($parsed['path'], '/');
+        }
     }
 }
 

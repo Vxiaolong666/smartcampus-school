@@ -20,7 +20,7 @@ if (!is_dir($uploadDir)) {
 
 function resolveUploadUrl($url) {
     global $siteBasePath;
-    if ($url && strpos($url, $siteBasePath) !== 0) {
+    if ($url && strpos($url, 'http') !== 0 && strpos($url, $siteBasePath) !== 0) {
         return $siteBasePath . $url;
     }
     return $url;

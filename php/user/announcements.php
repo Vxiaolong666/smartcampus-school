@@ -34,6 +34,9 @@ $announcements = $DB->getAll("SELECT * FROM nteam_announcements WHERE is_publish
                         $thumbnail = $ann['thumbnail'];
                         $image = $ann['image'];
                         $displayImage = $thumbnail ?: $image;
+                        if ($displayImage && strpos($displayImage, 'http') !== 0 && strpos($displayImage, $siteBasePath) !== 0) {
+                            $displayImage = $siteBasePath . $displayImage;
+                        }
                     ?>
                     <div class="col-md-6 col-lg-4 mb-4">
                         <div class="card h-100 border-0 shadow-sm">

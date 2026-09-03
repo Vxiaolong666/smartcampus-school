@@ -94,7 +94,7 @@ $announcements = $DB->getAll("SELECT * FROM nteam_announcements $whereClause ORD
                                     $thumbnail = $ann['thumbnail'];
                                     $image = $ann['image'];
                                     $displayImage = $thumbnail ?: $image;
-                                    if ($displayImage && strpos($displayImage, $siteBasePath) !== 0) {
+                                    if ($displayImage && strpos($displayImage, 'http') !== 0 && strpos($displayImage, $siteBasePath) !== 0) {
                                         $displayImage = $siteBasePath . $displayImage;
                                     }
                                 ?>
