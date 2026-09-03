@@ -27,6 +27,13 @@
  * 自定义导航栏组件
  * 适配不同设备的状态栏高度，支持自定义返回按钮
  */
+
+/**
+ * 状态栏高度属于设备常量，运行期间不会变化。
+ * 每个页面 mounted 都调用一次原生接口在低端机上开销明显，这里做模块级缓存。
+ */
+let cachedStatusBarHeight = null;
+
 export default {
 	name: 'cb-nav-bar',
 	props: {
@@ -46,7 +53,7 @@ export default {
 	},
 	data() {
 		return {
-			statusBarHeight: 0,
+			statusBarHeight: cachedStatusBarHeight || 0,
 			menuBarHeight: 44
 		};
 	},
@@ -62,8 +69,14 @@ export default {
 	},
 	methods: {
 		calcBarHeight() {
+			if (cachedStatusBarHeight !== null) {
+				this.statusBarHeight = cachedStatusBarHeight;
+				return;
+			}
+
 			const windowInfo = uni.getWindowInfo ? uni.getWindowInfo() : uni.getSystemInfoSync();
-			this.statusBarHeight = windowInfo.statusBarHeight || 0;
+			cachedStatusBarHeight = windowInfo.statusBarHeight || 0;
+			this.statusBarHeight = cachedStatusBarHeight;
 			// #ifdef MP-WEIXIN
 			const menuBounding = uni.getMenuButtonBoundingClientRect();
 			if (menuBounding) {

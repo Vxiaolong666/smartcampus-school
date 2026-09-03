@@ -198,7 +198,9 @@ export default {
 			dormitoryCount: 0,
 			maxDormitories: 5,
 			subscriptionStatus: '',
-			wxBound: false
+			wxBound: false,
+			// 上次加载数据的时间戳，用于避免频繁切换页面时重复请求
+			_lastLoadAt: 0
 		};
 	},
 
@@ -214,23 +216,24 @@ export default {
 		}
 	},
 
-	onReady() {
-		this.checkLoginStatus();
-		this.loadUserInfo();
-		this.checkAcademicStatus();
-		this.checkDormitoryStatus();
-		this.checkSubscriptionStatus();
-	},
-
 	onShow() {
 		this.checkLoginStatus();
-		this.loadUserInfo();
-		this.checkAcademicStatus();
-		this.checkDormitoryStatus();
-		this.checkSubscriptionStatus();
+		this.loadPageData();
 	},
 
 	methods: {
+		loadPageData() {
+			// 短时间内反复回到本页时不再重复发请求，减少低端设备的网络等待
+			const now = Date.now();
+			if (this._lastLoadAt && now - this._lastLoadAt < 30000) return;
+			this._lastLoadAt = now;
+
+			this.loadUserInfo();
+			this.checkAcademicStatus();
+			this.checkDormitoryStatus();
+			this.checkSubscriptionStatus();
+		},
+
 		checkLoginStatus() {
 			const isLoggedIn = api.isLoggedIn();
 			const apiUserInfo = api.getUserInfoCache();
@@ -437,6 +440,7 @@ export default {
 								this.isLoggedIn = false;
 								this.apiUserInfo = null;
 								this.userAvatar = '';
+								this._lastLoadAt = 0;
 								uni.showToast({ title: '已退出登录', icon: 'success' });
 							});
 					}
@@ -454,6 +458,7 @@ export default {
 						this.isLoggedIn = false;
 						this.apiUserInfo = null;
 						this.userAvatar = '';
+						this._lastLoadAt = 0;
 						uni.navigateTo({
 							url: '/pages/login/index'
 						});

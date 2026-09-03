@@ -201,10 +201,10 @@
 						<text>暂无记录</text>
 					</view>
 					<view v-else class="records-timeline">
-						<view v-for="(item, index) in records" :key="item.id" class="record-item">
+						<view v-for="(item, index) in visibleRecords" :key="item.id" class="record-item">
 							<view class="record-timeline-left">
 								<view class="record-dot" :class="item.usageClass"></view>
-								<view class="record-line" v-if="index < records.length - 1"></view>
+								<view class="record-line" v-if="index < visibleRecords.length - 1"></view>
 							</view>
 							<view class="record-content">
 								<view class="record-header">
@@ -230,6 +230,9 @@
 								</view>
 							</view>
 						</view>
+					</view>
+					<view v-if="hasMoreRecords" class="records-more" @click="loadMoreRecords">
+						加载更多（还有{{ records.length - visibleRecordCount }}条）
 					</view>
 					<view class="records-footer">用电量根据余额变化和电价({{ pricePerKwh }}元/度)自动计算</view>
 				</view>
@@ -258,12 +261,20 @@ export default {
 			dailyTrend: [],
 			records: [],
 			pricePerKwh: 0.61,
-			loading: true
-		};
-	},
+			loading: true,
+			// 历史记录可能很多，低端设备一次性全部渲染会阻塞页面，这里分批渲染
+			visibleRecordCount: 30
+			};
+			},
 
-	computed: {
-		healthIcon() {
+			computed: {
+			visibleRecords() {
+			return this.records.slice(0, this.visibleRecordCount);
+			},
+			hasMoreRecords() {
+			return this.records.length > this.visibleRecordCount;
+			},
+			healthIcon() {
 			const s = this.stats && this.stats.healthStatus;
 			if (s === 'saving') return '/static/assets/wxmp-heart-green.svg';
 			if (s === 'normal') return '/static/assets/wxmp-heart-yellow.svg';
@@ -286,6 +297,10 @@ export default {
 	},
 
 	methods: {
+		loadMoreRecords() {
+			this.visibleRecordCount += 30;
+		},
+
 		async checkFeature() {
 			try {
 				const result = await feature.checkFeature('power_statistics');
@@ -427,6 +442,7 @@ export default {
 				this.recentTrend = data.recent_trend || [];
 				this.dailyTrend = data.daily_trend || [];
 				this.records = processedRecords;
+				this.visibleRecordCount = 30;
 				this.pricePerKwh = data.price_per_kwh || 0.61;
 				this.loading = false;
 
@@ -1107,5 +1123,12 @@ page {
 	border-top: 2rpx solid #f5f5f5;
 	font-size: 22rpx;
 	color: #948eb3;
+}
+
+.records-more {
+	text-align: center;
+	padding: 24rpx 0 4rpx;
+	font-size: 26rpx;
+	color: #13c2c2;
 }
 </style>

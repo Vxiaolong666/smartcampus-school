@@ -6,20 +6,60 @@
 import api from './api.js';
 
 /**
- * 获取所有功能开关设置
+ * 功能开关缓存
+ * 低端设备每次进入页面都请求一次接口会明显拖慢页面切换，
+ * 这里做内存缓存 + 并发请求合并，避免重复、并发的网络等待。
+ */
+const CACHE_TTL = 5 * 60 * 1000; // 5 分钟
+
+let settingsCache = null;
+let settingsCacheAt = 0;
+let pendingPromise = null;
+
+/**
+ * 获取所有功能开关设置（带内存缓存）
  * @async
+ * @param {boolean} [force=false] 是否强制刷新缓存
  * @returns {Promise<Object|null>} 功能设置对象，失败返回 null
  * @example
  * const settings = await getFeatureSettings();
  * // 返回格式: { power_fee: { is_enabled: 1, feature_name: '电费查询', announcement: '...' }, ... }
  */
-const getFeatureSettings = async () => {
-    try {
-        const res = await api.getFeatureSettings();
-        return res.data;
-    } catch (err) {
-        return null;
+const getFeatureSettings = async (force = false) => {
+    const now = Date.now();
+
+    if (!force && settingsCache && now - settingsCacheAt < CACHE_TTL) {
+        return settingsCache;
     }
+
+    // 并发调用合并为一次请求，避免同一时间发起多个相同请求
+    if (pendingPromise) return pendingPromise;
+
+    pendingPromise = new Promise(resolve => {
+        api.getFeatureSettings()
+            .then(res => {
+                settingsCache = res.data || null;
+                settingsCacheAt = Date.now();
+                resolve(settingsCache);
+            })
+            .catch(() => {
+                resolve(settingsCache);
+            })
+            .then(() => {
+                pendingPromise = null;
+            });
+    });
+
+    return pendingPromise;
+};
+
+/**
+ * 清空功能开关缓存
+ * 退出登录 / 重新登录后调用，保证拿到最新的开关状态
+ */
+const clearFeatureCache = () => {
+    settingsCache = null;
+    settingsCacheAt = 0;
 };
 
 /**
@@ -129,6 +169,7 @@ const getAnnouncementIcon = (type) => {
 
 export {
     getFeatureSettings,
+    clearFeatureCache,
     isFeatureEnabled,
     getFeatureAnnouncement,
     checkFeature,
@@ -139,6 +180,7 @@ export {
 
 export default {
     getFeatureSettings,
+    clearFeatureCache,
     isFeatureEnabled,
     getFeatureAnnouncement,
     checkFeature,

@@ -33,7 +33,7 @@
 					:indicator-dots="true"
 					indicator-color="rgba(255,255,255,0.4)"
 					indicator-active-color="#ffffff"
-					:autoplay="true"
+					:autoplay="swiperAutoplay"
 					:interval="4000"
 					:circular="true"
 					:duration="500"
@@ -202,6 +202,30 @@ import { sceneTypeNames } from '../../utils/common.js';
 const API_BASE = 'https://mc.xzwmc.com/csgocs';
 const __tab__ = 0;
 
+// 诗句为静态数据，放到 data 外避免被 Vue 做无意义的响应式代理
+const POEMS = [
+	'「读书不觉已春深，一寸光阴一寸金」',
+	'「纸上得来终觉浅，绝知此事要躬行」',
+	'「黑发不知勤学早，白首方悔读书迟」',
+	'「少壮不努力，老大徒伤悲」',
+	'「业精于勤，荒于嬉；行成于思，毁于随」',
+	'「学而不思则罔，思而不学则殆」',
+	'「博学之，审问之，慎思之，明辨之，笃行之」',
+	'「路漫漫其修远兮，吾将上下而求索」',
+	'「长风破浪会有时，直挂云帆济沧海」',
+	'「天生我材必有用，千金散尽还复来」',
+	'「海内存知己，天涯若比邻」',
+	'「桃花潭水深千尺，不及汪伦送我情」',
+	'「人生自古谁无死，留取丹心照汗青」',
+	'「春蚕到死丝方尽，蜡炬成灰泪始干」',
+	'「落红不是无情物，化作春泥更护花」',
+	'「采菊东篱下，悠然见南山」',
+	'「明月几时有，把酒问青天」',
+	'「但愿人长久，千里共婵娟」',
+	'「山重水复疑无路，柳暗花明又一村」',
+	'「不识庐山真面目，只缘身在此山中」'
+];
+
 export default {
 	data() {
 		return {
@@ -220,33 +244,12 @@ export default {
 			powerInfo: null,
 			noDormitory: false,
 			randomPoem: '',
+			swiperAutoplay: true,
 			_dataLoaded: false,
 			featureSettings: {},
-			indexAnnouncement: null,
-			poems: [
-				'「读书不觉已春深，一寸光阴一寸金」',
-				'「纸上得来终觉浅，绝知此事要躬行」',
-				'「黑发不知勤学早，白首方悔读书迟」',
-				'「少壮不努力，老大徒伤悲」',
-				'「业精于勤，荒于嬉；行成于思，毁于随」',
-				'「学而不思则罔，思而不学则殆」',
-				'「博学之，审问之，慎思之，明辨之，笃行之」',
-				'「路漫漫其修远兮，吾将上下而求索」',
-				'「长风破浪会有时，直挂云帆济沧海」',
-				'「天生我材必有用，千金散尽还复来」',
-				'「海内存知己，天涯若比邻」',
-				'「桃花潭水深千尺，不及汪伦送我情」',
-				'「人生自古谁无死，留取丹心照汗青」',
-				'「春蚕到死丝方尽，蜡炬成灰泪始干」',
-				'「落红不是无情物，化作春泥更护花」',
-				'「采菊东篱下，悠然见南山」',
-				'「明月几时有，把酒问青天」',
-				'「但愿人长久，千里共婵娟」',
-				'「山重水复疑无路，柳暗花明又一村」',
-				'「不识庐山真面目，只缘身在此山中」'
-			]
-		};
-	},
+			indexAnnouncement: null
+			};
+			},
 
 	onLoad(options) {
 		this.checkLoginStatus();
@@ -262,6 +265,7 @@ export default {
 	},
 
 	onShow() {
+		this.swiperAutoplay = true;
 		this.checkLoginStatus();
 
 		if (!this._dataLoaded) {
@@ -270,6 +274,11 @@ export default {
 			this.loadLowSubscriptions();
 			this.loadNotices();
 		}
+	},
+
+	onHide() {
+		// 页面不可见时停止轮播，避免后台持续绘制
+		this.swiperAutoplay = false;
 	},
 
 	onPullDownRefresh() {
@@ -305,9 +314,7 @@ export default {
 		},
 
 		loadRandomPoem() {
-			const poems = this.poems;
-			const randomIndex = Math.floor(Math.random() * poems.length);
-			this.randomPoem = poems[randomIndex];
+			this.randomPoem = POEMS[Math.floor(Math.random() * POEMS.length)];
 		},
 
 		async loadGlanceData() {

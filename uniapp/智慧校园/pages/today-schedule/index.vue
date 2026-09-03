@@ -340,6 +340,15 @@ import { getCourseColor, timeSlots, weekDays } from '../../utils/common.js';
 const DAY_NAMES = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
 const FULL_DAY_NAMES = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
 
+/**
+ * 判断两节课是否同一节，用于避免对象引用变化导致的无谓重渲染
+ */
+const sameCourse = (a, b) => {
+	if (a === b) return true;
+	if (!a || !b) return false;
+	return a.courseName === b.courseName && a.slots[0] === b.slots[0];
+};
+
 export default {
 	data() {
 		return {
@@ -367,7 +376,11 @@ export default {
 			isEndingSoon: false,
 			dayNames: DAY_NAMES,
 			fullDayNames: FULL_DAY_NAMES,
-			timeInterval: null
+			timeInterval: null,
+			// 内部标记，放在 data 中以保证读写都被正确代理
+			_lastMinute: -1,
+			_featureChecked: false,
+			_pageVisible: false
 		};
 	},
 
@@ -388,14 +401,26 @@ export default {
 			this.weekDates = weekDates;
 
 			this.loadSchedule();
-			this.updateTime();
 
-			this.timeInterval = setInterval(() => this.updateTime(), 1000);
+			this.updateTime();
+			if (this._pageVisible) this.startTimer();
 		});
 	},
 
+	onShow() {
+		// 从其它页面返回时恢复计时；首次进入由 onLoad 启动
+		this._pageVisible = true;
+		if (this._featureChecked) this.startTimer();
+	},
+
+	onHide() {
+		// 页面不可见时必须停止计时，否则后台仍在做整页状态计算，拖慢页面切换
+		this._pageVisible = false;
+		this.stopTimer();
+	},
+
 	onUnload() {
-		if (this.timeInterval) clearInterval(this.timeInterval);
+		this.stopTimer();
 	},
 
 	methods: {
@@ -412,11 +437,35 @@ export default {
 				if (result.announcement) {
 					this.announcement = result.announcement;
 				}
+				this._featureChecked = true;
 				return true;
 			} catch (err) {
 				console.error('检查功能开关失败', err);
+				this._featureChecked = true;
 				return true;
 			}
+		},
+
+		startTimer() {
+			this.stopTimer();
+			this.timeInterval = setInterval(() => this.tick(), 1000);
+		},
+
+		stopTimer() {
+			if (this.timeInterval) {
+				clearInterval(this.timeInterval);
+				this.timeInterval = null;
+			}
+		},
+
+		tick() {
+			// 每秒只比对一次分钟数，跨分钟才做状态计算
+			if (new Date().getMinutes() === this._lastMinute) return;
+			this.updateTime();
+		},
+
+		setIfChanged(key, value) {
+			if (this[key] !== value) this[key] = value;
 		},
 
 		getWeekDates() {
@@ -448,8 +497,9 @@ export default {
 				}
 			}
 
-			this.currentTime = currentTime;
-			this.currentSection = currentSection;
+			this._lastMinute = now.getMinutes();
+			this.setIfChanged('currentTime', currentTime);
+			this.setIfChanged('currentSection', currentSection);
 			this.updateCourseStatus();
 		},
 
@@ -463,14 +513,14 @@ export default {
 			const isToday = selectedDay === todayDayOfWeek;
 
 			if (!isToday || dayCourses.length === 0) {
-				this.currentCourse = null;
-				this.nextCourse = null;
-				this.inBreak = false;
-				this.minutesToEnd = 0;
-				this.minutesToNext = 0;
-				this.allCoursesEnded = false;
-				this.notStarted = false;
-				this.isEndingSoon = false;
+				if (this.currentCourse !== null) this.currentCourse = null;
+				if (this.nextCourse !== null) this.nextCourse = null;
+				this.setIfChanged('inBreak', false);
+				this.setIfChanged('minutesToEnd', 0);
+				this.setIfChanged('minutesToNext', 0);
+				this.setIfChanged('allCoursesEnded', false);
+				this.setIfChanged('notStarted', false);
+				this.setIfChanged('isEndingSoon', false);
 				return;
 			}
 
@@ -545,15 +595,27 @@ export default {
 				}
 			}
 
-			this.dayCourses = updatedCourses;
-			this.currentCourse = currentCourse || null;
-			this.nextCourse = nextCourse || null;
-			this.inBreak = !currentCourse && !!nextCourse && !notStarted;
-			this.minutesToEnd = minutesToEnd;
-			this.minutesToNext = minutesToNext;
-			this.allCoursesEnded = allCoursesEnded;
-			this.notStarted = notStarted;
-			this.isEndingSoon = isEndingSoon;
+			// 仅在结课状态真正变化时重建列表，避免每分钟触发整页 diff
+			const endedChanged = updatedCourses.some((c, i) => c.isEnded !== dayCourses[i].isEnded);
+			if (endedChanged) {
+				this.dayCourses = updatedCourses;
+				this.splitGroups(updatedCourses);
+			}
+
+			if (!sameCourse(this.currentCourse, currentCourse)) this.currentCourse = currentCourse || null;
+			if (!sameCourse(this.nextCourse, nextCourse)) this.nextCourse = nextCourse || null;
+			this.setIfChanged('inBreak', !currentCourse && !!nextCourse && !notStarted);
+			this.setIfChanged('minutesToEnd', minutesToEnd);
+			this.setIfChanged('minutesToNext', minutesToNext);
+			this.setIfChanged('allCoursesEnded', allCoursesEnded);
+			this.setIfChanged('notStarted', notStarted);
+			this.setIfChanged('isEndingSoon', isEndingSoon);
+		},
+
+		splitGroups(list) {
+			this.morningCourses = list.filter(c => c.slots[0] >= 1 && c.slots[0] <= 4);
+			this.afternoonCourses = list.filter(c => c.slots[0] >= 5 && c.slots[0] <= 7);
+			this.eveningCourses = list.filter(c => c.slots[0] >= 8 && c.slots[0] <= 11);
 		},
 
 		loadSchedule() {
@@ -643,9 +705,7 @@ export default {
 				.sort((a, b) => (a.slots[0] || 99) - (b.slots[0] || 99));
 
 			this.dayCourses = dayCourses;
-			this.morningCourses = dayCourses.filter(c => c.slots[0] >= 1 && c.slots[0] <= 4);
-			this.afternoonCourses = dayCourses.filter(c => c.slots[0] >= 5 && c.slots[0] <= 7);
-			this.eveningCourses = dayCourses.filter(c => c.slots[0] >= 8 && c.slots[0] <= 11);
+			this.splitGroups(dayCourses);
 			this.loading = false;
 
 			this.updateCourseStatus();
@@ -767,7 +827,7 @@ page {
 	align-items: center;
 	padding: 16rpx 0;
 	border-radius: 16rpx;
-	transition: all 0.3s;
+	transition: background-color 0.2s;
 	position: relative;
 }
 

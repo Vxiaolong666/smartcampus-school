@@ -174,7 +174,15 @@
 		"navigationBarTitleText": "智慧校园",
 		"navigationBarBackgroundColor": "#F8F8F8",
 		"backgroundColor": "#F8F8F8",
-		"navigationStyle": "custom"
+		"navigationStyle": "custom",
+		"app-plus": {
+			"titleNView": false,
+			"bounce": "none",
+			"scrollIndicator": "none",
+			"softinputNavBar": "none",
+			"animationType": "slide-in-right",
+			"animationDuration": 200
+		}
 	},
 	"tabBar": {
 		"backgroundColor": "#ffffff",
