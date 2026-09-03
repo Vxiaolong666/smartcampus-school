@@ -17,21 +17,8 @@
 				<announcement :content="announcement.content" :type="announcement.type" :closable="true" />
 			</view>
 
-			<view v-if="loading" class="sk-wrap">
-				<view class="sk sk-anim" style="height: 180rpx; border-radius: 20rpx; margin-bottom: 20rpx;"></view>
-
-				<view class="sk-card">
-					<view class="sk sk-anim" style="height: 40rpx; width: 50%; margin-bottom: 24rpx;"></view>
-					<view class="sk sk-anim" style="height: 80rpx; margin-bottom: 20rpx;"></view>
-					<view class="sk sk-anim" style="height: 60rpx; margin-bottom: 20rpx;"></view>
-					<view class="sk sk-anim" style="height: 60rpx;"></view>
-				</view>
-
-				<view class="sk-card">
-					<view class="sk sk-anim" style="height: 32rpx; width: 40%; margin-bottom: 20rpx;"></view>
-					<view class="sk sk-anim" style="height: 24rpx; margin-bottom: 14rpx;"></view>
-					<view class="sk sk-anim" style="height: 24rpx; width: 85%;"></view>
-				</view>
+			<view v-if="loading" class="loading-wrapper">
+				<view class="loading-text">加载中...</view>
 			</view>
 
 			<block v-else-if="dormitories.length > 0">

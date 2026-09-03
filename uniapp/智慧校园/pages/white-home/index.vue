@@ -16,34 +16,18 @@
 		</view>
 
 		<view class="content-wrapper">
-			<view v-if="announcementLoading">
-				<view class="sk sk-anim" style="height: 76rpx; border-radius: 20rpx; margin-bottom: 30rpx;"></view>
-			</view>
-
-			<view v-else-if="indexAnnouncement">
+			<view v-if="indexAnnouncement">
 				<announcement :content="indexAnnouncement.content" :type="indexAnnouncement.type" :closable="true" />
 			</view>
 
-			<view v-if="loading" class="subscription-alert">
-				<view class="subscription-alert-content">
-					<view class="sk sk-anim" style="width: 70%; height: 30rpx;"></view>
-					<view class="sk sk-anim" style="width: 30rpx; height: 30rpx; border-radius: 50%;"></view>
-				</view>
-			</view>
-
-			<view v-else-if="lowSubscriptions.length > 0" class="subscription-alert" @click="handleSubscription">
+			<view v-if="lowSubscriptions.length > 0" class="subscription-alert" @click="handleSubscription">
 				<view class="subscription-alert-content">
 					<text class="subscription-alert-title">有{{ lowSubscriptions.length }}个订阅次数不足，点击增加</text>
 					<image class="subscription-alert-arrow" src="/static/assets/wxmp-right.svg" mode="aspectFit"></image>
 				</view>
 			</view>
 
-			<view class="content-swiper" style="position: relative;">
-				<view
-					v-if="swiperLoading"
-					class="sk sk-anim"
-					style="position: absolute; top: 0; left: 0; width: 100%; height: 280rpx; border-radius: 20rpx; z-index: 1;"
-				></view>
+			<view class="content-swiper">
 				<swiper
 					class="swiper"
 					:indicator-dots="true"
@@ -55,35 +39,12 @@
 					:duration="500"
 				>
 					<swiper-item v-for="item in swiperList" :key="item.id">
-						<image
-							class="swiper-image"
-							:src="item.image"
-							mode="aspectFill"
-							@click="handleSwiperTap"
-							:data-url="item.url"
-							@load="onSwiperLoad"
-							@error="onSwiperLoad"
-						></image>
+						<image class="swiper-image" :src="item.image" mode="aspectFill" @click="handleSwiperTap" :data-url="item.url"></image>
 					</swiper-item>
 				</swiper>
 			</view>
 
-			<view v-if="loading" class="content-menus">
-				<view class="content-menus-item">
-					<view class="sk sk-anim" style="width: 60rpx; height: 60rpx; border-radius: 50%;"></view>
-					<view class="sk sk-anim" style="width: 70%; height: 24rpx; margin-top: 20rpx;"></view>
-				</view>
-				<view class="content-menus-item">
-					<view class="sk sk-anim" style="width: 60rpx; height: 60rpx; border-radius: 50%;"></view>
-					<view class="sk sk-anim" style="width: 65%; height: 24rpx; margin-top: 20rpx;"></view>
-				</view>
-				<view class="content-menus-item">
-					<view class="sk sk-anim" style="width: 60rpx; height: 60rpx; border-radius: 50%;"></view>
-					<view class="sk sk-anim" style="width: 75%; height: 24rpx; margin-top: 20rpx;"></view>
-				</view>
-			</view>
-
-			<view v-else class="content-menus">
+			<view class="content-menus">
 				<view class="content-menus-item" @click="handleDormitoryBind">
 					<image class="content-menus-item-logo" src="/static/assets/icon-one/ssbd.svg" mode="aspectFit"></image>
 					<view class="content-menus-item-text">宿舍绑定</view>
@@ -98,18 +59,7 @@
 				</view>
 			</view>
 
-			<view v-if="loading" class="content-menus content-menus-sub">
-				<view class="content-menus-item content-menus-item-h">
-					<view class="sk sk-anim" style="width: 60rpx; height: 60rpx; border-radius: 50%;"></view>
-					<view class="sk sk-anim" style="width: 75%; height: 24rpx; margin-top: 20rpx;"></view>
-				</view>
-				<view class="content-menus-item content-menus-item-h">
-					<view class="sk sk-anim" style="width: 60rpx; height: 60rpx; border-radius: 50%;"></view>
-					<view class="sk sk-anim" style="width: 70%; height: 24rpx; margin-top: 20rpx;"></view>
-				</view>
-			</view>
-
-			<view v-else class="content-menus content-menus-sub">
+			<view class="content-menus content-menus-sub">
 				<view class="content-menus-item content-menus-item-h" @click="handlePushSettings">
 					<image class="content-menus-item-logo content-menus-item-logo-sm" src="/static/assets/icon-one/ydtj.svg" mode="aspectFit"></image>
 					<view class="content-menus-item-text">电费推送设置</view>
@@ -124,15 +74,7 @@
 				<view class="glance-cards">
 					<view class="glance-card glance-course" @click="handleTodaySchedule">
 						<view class="glance-card-content">
-							<block v-if="loading">
-								<view class="glance-card-header">
-									<view class="sk sk-anim" style="width: 130rpx; height: 24rpx;"></view>
-								</view>
-								<view class="sk sk-anim" style="width: 70%; height: 30rpx; margin-bottom: 6rpx;"></view>
-								<view class="sk sk-anim" style="width: 85%; height: 22rpx;"></view>
-							</block>
-
-							<block v-else-if="nextCourse">
+							<block v-if="nextCourse">
 								<view class="glance-card-header">
 									<view class="glance-card-label">课程信息</view>
 									<view class="glance-card-tag" :class="nextCourse.statusClass">{{ nextCourse.statusText }}</view>
@@ -170,15 +112,7 @@
 
 					<view class="glance-card glance-power" @click="handlePowerFee">
 						<view class="glance-card-content">
-							<block v-if="loading">
-								<view class="glance-card-header">
-									<view class="sk sk-anim" style="width: 130rpx; height: 24rpx;"></view>
-								</view>
-								<view class="sk sk-anim" style="width: 60%; height: 30rpx; margin-bottom: 6rpx;"></view>
-								<view class="sk sk-anim" style="width: 80%; height: 22rpx;"></view>
-							</block>
-
-							<block v-else-if="powerInfo">
+							<block v-if="powerInfo">
 								<view class="glance-card-header">
 									<view class="glance-card-label">电费余额</view>
 									<view class="glance-card-tag" :class="powerInfo.statusClass">{{ powerInfo.statusText }}</view>
@@ -197,8 +131,8 @@
 								<view class="glance-card-header">
 									<view class="glance-card-label">电费余额</view>
 								</view>
-								<view class="glance-card-value">暂无数据</view>
-								<view class="glance-card-info">下拉可重新加载</view>
+								<view class="glance-card-value">加载中...</view>
+								<view class="glance-card-info">正在获取电费信息</view>
 							</block>
 						</view>
 						<image class="glance-decor" src="/static/assets/xinxin.svg" mode="aspectFit"></image>
@@ -232,31 +166,6 @@
 			<view class="notices-section">
 				<view class="notices-title">通知公告</view>
 				<view class="content-notices">
-					<block v-if="loading">
-						<view class="sk-card" style="display: flex; align-items: center;">
-							<view class="sk sk-anim" style="width: 120rpx; height: 120rpx; border-radius: 20rpx; flex-shrink: 0;"></view>
-							<view style="flex: 1; margin-left: 24rpx;">
-								<view class="sk sk-anim" style="height: 28rpx; margin-bottom: 18rpx;"></view>
-								<view class="sk sk-anim" style="height: 22rpx; width: 45%;"></view>
-							</view>
-						</view>
-
-						<view class="sk-card" style="display: flex; align-items: center;">
-							<view class="sk sk-anim" style="width: 120rpx; height: 120rpx; border-radius: 20rpx; flex-shrink: 0;"></view>
-							<view style="flex: 1; margin-left: 24rpx;">
-								<view class="sk sk-anim" style="height: 28rpx; margin-bottom: 18rpx;"></view>
-								<view class="sk sk-anim" style="height: 22rpx; width: 40%;"></view>
-							</view>
-						</view>
-
-						<view class="sk-card" style="display: flex; align-items: center;">
-							<view class="sk sk-anim" style="width: 120rpx; height: 120rpx; border-radius: 20rpx; flex-shrink: 0;"></view>
-							<view style="flex: 1; margin-left: 24rpx;">
-								<view class="sk sk-anim" style="height: 28rpx; margin-bottom: 18rpx;"></view>
-								<view class="sk sk-anim" style="height: 22rpx; width: 50%;"></view>
-							</view>
-						</view>
-					</block>
 					<view
 						v-for="item in notices"
 						:key="item.id"
@@ -311,9 +220,6 @@ export default {
 			powerInfo: null,
 			noDormitory: false,
 			randomPoem: '',
-			loading: true,
-			swiperLoading: true,
-			announcementLoading: true,
 			_dataLoaded: false,
 			featureSettings: {},
 			indexAnnouncement: null,
@@ -360,7 +266,9 @@ export default {
 
 		if (!this._dataLoaded) {
 			this._dataLoaded = true;
-			this.refresh();
+			this.loadGlanceData();
+			this.loadLowSubscriptions();
+			this.loadNotices();
 		}
 	},
 
@@ -371,26 +279,6 @@ export default {
 	},
 
 	methods: {
-		refresh() {
-			this.loading = true;
-			let pending = 0;
-			const done = () => {
-				pending -= 1;
-				if (pending <= 0) this.loading = false;
-			};
-			const track = p => {
-				pending += 1;
-				Promise.resolve(p).then(done, done);
-			};
-			track(this.loadGlanceData());
-			track(this.loadLowSubscriptions());
-			track(this.loadNotices());
-		},
-
-		onSwiperLoad() {
-			this.swiperLoading = false;
-		},
-
 		async loadFeatureSettings() {
 			try {
 				const settings = await feature.getFeatureSettings();
@@ -404,8 +292,6 @@ export default {
 				}
 			} catch (err) {
 				console.error('加载功能设置失败', err);
-			} finally {
-				this.announcementLoading = false;
 			}
 		},
 

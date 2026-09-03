@@ -10,29 +10,7 @@
 		</view>
 
 		<view class="content-wrapper">
-			<view v-if="pageLoading" class="sk-wrap">
-				<view class="form-card">
-					<view style="display: flex; flex-direction: column; align-items: center; margin-bottom: 40rpx;">
-						<view class="sk sk-anim" style="width: 100rpx; height: 100rpx; border-radius: 50%;"></view>
-						<view class="sk sk-anim" style="width: 260rpx; height: 36rpx; margin-top: 20rpx;"></view>
-						<view class="sk sk-anim" style="width: 360rpx; height: 24rpx; margin-top: 16rpx;"></view>
-					</view>
-
-					<view class="sk sk-anim" style="height: 90rpx; margin-bottom: 20rpx;"></view>
-					<view class="sk sk-anim" style="height: 90rpx; margin-bottom: 20rpx;"></view>
-					<view class="sk sk-anim" style="height: 90rpx; margin-bottom: 30rpx;"></view>
-					<view class="sk sk-anim sk-btn"></view>
-				</view>
-
-				<view class="menu-card">
-					<view class="sk sk-anim" style="height: 32rpx; width: 35%; margin-bottom: 24rpx;"></view>
-					<view class="sk sk-anim" style="height: 100rpx; margin-bottom: 16rpx;"></view>
-					<view class="sk sk-anim" style="height: 100rpx; margin-bottom: 16rpx;"></view>
-					<view class="sk sk-anim" style="height: 100rpx;"></view>
-				</view>
-			</view>
-
-			<view v-if="!pageLoading" class="form-card">
+			<view class="form-card">
 				<view class="card-header">
 					<image class="card-logo" src="/static/assets/058-video-conference.svg" mode="widthFix"></image>
 					<view class="card-title">教务账号绑定</view>
@@ -98,7 +76,7 @@
 				</block>
 			</view>
 
-			<view class="menu-card" v-if="!pageLoading && isBound">
+			<view class="menu-card" v-if="isBound">
 				<view class="menu-title">教务功能</view>
 				<view class="menu-item" @click="goToGrade">
 					<image class="menu-icon" src="/static/assets/wxmp-read.svg" mode="widthFix"></image>
@@ -135,8 +113,7 @@ export default {
 			realName: '',
 			loading: false,
 			isBound: false,
-			academicInfo: {},
-			pageLoading: true
+			academicInfo: {}
 		};
 	},
 
@@ -163,12 +140,10 @@ export default {
 				.then(res => {
 					this.isBound = true;
 					this.academicInfo = res.data;
-					this.pageLoading = false;
 				})
 				.catch(() => {
 					this.isBound = false;
 					this.academicInfo = null;
-					this.pageLoading = false;
 				});
 		},
 

@@ -35,24 +35,9 @@
 				</view>
 			</view>
 
-			<view v-if="loading" class="sk-wrap">
-				<view class="sk-card">
-					<view class="sk sk-anim" style="height: 36rpx; width: 55%; margin-bottom: 20rpx;"></view>
-					<view class="sk sk-anim" style="height: 24rpx; margin-bottom: 16rpx;"></view>
-					<view class="sk sk-anim" style="height: 80rpx;"></view>
-				</view>
-
-				<view class="sk-card">
-					<view class="sk sk-anim" style="height: 36rpx; width: 45%; margin-bottom: 20rpx;"></view>
-					<view class="sk sk-anim" style="height: 24rpx; margin-bottom: 16rpx;"></view>
-					<view class="sk sk-anim" style="height: 80rpx;"></view>
-				</view>
-
-				<view class="sk-card">
-					<view class="sk sk-anim" style="height: 36rpx; width: 50%; margin-bottom: 20rpx;"></view>
-					<view class="sk sk-anim" style="height: 24rpx; margin-bottom: 16rpx;"></view>
-					<view class="sk sk-anim" style="height: 80rpx;"></view>
-				</view>
+			<view v-if="loading" class="loading-wrapper">
+				<view class="loading-spinner"></view>
+				<view class="loading-text">加载中...</view>
 			</view>
 
 			<view v-else-if="subscriptions.length === 0" class="empty-wrapper">

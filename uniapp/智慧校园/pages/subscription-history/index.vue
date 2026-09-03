@@ -31,39 +31,9 @@
 				</view>
 			</view>
 
-			<view v-if="loading && list.length === 0" class="sk-wrap">
-				<view class="sk-card">
-					<view style="display: flex;">
-						<view class="sk sk-anim" style="width: 60rpx; height: 60rpx; border-radius: 50%; flex-shrink: 0;"></view>
-						<view style="flex: 1; margin-left: 20rpx;">
-							<view class="sk sk-anim" style="height: 30rpx; width: 60%; margin-bottom: 16rpx;"></view>
-							<view class="sk sk-anim" style="height: 24rpx; margin-bottom: 14rpx;"></view>
-							<view class="sk sk-anim" style="height: 24rpx; width: 45%;"></view>
-						</view>
-					</view>
-				</view>
-
-				<view class="sk-card">
-					<view style="display: flex;">
-						<view class="sk sk-anim" style="width: 60rpx; height: 60rpx; border-radius: 50%; flex-shrink: 0;"></view>
-						<view style="flex: 1; margin-left: 20rpx;">
-							<view class="sk sk-anim" style="height: 30rpx; width: 55%; margin-bottom: 16rpx;"></view>
-							<view class="sk sk-anim" style="height: 24rpx; margin-bottom: 14rpx;"></view>
-							<view class="sk sk-anim" style="height: 24rpx; width: 40%;"></view>
-						</view>
-					</view>
-				</view>
-
-				<view class="sk-card">
-					<view style="display: flex;">
-						<view class="sk sk-anim" style="width: 60rpx; height: 60rpx; border-radius: 50%; flex-shrink: 0;"></view>
-						<view style="flex: 1; margin-left: 20rpx;">
-							<view class="sk sk-anim" style="height: 30rpx; width: 65%; margin-bottom: 16rpx;"></view>
-							<view class="sk sk-anim" style="height: 24rpx; margin-bottom: 14rpx;"></view>
-							<view class="sk sk-anim" style="height: 24rpx; width: 50%;"></view>
-						</view>
-					</view>
-				</view>
+			<view v-if="loading && list.length === 0" class="loading-wrapper">
+				<view class="loading-spinner"></view>
+				<view class="loading-text">加载中...</view>
 			</view>
 
 			<view v-else-if="list.length === 0" class="empty-wrapper">

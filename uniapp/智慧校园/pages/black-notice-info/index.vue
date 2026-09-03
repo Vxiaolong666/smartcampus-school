@@ -10,16 +10,9 @@
 		</view>
 
 		<view class="content-wrapper">
-			<view v-if="loading" class="sk-wrap">
-				<view class="sk-card">
-					<view class="sk sk-anim" style="height: 300rpx; border-radius: 16rpx; margin-bottom: 30rpx;"></view>
-					<view class="sk sk-anim" style="height: 44rpx; width: 80%; margin-bottom: 20rpx;"></view>
-					<view class="sk sk-anim" style="height: 24rpx; width: 55%; margin-bottom: 30rpx;"></view>
-					<view class="sk sk-anim" style="height: 24rpx; margin-bottom: 16rpx;"></view>
-					<view class="sk sk-anim" style="height: 24rpx; margin-bottom: 16rpx;"></view>
-					<view class="sk sk-anim" style="height: 24rpx; margin-bottom: 16rpx;"></view>
-					<view class="sk sk-anim" style="height: 24rpx; width: 70%;"></view>
-				</view>
+			<view v-if="loading" class="loading-section">
+				<view class="loading-spinner"></view>
+				<text class="loading-text">加载中...</text>
 			</view>
 
 			<view v-else-if="notice" class="notice-detail">

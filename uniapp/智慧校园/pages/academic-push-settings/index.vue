@@ -12,24 +12,9 @@
 		<view class="content-wrapper">
 			<announcement v-if="announcement" :content="announcement.content" type="info" />
 
-			<view v-if="loading" class="sk-wrap">
-				<view class="sk-card">
-					<view style="display: flex; flex-direction: column; align-items: center; margin-bottom: 30rpx;">
-						<view class="sk sk-anim" style="width: 100rpx; height: 100rpx; border-radius: 50%;"></view>
-						<view class="sk sk-anim" style="width: 240rpx; height: 36rpx; margin-top: 20rpx;"></view>
-					</view>
-
-					<view class="sk sk-anim" style="height: 60rpx; margin-bottom: 16rpx;"></view>
-					<view class="sk sk-anim" style="height: 60rpx; margin-bottom: 16rpx;"></view>
-					<view class="sk sk-anim" style="height: 100rpx; margin-bottom: 24rpx;"></view>
-					<view class="sk sk-anim sk-btn"></view>
-				</view>
-
-				<view class="sk-card">
-					<view class="sk sk-anim" style="height: 32rpx; width: 40%; margin-bottom: 20rpx;"></view>
-					<view class="sk sk-anim" style="height: 90rpx; margin-bottom: 14rpx;"></view>
-					<view class="sk sk-anim" style="height: 90rpx;"></view>
-				</view>
+			<view v-if="loading" class="loading-section">
+				<view class="loading-spinner"></view>
+				<text class="loading-text">加载中...</text>
 			</view>
 
 			<view v-else-if="!hasAcademicAccount" class="form-card">
@@ -228,7 +213,6 @@ export default {
 				})
 				.catch(err => {
 					if (err.code === -2) {
-						this.loading = false;
 						uni.showToast({ title: '请先登录', icon: 'none' });
 						setTimeout(() => {
 							uni.redirectTo({ url: '/pages/login/index' });

@@ -18,20 +18,8 @@
 					<view class="card-title">学籍信息</view>
 				</view>
 
-				<view v-if="loading" class="sk-wrap">
-					<view style="display: flex; align-items: center; margin-bottom: 36rpx;">
-						<view class="sk sk-anim" style="width: 100rpx; height: 100rpx; border-radius: 50%;"></view>
-						<view class="sk sk-anim" style="width: 220rpx; height: 36rpx; margin-left: 24rpx;"></view>
-					</view>
-
-					<view class="sk sk-anim" style="height: 28rpx; margin-bottom: 30rpx;"></view>
-					<view class="sk sk-anim" style="height: 28rpx; margin-bottom: 30rpx;"></view>
-					<view class="sk sk-anim" style="height: 28rpx; margin-bottom: 30rpx;"></view>
-					<view class="sk sk-anim" style="height: 28rpx; margin-bottom: 30rpx;"></view>
-					<view class="sk sk-anim" style="height: 28rpx; margin-bottom: 30rpx;"></view>
-					<view class="sk sk-anim" style="height: 28rpx; margin-bottom: 30rpx;"></view>
-					<view class="sk sk-anim" style="height: 28rpx; margin-bottom: 30rpx;"></view>
-					<view class="sk sk-anim" style="height: 28rpx; width: 70%;"></view>
+				<view v-if="loading" class="loading-wrapper">
+					<view class="loading-text">加载中...</view>
 				</view>
 
 				<view v-else-if="!studentInfo" class="empty-wrapper">

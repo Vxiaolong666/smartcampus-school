@@ -17,35 +17,7 @@
 				</view>
 			</view>
 
-			<view v-if="loading && notices.length === 0" class="sk-wrap">
-				<view class="sk-card">
-					<view style="display: flex; align-items: center; margin-bottom: 28rpx;">
-						<view class="sk sk-anim" style="width: 180rpx; height: 120rpx; border-radius: 12rpx; flex-shrink: 0;"></view>
-						<view style="flex: 1; margin-left: 20rpx;">
-							<view class="sk sk-anim" style="height: 30rpx; margin-bottom: 18rpx;"></view>
-							<view class="sk sk-anim" style="height: 24rpx; width: 50%;"></view>
-						</view>
-					</view>
-
-					<view style="display: flex; align-items: center; margin-bottom: 28rpx;">
-						<view class="sk sk-anim" style="width: 180rpx; height: 120rpx; border-radius: 12rpx; flex-shrink: 0;"></view>
-						<view style="flex: 1; margin-left: 20rpx;">
-							<view class="sk sk-anim" style="height: 30rpx; margin-bottom: 18rpx;"></view>
-							<view class="sk sk-anim" style="height: 24rpx; width: 45%;"></view>
-						</view>
-					</view>
-
-					<view style="display: flex; align-items: center;">
-						<view class="sk sk-anim" style="width: 180rpx; height: 120rpx; border-radius: 12rpx; flex-shrink: 0;"></view>
-						<view style="flex: 1; margin-left: 20rpx;">
-							<view class="sk sk-anim" style="height: 30rpx; margin-bottom: 18rpx;"></view>
-							<view class="sk sk-anim" style="height: 24rpx; width: 55%;"></view>
-						</view>
-					</view>
-				</view>
-			</view>
-
-			<view v-else-if="notices.length === 0" class="empty">
+			<view v-if="notices.length === 0 && !loading" class="empty">
 				<image class="empty-icon" src="/static/assets/wxmp-empty.svg" mode="widthFix"></image>
 				<view class="empty-text">暂无通知</view>
 			</view>
@@ -69,7 +41,7 @@
 				</view>
 			</view>
 
-			<view v-if="loading && notices.length > 0" class="loading">
+			<view v-if="loading" class="loading">
 				<view class="loading-text">加载中...</view>
 			</view>
 

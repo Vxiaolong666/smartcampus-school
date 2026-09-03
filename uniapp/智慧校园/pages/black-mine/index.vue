@@ -10,69 +10,7 @@
 		</view>
 
 		<view class="content-wrapper">
-			<view v-if="loading">
-				<view class="profile-card">
-					<view class="profile-content">
-						<view class="sk sk-anim" style="width: 100rpx; height: 100rpx; border-radius: 50%;"></view>
-						<view style="flex: 1; margin-left: 28rpx;">
-							<view class="sk sk-anim" style="width: 200rpx; height: 34rpx; margin-bottom: 16rpx;"></view>
-							<view class="sk sk-anim" style="width: 280rpx; height: 30rpx;"></view>
-						</view>
-					</view>
-				</view>
-
-				<view class="item-bar">
-					<view class="item-group">
-						<view class="item-group-title">
-							<view class="sk sk-anim" style="width: 130rpx; height: 24rpx;"></view>
-						</view>
-						<view class="item-group-content">
-							<view class="sk sk-anim" style="height: 100rpx; border-radius: 0;"></view>
-							<view class="sk sk-anim" style="height: 100rpx; border-radius: 0;"></view>
-						</view>
-					</view>
-
-					<view class="item-group">
-						<view class="item-group-title">
-							<view class="sk sk-anim" style="width: 160rpx; height: 24rpx;"></view>
-						</view>
-						<view class="item-group-content">
-							<view class="sk sk-anim" style="height: 100rpx; border-radius: 0;"></view>
-							<view class="sk sk-anim" style="height: 100rpx; border-radius: 0;"></view>
-							<view class="sk sk-anim" style="height: 100rpx; border-radius: 0;"></view>
-							<view class="sk sk-anim" style="height: 100rpx; border-radius: 0;"></view>
-						</view>
-					</view>
-
-					<view class="item-group">
-						<view class="item-group-title">
-							<view class="sk sk-anim" style="width: 130rpx; height: 24rpx;"></view>
-						</view>
-						<view class="item-group-content">
-							<view class="sk sk-anim" style="height: 100rpx; border-radius: 0;"></view>
-							<view class="sk sk-anim" style="height: 100rpx; border-radius: 0;"></view>
-							<view class="sk sk-anim" style="height: 100rpx; border-radius: 0;"></view>
-						</view>
-					</view>
-
-					<view class="item-group">
-						<view class="item-group-title">
-							<view class="sk sk-anim" style="width: 130rpx; height: 24rpx;"></view>
-						</view>
-						<view class="item-group-content">
-							<view class="sk sk-anim" style="height: 100rpx; border-radius: 0;"></view>
-							<view class="sk sk-anim" style="height: 100rpx; border-radius: 0;"></view>
-						</view>
-					</view>
-
-					<view class="bottom-buttons">
-						<view class="sk sk-anim" style="flex: 1; height: 88rpx; border-radius: 16rpx;"></view>
-						<view class="sk sk-anim" style="flex: 1; height: 88rpx; border-radius: 16rpx;"></view>
-					</view>
-				</view>
-			</view>
-
-			<view v-if="!loading" class="profile-card" @click="isLoggedIn ? handleProfile() : handleLogin()">
+			<view class="profile-card" @click="isLoggedIn ? handleProfile() : handleLogin()">
 				<view class="profile-content">
 					<block v-if="isLoggedIn && apiUserInfo">
 						<view class="profile-avatar-wrap">
@@ -112,7 +50,7 @@
 				</view>
 			</view>
 
-			<view v-if="!loading" class="item-bar">
+			<view class="item-bar">
 				<block v-if="isLoggedIn">
 					<view class="item-group">
 						<view class="item-group-title">账号绑定</view>
@@ -260,8 +198,7 @@ export default {
 			dormitoryCount: 0,
 			maxDormitories: 5,
 			subscriptionStatus: '',
-			wxBound: false,
-			loading: true
+			wxBound: false
 		};
 	},
 
@@ -278,36 +215,22 @@ export default {
 	},
 
 	onReady() {
-		this.refresh();
+		this.checkLoginStatus();
+		this.loadUserInfo();
+		this.checkAcademicStatus();
+		this.checkDormitoryStatus();
+		this.checkSubscriptionStatus();
 	},
 
 	onShow() {
-		this.refresh();
+		this.checkLoginStatus();
+		this.loadUserInfo();
+		this.checkAcademicStatus();
+		this.checkDormitoryStatus();
+		this.checkSubscriptionStatus();
 	},
 
 	methods: {
-		refresh() {
-			this.checkLoginStatus();
-			if (!this.isLoggedIn) {
-				this.loading = false;
-				return;
-			}
-			this.loading = true;
-			let pending = 0;
-			const done = () => {
-				pending -= 1;
-				if (pending <= 0) this.loading = false;
-			};
-			const track = p => {
-				pending += 1;
-				Promise.resolve(p).then(done, done);
-			};
-			track(this.loadUserInfo());
-			track(this.checkAcademicStatus());
-			track(this.checkDormitoryStatus());
-			track(this.checkSubscriptionStatus());
-		},
-
 		checkLoginStatus() {
 			const isLoggedIn = api.isLoggedIn();
 			const apiUserInfo = api.getUserInfoCache();
@@ -336,9 +259,9 @@ export default {
 		},
 
 		loadUserInfo() {
-			if (!api.isLoggedIn()) return Promise.resolve();
+			if (!api.isLoggedIn()) return;
 
-			return api.getUserInfo()
+			api.getUserInfo()
 				.then(res => {
 					const userInfo = res.data;
 					let userAvatar = '';
@@ -364,10 +287,10 @@ export default {
 		checkAcademicStatus() {
 			if (!api.isLoggedIn()) {
 				this.academicBound = false;
-				return Promise.resolve();
+				return;
 			}
 
-			return api.getAcademic()
+			api.getAcademic()
 				.then(res => {
 					this.academicBound = !!(res.data && res.data.student_id);
 				})
@@ -379,10 +302,10 @@ export default {
 		checkDormitoryStatus() {
 			if (!api.isLoggedIn()) {
 				this.dormitoryCount = 0;
-				return Promise.resolve();
+				return;
 			}
 
-			return api.getDormitories()
+			api.getDormitories()
 				.then(res => {
 					this.dormitoryCount = (res.data || []).length;
 				})
@@ -394,10 +317,10 @@ export default {
 		checkSubscriptionStatus() {
 			if (!api.isLoggedIn()) {
 				this.subscriptionStatus = '无法发送';
-				return Promise.resolve();
+				return;
 			}
 
-			return api.request({
+			api.request({
 				act: 'get_user_subscriptions',
 				method: 'GET'
 			})
@@ -546,7 +469,6 @@ export default {
 page {
 	background: #eff1ff;
 }
-
 </style>
 
 <style scoped>

@@ -12,20 +12,9 @@
 		<view class="content-wrapper">
 			<announcement v-if="announcement" :content="announcement.content" type="info" />
 
-			<view v-if="loading" class="sk-wrap">
-				<view class="sk-card">
-					<view class="sk sk-anim" style="height: 36rpx; width: 45%; margin-bottom: 20rpx;"></view>
-					<view class="sk sk-anim" style="height: 24rpx; margin-bottom: 14rpx;"></view>
-					<view class="sk sk-anim" style="height: 24rpx; width: 70%;"></view>
-				</view>
-
-				<view class="sk-card">
-					<view class="sk sk-anim" style="height: 36rpx; width: 50%; margin-bottom: 24rpx;"></view>
-					<view class="sk sk-anim" style="height: 60rpx; margin-bottom: 20rpx;"></view>
-					<view class="sk sk-anim" style="height: 60rpx; margin-bottom: 20rpx;"></view>
-					<view class="sk sk-anim" style="height: 120rpx; margin-bottom: 24rpx;"></view>
-					<view class="sk sk-anim sk-btn"></view>
-				</view>
+			<view v-if="loading" class="loading-section">
+				<view class="loading-spinner"></view>
+				<text class="loading-text">加载中...</text>
 			</view>
 
 			<view v-else-if="dormitories.length === 0" class="empty-section">
@@ -257,7 +246,6 @@ export default {
 				})
 				.catch(err => {
 					if (err.code === -2) {
-						this.loading = false;
 						uni.showToast({ title: '请先登录', icon: 'none' });
 						setTimeout(() => {
 							uni.redirectTo({ url: '/pages/login/index' });

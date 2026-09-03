@@ -32,18 +32,8 @@
 				</button>
 			</view>
 
-			<view v-if="loading" class="sk-wrap">
-				<view class="sk-card">
-					<view class="sk sk-anim" style="height: 36rpx; width: 55%; margin-bottom: 20rpx;"></view>
-					<view class="sk sk-anim" style="height: 24rpx; width: 80%; margin-bottom: 16rpx;"></view>
-					<view class="sk sk-anim" style="height: 24rpx; width: 60%;"></view>
-				</view>
-
-				<view class="sk-card">
-					<view class="sk sk-anim" style="height: 36rpx; width: 45%; margin-bottom: 20rpx;"></view>
-					<view class="sk sk-anim" style="height: 24rpx; width: 75%; margin-bottom: 16rpx;"></view>
-					<view class="sk sk-anim" style="height: 24rpx; width: 55%;"></view>
-				</view>
+			<view v-if="loading" class="loading-wrapper">
+				<view class="loading-text">加载中...</view>
 			</view>
 
 			<view v-else-if="dormitories.length > 0" class="dorm-list">

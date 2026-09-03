@@ -31,29 +31,8 @@
 				</view>
 			</view>
 
-			<view v-if="loading" class="sk-wrap">
-				<view class="sk sk-anim" style="height: 110rpx; border-radius: 20rpx; margin-bottom: 20rpx;"></view>
-
-				<view class="sk-card">
-					<view class="sk sk-anim" style="height: 40rpx; width: 50%; margin-bottom: 20rpx;"></view>
-					<view class="sk sk-anim" style="height: 26rpx; margin-bottom: 14rpx;"></view>
-					<view class="sk sk-anim" style="height: 26rpx; width: 75%;"></view>
-				</view>
-
-				<view class="sk-card">
-					<view class="sk sk-anim" style="height: 40rpx; width: 45%; margin-bottom: 20rpx;"></view>
-					<view class="sk sk-anim" style="height: 26rpx; margin-bottom: 14rpx;"></view>
-					<view class="sk sk-anim" style="height: 26rpx; width: 70%;"></view>
-				</view>
-
-				<view class="sk-card">
-					<view class="sk sk-anim" style="height: 36rpx; width: 40%; margin-bottom: 24rpx;"></view>
-					<view style="display: flex; justify-content: space-between;">
-						<view class="sk sk-anim" style="width: 30%; height: 70rpx;"></view>
-						<view class="sk sk-anim" style="width: 30%; height: 70rpx;"></view>
-						<view class="sk sk-anim" style="width: 30%; height: 70rpx;"></view>
-					</view>
-				</view>
+			<view v-if="loading" class="loading-wrapper">
+				<view class="loading-text">加载中...</view>
 			</view>
 
 			<view v-else-if="grades.length === 0" class="empty-wrapper">

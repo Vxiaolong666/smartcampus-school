@@ -10,70 +10,42 @@
 		</view>
 
 		<view class="content-wrapper">
-			<block v-if="loaded">
-				<view class="bind-card">
-					<view class="card-header">
-						<image class="card-logo" src="/static/assets/wxmp-wechat.svg" mode="widthFix"></image>
-						<view class="card-title">微信账号绑定</view>
-						<view class="card-desc">绑定微信后可使用微信快捷登录</view>
-					</view>
-
-					<view class="status-section">
-						<view class="status-icon">
-							<image v-if="hasWxOpenid" class="status-icon-img" src="/static/assets/wxmp-check.svg" mode="aspectFit"></image>
-							<image v-else class="status-icon-img" src="/static/assets/wxmp-error.svg" mode="aspectFit"></image>
-						</view>
-						<view class="status-text">{{ hasWxOpenid ? '已绑定微信账号' : '未绑定微信账号' }}</view>
-						<view class="status-desc" v-if="hasWxOpenid">您可以使用微信快捷登录</view>
-						<view class="status-desc" v-else>绑定后可使用微信快捷登录</view>
-					</view>
-
-					<view v-if="hasWxOpenid" class="info-section">
-						<view class="info-item">
-							<view class="info-label">OpenID</view>
-							<view class="info-value openid">{{ openidDisplay }}</view>
-						</view>
-					</view>
-
-					<button v-if="hasWxOpenid" class="unbind-btn" @click="onUnbind" :loading="loading">解除绑定</button>
-					<button v-else class="bind-btn" @click="onBind" :loading="loading">立即绑定</button>
+			<view class="bind-card">
+				<view class="card-header">
+					<image class="card-logo" src="/static/assets/wxmp-wechat.svg" mode="widthFix"></image>
+					<view class="card-title">微信账号绑定</view>
+					<view class="card-desc">绑定微信后可使用微信快捷登录</view>
 				</view>
 
-				<view class="tips-card">
-					<view class="tips-title">温馨提示</view>
-					<view class="tips-list">
-						<view class="tips-item">• 绑定微信后，可使用微信快捷登录</view>
-						<view class="tips-item">• 解除绑定后将无法使用微信登录</view>
-						<view class="tips-item">• 每个微信账号只能绑定一个账号</view>
+				<view class="status-section">
+					<view class="status-icon">
+						<image v-if="hasWxOpenid" class="status-icon-img" src="/static/assets/wxmp-check.svg" mode="aspectFit"></image>
+						<image v-else class="status-icon-img" src="/static/assets/wxmp-error.svg" mode="aspectFit"></image>
 					</view>
-				</view>
-			</block>
-
-			<block v-else>
-				<view class="bind-card">
-					<view class="card-header">
-						<view class="wxb-sk wxb-sk-logo wxb-sk-anim"></view>
-						<view class="wxb-sk wxb-sk-title wxb-sk-anim"></view>
-						<view class="wxb-sk wxb-sk-desc wxb-sk-anim"></view>
-					</view>
-
-					<view class="status-section">
-						<view class="wxb-sk wxb-sk-status-icon wxb-sk-anim"></view>
-						<view class="wxb-sk wxb-sk-status-text wxb-sk-anim"></view>
-						<view class="wxb-sk wxb-sk-status-desc wxb-sk-anim"></view>
-					</view>
-
-					<view class="wxb-sk wxb-sk-info wxb-sk-anim"></view>
-					<view class="wxb-sk wxb-sk-btn wxb-sk-anim"></view>
+					<view class="status-text">{{ hasWxOpenid ? '已绑定微信账号' : '未绑定微信账号' }}</view>
+					<view class="status-desc" v-if="hasWxOpenid">您可以使用微信快捷登录</view>
+					<view class="status-desc" v-else>绑定后可使用微信快捷登录</view>
 				</view>
 
-				<view class="tips-card">
-					<view class="wxb-sk wxb-sk-tips-title wxb-sk-anim"></view>
-					<view class="wxb-sk wxb-sk-line wxb-sk-anim"></view>
-					<view class="wxb-sk wxb-sk-line wxb-sk-anim"></view>
-					<view class="wxb-sk wxb-sk-line wxb-sk-line-short wxb-sk-anim"></view>
+				<view v-if="hasWxOpenid" class="info-section">
+					<view class="info-item">
+						<view class="info-label">OpenID</view>
+						<view class="info-value openid">{{ openidDisplay }}</view>
+					</view>
 				</view>
-			</block>
+
+				<button v-if="hasWxOpenid" class="unbind-btn" @click="onUnbind" :loading="loading">解除绑定</button>
+				<button v-else class="bind-btn" @click="onBind" :loading="loading">立即绑定</button>
+			</view>
+
+			<view class="tips-card">
+				<view class="tips-title">温馨提示</view>
+				<view class="tips-list">
+					<view class="tips-item">• 绑定微信后，可使用微信快捷登录</view>
+					<view class="tips-item">• 解除绑定后将无法使用微信登录</view>
+					<view class="tips-item">• 每个微信账号只能绑定一个账号</view>
+				</view>
+			</view>
 		</view>
 	</view>
 </template>
@@ -91,7 +63,6 @@ export default {
 			hasWxOpenid: false,
 			openid: '',
 			openidDisplay: '',
-			loaded: false,
 			loading: false
 		};
 	},
@@ -99,7 +70,6 @@ export default {
 	onLoad() {
 		if (!api.isLoggedIn()) {
 			uni.showToast({ title: '请先登录', icon: 'none' });
-			this.loaded = true;
 			setTimeout(() => {
 				uni.navigateTo({ url: '/pages/login/index' });
 			}, 1000);
@@ -130,8 +100,6 @@ export default {
 				this.openidDisplay = openidDisplay;
 			} catch (err) {
 				uni.showToast({ title: err.msg || '加载失败', icon: 'none' });
-			} finally {
-				this.loaded = true;
 			}
 		},
 
@@ -199,87 +167,6 @@ export default {
 <style>
 page {
 	background: #eff1ff;
-}
-
-.wxb-sk {
-	background: linear-gradient(90deg, #e9ecf5 25%, #f7f9fe 37%, #e9ecf5 63%);
-	background-size: 400% 100%;
-	border-radius: 8rpx;
-}
-
-.wxb-sk-anim {
-	animation: wxbind-skeleton-shimmer 1.4s ease infinite;
-}
-
-.wxb-sk-logo {
-	width: 100rpx;
-	height: 100rpx;
-	border-radius: 50%;
-}
-
-.wxb-sk-title {
-	width: 280rpx;
-	height: 36rpx;
-	margin-top: 24rpx;
-}
-
-.wxb-sk-desc {
-	width: 360rpx;
-	height: 24rpx;
-	margin-top: 16rpx;
-}
-
-.wxb-sk-status-icon {
-	width: 92rpx;
-	height: 92rpx;
-	border-radius: 50%;
-}
-
-.wxb-sk-status-text {
-	width: 300rpx;
-	height: 32rpx;
-	margin-top: 24rpx;
-}
-
-.wxb-sk-status-desc {
-	width: 340rpx;
-	height: 24rpx;
-	margin-top: 16rpx;
-}
-
-.wxb-sk-info {
-	height: 100rpx;
-	border-radius: 16rpx;
-	margin-bottom: 30rpx;
-}
-
-.wxb-sk-btn {
-	height: 96rpx;
-	border-radius: 20rpx;
-}
-
-.wxb-sk-tips-title {
-	width: 180rpx;
-	height: 28rpx;
-	margin-bottom: 24rpx;
-}
-
-.wxb-sk-line {
-	height: 24rpx;
-	margin-bottom: 12rpx;
-}
-
-.wxb-sk-line-short {
-	width: 60%;
-}
-
-@keyframes wxbind-skeleton-shimmer {
-	0% {
-		background-position: 100% 50%;
-	}
-	100% {
-		background-position: 0 50%;
-	}
 }
 </style>
 

@@ -14,35 +14,9 @@
 				<announcement :content="announcement.content" :type="announcement.type" :closable="true" />
 			</view>
 
-			<view v-if="loading" class="sk-wrap">
-				<view class="sk sk-anim" style="height: 100rpx; border-radius: 20rpx; margin-bottom: 20rpx;"></view>
-
-				<view class="sk-card">
-					<view style="display: flex; justify-content: space-between;">
-						<view class="sk sk-anim" style="width: 18%; height: 120rpx; border-radius: 16rpx;"></view>
-						<view class="sk sk-anim" style="width: 18%; height: 120rpx; border-radius: 16rpx;"></view>
-						<view class="sk sk-anim" style="width: 18%; height: 120rpx; border-radius: 16rpx;"></view>
-						<view class="sk sk-anim" style="width: 18%; height: 120rpx; border-radius: 16rpx;"></view>
-						<view class="sk sk-anim" style="width: 18%; height: 120rpx; border-radius: 16rpx;"></view>
-					</view>
-				</view>
-
-				<view class="sk-card">
-					<view class="sk sk-anim" style="height: 36rpx; width: 40%; margin-bottom: 24rpx;"></view>
-					<view class="sk sk-anim" style="height: 300rpx; border-radius: 16rpx;"></view>
-				</view>
-
-				<view class="sk-card">
-					<view class="sk sk-anim" style="height: 36rpx; width: 45%; margin-bottom: 24rpx;"></view>
-					<view class="sk sk-anim" style="height: 300rpx; border-radius: 16rpx;"></view>
-				</view>
-
-				<view class="sk-card">
-					<view class="sk sk-anim" style="height: 36rpx; width: 35%; margin-bottom: 24rpx;"></view>
-					<view class="sk sk-anim" style="height: 100rpx; margin-bottom: 16rpx;"></view>
-					<view class="sk sk-anim" style="height: 100rpx; margin-bottom: 16rpx;"></view>
-					<view class="sk sk-anim" style="height: 100rpx;"></view>
-				</view>
+			<view v-if="loading" class="loading-section">
+				<view class="loading-spinner"></view>
+				<text class="loading-text">加载中...</text>
 			</view>
 
 			<view v-else-if="dormitories.length === 0" class="empty-section">

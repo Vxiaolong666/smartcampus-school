@@ -10,90 +10,65 @@
 		</view>
 
 		<view class="content-wrapper">
-			<block v-if="loaded">
-				<view class="card">
-					<view class="card-title">个人资料</view>
-					<view class="card-desc">管理您的个人信息和账号设置</view>
-				</view>
+			<view class="card">
+				<view class="card-title">个人资料</view>
+				<view class="card-desc">管理您的个人信息和账号设置</view>
+			</view>
 
-				<view class="form-card avatar-card">
-					<view class="avatar-section">
-						<image v-if="avatar" class="avatar" :src="avatar" mode="aspectFill"></image>
-						<view v-else class="avatar-placeholder">
-							<text>{{ (nickname && nickname[0]) || '*' }}</text>
-						</view>
-						<view class="avatar-actions" style="width: 498rpx; display: flex; box-sizing: border-box">
-							<button class="avatar-btn" @click="onChooseAvatar">从相册选择</button>
-							<!-- #ifdef MP-WEIXIN -->
-							<button class="avatar-btn wx-btn" open-type="chooseAvatar" @chooseavatar="onGetWxAvatar">使用微信头像</button>
-							<!-- #endif -->
-						</view>
+			<view class="form-card avatar-card">
+				<view class="avatar-section">
+					<image v-if="avatar" class="avatar" :src="avatar" mode="aspectFill"></image>
+					<view v-else class="avatar-placeholder">
+						<text>{{ (nickname && nickname[0]) || '*' }}</text>
+					</view>
+					<view class="avatar-actions" style="width: 498rpx; display: flex; box-sizing: border-box">
+						<button class="avatar-btn" @click="onChooseAvatar">从相册选择</button>
+						<!-- #ifdef MP-WEIXIN -->
+						<button class="avatar-btn wx-btn" open-type="chooseAvatar" @chooseavatar="onGetWxAvatar">使用微信头像</button>
+						<!-- #endif -->
 					</view>
 				</view>
+			</view>
 
-				<view class="form-card">
-					<view class="form-item">
-						<view class="form-label">昵称</view>
-						<input
-							class="form-input"
-							type="nickname"
-							placeholder="请输入昵称"
-							:value="nickname"
-							@input="onNicknameInput"
-							@blur="onNicknameBlur"
-							maxlength="20"
-						/>
-					</view>
-
-					<view class="form-item">
-						<view class="form-label">用户名</view>
-						<view class="form-value">{{ userInfo.username }}</view>
-					</view>
-
-					<view class="form-item">
-						<view class="form-label">邮箱</view>
-						<view class="form-value">{{ userInfo.email }}</view>
-					</view>
-
-					<view class="form-item" @click="onGoToWxBind">
-						<view class="form-label">微信绑定</view>
-						<view class="form-value link">
-							<text>{{ hasWxOpenid ? '已绑定' : '未绑定' }}</text>
-							<text class="arrow">›</text>
-						</view>
-					</view>
-
-					<view class="form-item">
-						<view class="form-label">注册时间</view>
-						<view class="form-value">{{ userInfo.register_time }}</view>
-					</view>
-
-					<button class="save-btn" @click="onSave">保存修改</button>
-				</view>
-			</block>
-
-			<block v-else>
-				<view class="card">
-					<view class="sk sk-anim" style="height: 36rpx; width: 40%; margin-bottom: 20rpx;"></view>
-					<view class="sk sk-anim" style="height: 26rpx; width: 70%;"></view>
+			<view class="form-card">
+				<view class="form-item">
+					<view class="form-label">昵称</view>
+					<input
+						class="form-input"
+						type="nickname"
+						placeholder="请输入昵称"
+						:value="nickname"
+						@input="onNicknameInput"
+						@blur="onNicknameBlur"
+						maxlength="20"
+					/>
 				</view>
 
-				<view class="form-card avatar-card">
-					<view class="avatar-section">
-						<view class="sk sk-anim" style="width: 140rpx; height: 140rpx; border-radius: 50%;"></view>
-						<view class="sk sk-anim" style="width: 420rpx; height: 64rpx; margin-top: 24rpx; border-radius: 40rpx;"></view>
+				<view class="form-item">
+					<view class="form-label">用户名</view>
+					<view class="form-value">{{ userInfo.username }}</view>
+				</view>
+
+				<view class="form-item">
+					<view class="form-label">邮箱</view>
+					<view class="form-value">{{ userInfo.email }}</view>
+				</view>
+
+				<view class="form-item" @click="onGoToWxBind">
+					<view class="form-label">微信绑定</view>
+					<view class="form-value link">
+						<text>{{ hasWxOpenid ? '已绑定' : '未绑定' }}</text>
+						<text class="arrow">›</text>
 					</view>
 				</view>
 
-				<view class="form-card">
-					<view class="sk sk-anim" style="height: 90rpx; margin-bottom: 20rpx;"></view>
-					<view class="sk sk-anim" style="height: 90rpx; margin-bottom: 20rpx;"></view>
-					<view class="sk sk-anim" style="height: 90rpx; margin-bottom: 20rpx;"></view>
-					<view class="sk sk-anim" style="height: 90rpx; margin-bottom: 20rpx;"></view>
-					<view class="sk sk-anim" style="height: 90rpx; margin-bottom: 30rpx;"></view>
-					<view class="sk sk-anim sk-btn"></view>
+				<view class="form-item">
+					<view class="form-label">注册时间</view>
+					<view class="form-value">{{ userInfo.register_time }}</view>
 				</view>
-			</block>
+
+				<button class="save-btn" @click="onSave">保存修改</button>
+			</view>
 		</view>
 	</view>
 </template>
@@ -109,15 +84,13 @@ export default {
 			userInfo: {},
 			nickname: '',
 			avatar: '',
-			hasWxOpenid: false,
-			loaded: false
+			hasWxOpenid: false
 		};
 	},
 
 	onLoad() {
 		if (!api.isLoggedIn()) {
 			uni.showToast({ title: '请先登录', icon: 'none' });
-			this.loaded = true;
 			setTimeout(() => {
 				uni.navigateTo({ url: '/pages/login/index' });
 			}, 1000);
@@ -141,8 +114,6 @@ export default {
 				this.hasWxOpenid = !!userInfo.wx_openid;
 			} catch (err) {
 				uni.showToast({ title: err.msg || '加载失败', icon: 'none' });
-			} finally {
-				this.loaded = true;
 			}
 		},
 
