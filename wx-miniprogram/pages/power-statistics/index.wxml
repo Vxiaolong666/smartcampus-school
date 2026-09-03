@@ -38,6 +38,24 @@
                 </view>
             </view>
             
+            <view class="time-filter">
+                <view class="time-filter-btns">
+                    <view class="time-btn {{timeRange === 'all' ? 'active' : ''}}" bindtap="setTimeRange" data-range="all">全部</view>
+                    <view class="time-btn {{timeRange === '7' ? 'active' : ''}}" bindtap="setTimeRange" data-range="7">近7天</view>
+                    <view class="time-btn {{timeRange === '30' ? 'active' : ''}}" bindtap="setTimeRange" data-range="30">近30天</view>
+                    <view class="time-btn {{timeRange === 'custom' ? 'active' : ''}}" bindtap="setTimeRange" data-range="custom">自定义</view>
+                </view>
+                <view wx:if="{{timeRange === 'custom'}}" class="time-custom">
+                    <picker mode="date" class="custom-picker" value="{{customStart}}" bindchange="onCustomStart">
+                        <view>{{customStart || '开始日期'}}</view>
+                    </picker>
+                    <text class="custom-sep">至</text>
+                    <picker mode="date" class="custom-picker" value="{{customEnd}}" bindchange="onCustomEnd">
+                        <view>{{customEnd || '结束日期'}}</view>
+                    </picker>
+                </view>
+            </view>
+
             <view wx:if="{{stats}}" class="stats-section">
                 <view class="stats-header">
                     <image class="stats-header-icon" src="/assets/wxmp-chart.svg" mode="widthFix"></image>

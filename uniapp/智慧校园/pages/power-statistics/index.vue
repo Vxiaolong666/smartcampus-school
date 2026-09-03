@@ -45,7 +45,25 @@
 					</view>
 				</view>
 
-				<view v-if="stats" class="stats-section">
+				<view class="time-filter">
+				<view class="time-filter-btns">
+					<view class="time-btn" :class="{ active: timeRange === 'all' }" @click="setTimeRange('all')">全部</view>
+					<view class="time-btn" :class="{ active: timeRange === '7' }" @click="setTimeRange('7')">近7天</view>
+					<view class="time-btn" :class="{ active: timeRange === '30' }" @click="setTimeRange('30')">近30天</view>
+					<view class="time-btn" :class="{ active: timeRange === 'custom' }" @click="setTimeRange('custom')">自定义</view>
+				</view>
+				<view v-if="timeRange === 'custom'" class="time-custom">
+					<picker mode="date" class="custom-picker" :value="customStart" @change="onCustomStart">
+						<view>{{ customStart || '开始日期' }}</view>
+					</picker>
+					<text class="custom-sep">至</text>
+					<picker mode="date" class="custom-picker" :value="customEnd" @change="onCustomEnd">
+						<view>{{ customEnd || '结束日期' }}</view>
+					</picker>
+				</view>
+			</view>
+
+			<view v-if="stats" class="stats-section">
 					<view class="stats-header">
 						<image class="stats-header-icon" src="/static/assets/wxmp-chart.svg" mode="widthFix"></image>
 						<text class="stats-header-title">用电概览</text>
@@ -201,10 +219,10 @@
 						<text>暂无记录</text>
 					</view>
 					<view v-else class="records-timeline">
-						<view v-for="(item, index) in visibleRecords" :key="item.id" class="record-item">
+						<view v-for="(item, index) in records" :key="item.id" class="record-item">
 							<view class="record-timeline-left">
 								<view class="record-dot" :class="item.usageClass"></view>
-								<view class="record-line" v-if="index < visibleRecords.length - 1"></view>
+								<view class="record-line" v-if="index < records.length - 1"></view>
 							</view>
 							<view class="record-content">
 								<view class="record-header">
@@ -231,10 +249,7 @@
 							</view>
 						</view>
 					</view>
-					<view v-if="hasMoreRecords" class="records-more" @click="loadMoreRecords">
-						加载更多（还有{{ records.length - visibleRecordCount }}条）
-					</view>
-					<view class="records-footer">用电量根据余额变化和电价({{ pricePerKwh }}元/度)自动计算</view>
+										<view class="records-footer">用电量根据余额变化和电价({{ pricePerKwh }}元/度)自动计算</view>
 				</view>
 			</block>
 		</view>
@@ -262,18 +277,14 @@ export default {
 			records: [],
 			pricePerKwh: 0.61,
 			loading: true,
-			// 历史记录可能很多，低端设备一次性全部渲染会阻塞页面，这里分批渲染
-			visibleRecordCount: 30
+			// 时间筛选：all=全部, 7=近7天, 30=近30天, custom=自定义
+			timeRange: 'all',
+			customStart: '',
+			customEnd: ''
 			};
 			},
 
 			computed: {
-			visibleRecords() {
-			return this.records.slice(0, this.visibleRecordCount);
-			},
-			hasMoreRecords() {
-			return this.records.length > this.visibleRecordCount;
-			},
 			healthIcon() {
 			const s = this.stats && this.stats.healthStatus;
 			if (s === 'saving') return '/static/assets/wxmp-heart-green.svg';
@@ -297,11 +308,7 @@ export default {
 	},
 
 	methods: {
-		loadMoreRecords() {
-			this.visibleRecordCount += 30;
-		},
-
-		async checkFeature() {
+	async checkFeature() {
 			try {
 				const result = await feature.checkFeature('power_statistics');
 				if (!result.enabled) {
@@ -353,6 +360,44 @@ export default {
 			this.loadStatistics();
 		},
 
+		setTimeRange(range) {
+			this.timeRange = range;
+			this.loadStatistics();
+		},
+
+		onCustomStart(e) {
+			this.customStart = e.detail.value;
+			this.loadStatistics();
+		},
+
+		onCustomEnd(e) {
+			this.customEnd = e.detail.value;
+			this.loadStatistics();
+		},
+
+		buildQuery(roomNum) {
+			const params = { room_num: roomNum };
+			const range = this.timeRange;
+			if (range === '7' || range === '30') {
+				const days = range === '7' ? 6 : 29;
+				const end = this.formatDate(new Date());
+				const start = this.formatDate(new Date(Date.now() - days * 86400000));
+				params.start = start;
+				params.end = end;
+			} else if (range === 'custom') {
+				if (this.customStart) params.start = this.customStart;
+				if (this.customEnd) params.end = this.customEnd;
+			}
+			return params;
+		},
+
+		formatDate(d) {
+			const y = d.getFullYear();
+			const m = String(d.getMonth() + 1).padStart(2, '0');
+			const day = String(d.getDate()).padStart(2, '0');
+			return y + '-' + m + '-' + day;
+		},
+
 		async loadStatistics() {
 			const { dormitories, selectedIndex } = this;
 
@@ -366,9 +411,7 @@ export default {
 				const res = await api.request({
 					act: 'get_power_statistics',
 					method: 'GET',
-					data: {
-						room_num: dorm.room_num
-					}
+					data: this.buildQuery(dorm.room_num)
 				});
 
 				const data = res.data;
@@ -442,7 +485,6 @@ export default {
 				this.recentTrend = data.recent_trend || [];
 				this.dailyTrend = data.daily_trend || [];
 				this.records = processedRecords;
-				this.visibleRecordCount = 30;
 				this.pricePerKwh = data.price_per_kwh || 0.61;
 				this.loading = false;
 
@@ -688,7 +730,7 @@ page {
 	border-top-right-radius: 60rpx;
 	box-shadow: 0 -80rpx 80rpx 40rpx rgba(0, 0, 0, 0.2);
 	padding: 30rpx;
-	padding-bottom: 100rpx;
+	padding-bottom: 30rpx;
 }
 
 .filter-section {
@@ -993,7 +1035,7 @@ page {
 	background: white;
 	border-radius: 20rpx;
 	padding: 24rpx;
-	margin-bottom: 20rpx;
+	margin-bottom: 10rpx;
 	box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.05);
 }
 
@@ -1125,10 +1167,61 @@ page {
 	color: #948eb3;
 }
 
-.records-more {
+
+
+.time-filter {
+	display: flex;
+	flex-direction: column;
+	background: white;
+	border-radius: 20rpx;
+	padding: 20rpx 24rpx;
+	margin-bottom: 20rpx;
+	box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.05);
+}
+
+.time-filter-btns {
+	display: flex;
+	gap: 16rpx;
+}
+
+.time-btn {
+	flex: 1;
 	text-align: center;
-	padding: 24rpx 0 4rpx;
 	font-size: 26rpx;
-	color: #13c2c2;
+	color: #48416f;
+	padding: 16rpx 0;
+	border-radius: 14rpx;
+	background: #f5f6fa;
+	border: 2rpx solid transparent;
+}
+
+.time-btn.active {
+	background: #13c2c2;
+	color: #fff;
+}
+
+.time-custom {
+	display: flex;
+	align-items: center;
+	gap: 16rpx;
+	margin-top: 20rpx;
+}
+
+.custom-picker {
+	flex: 1;
+	min-height: 76rpx;
+	line-height: 72rpx;
+	text-align: center;
+	font-size: 26rpx;
+	color: #48416f;
+	border-radius: 14rpx;
+	background: #f5f6fa;
+	border: 2rpx solid #e3e0f0;
+	box-sizing: border-box;
+}
+
+.custom-sep {
+	font-size: 26rpx;
+	color: #948eb3;
 }
 </style>

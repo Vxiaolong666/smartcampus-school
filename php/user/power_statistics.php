@@ -46,7 +46,7 @@ $pricePerKwh = floatval($config['price_per_kwh'] ?? 0.61);
                 <?php else: ?>
                 
                 <div class="row mb-4">
-                    <div class="col-md-6">
+                    <div class="col-md-3 mb-3 mb-md-0">
                         <label class="form-label">选择宿舍</label>
                         <select class="form-select" id="roomSelect">
                             <?php foreach($bindings as $binding): ?>
@@ -63,9 +63,27 @@ $pricePerKwh = floatval($config['price_per_kwh'] ?? 0.61);
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label">&nbsp;</label>
-                        <button class="btn btn-primary d-block w-100" id="refreshBtn">
+                    <div class="col-md-3 mb-3 mb-md-0">
+                        <label class="form-label">时间范围</label>
+                        <select class="form-select" id="timeRange">
+                            <option value="all">全部</option>
+                            <option value="7">近7天</option>
+                            <option value="30">近30天</option>
+                            <option value="custom">自定义</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3 mb-3 mb-md-0" id="customStartWrap" style="display:none;">
+                        <label class="form-label">开始日期</label>
+                        <input type="date" class="form-control" id="startDate">
+                    </div>
+                    <div class="col-md-3 mb-3 mb-md-0" id="customEndWrap" style="display:none;">
+                        <label class="form-label">结束日期</label>
+                        <input type="date" class="form-control" id="endDate">
+                    </div>
+                </div>
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <button class="btn btn-primary" id="refreshBtn">
                             <i class="fa fa-refresh me-1"></i>刷新数据
                         </button>
                     </div>
@@ -114,15 +132,27 @@ function loadStatistics() {
         return;
     }
     
+    // 时间筛选
+    var timeRange = $('#timeRange').val();
+    var params = { act: 'get_power_statistics', room_num: roomNum };
+    if (timeRange === '7' || timeRange === '30') {
+        var days = timeRange === '7' ? 6 : 29;
+        var end = new Date();
+        var start = new Date();
+        start.setDate(start.getDate() - days);
+        params.start = formatYmd(start);
+        params.end = formatYmd(end);
+    } else if (timeRange === 'custom') {
+        if ($('#startDate').val()) params.start = $('#startDate').val();
+        if ($('#endDate').val()) params.end = $('#endDate').val();
+    }
+
     $('#statsContent').html('<div class="text-center py-5"><i class="fa fa-spinner fa-spin fa-2x text-muted"></i><p class="text-muted mt-2">加载中...</p></div>');
     
     $.ajax({
         url: '../api.php',
         method: 'GET',
-        data: {
-            act: 'get_power_statistics',
-            room_num: roomNum
-        },
+        data: params,
         dataType: 'json',
         success: function(res) {
             if (res.code == 0) {
@@ -434,10 +464,30 @@ function renderDailyChart(data) {
     });
 }
 
+function formatYmd(d) {
+    var y = d.getFullYear();
+    var m = ('0' + (d.getMonth() + 1)).slice(-2);
+    var day = ('0' + d.getDate()).slice(-2);
+    return y + '-' + m + '-' + day;
+}
+
 $(document).ready(function() {
     loadStatistics();
     
     $('#roomSelect').change(function() {
+        loadStatistics();
+    });
+    
+    $('#timeRange').change(function() {
+        if ($(this).val() === 'custom') {
+            $('#customStartWrap, #customEndWrap').show();
+        } else {
+            $('#customStartWrap, #customEndWrap').hide();
+            loadStatistics();
+        }
+    });
+    
+    $('#startDate, #endDate').change(function() {
         loadStatistics();
     });
     

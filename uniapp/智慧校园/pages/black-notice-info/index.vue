@@ -154,7 +154,7 @@ page {
 	border-top-right-radius: 60rpx;
 	box-shadow: 0 -80rpx 80rpx 40rpx rgba(0, 0, 0, 0.2);
 	padding: 30rpx;
-	padding-bottom: 100rpx;
+	padding-bottom: 30rpx;
 }
 
 .loading-section,

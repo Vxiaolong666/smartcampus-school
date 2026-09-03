@@ -149,32 +149,22 @@ export default {
 
 			api.getSemesterList()
 				.then(res => {
-					const semesters = res.data || [];
-					let currentSemester = '';
-					let semesterIndex = 0;
-
-					if (semesters.length > 0) {
-						for (let i = 0; i < semesters.length; i++) {
-							if (semesters[i].isdqxq === '1') {
-								currentSemester = semesters[i].semesterId;
-								semesterIndex = i;
-								break;
-							}
-						}
-
-						if (!currentSemester) {
-							currentSemester = semesters[0].semesterId;
-						}
-					}
+					const data = res.data || {};
+					const list = data.list || [];
+					const def = data.default || null;
+					// 默认项展示「学期名称（默认）」，选中时把对应学期 id 传给后端
+					const defaultOption = {
+						semesterId: def && def.id ? def.id : '',
+						semesterName: (def && def.name) ? def.name + '（默认）' : '默认'
+					};
+					const semesters = [defaultOption].concat(list);
 
 					this.semesters = semesters;
-					this.semesterIndex = semesterIndex;
-					this.currentSemester = currentSemester;
+					this.semesterIndex = 0;
+					this.currentSemester = defaultOption.semesterId;
 					this.loading = false;
 
-					if (currentSemester) {
-						this.loadGrades();
-					}
+					this.loadGrades();
 				})
 				.catch(err => {
 					this.loading = false;
@@ -194,11 +184,6 @@ export default {
 
 		loadGrades() {
 			const { currentSemester } = this;
-
-			if (!currentSemester) {
-				uni.showToast({ title: '请选择学期', icon: 'none' });
-				return;
-			}
 
 			this.loading = true;
 
@@ -308,7 +293,7 @@ page {
 	border-top-right-radius: 60rpx;
 	box-shadow: 0 -80rpx 80rpx 40rpx rgba(0, 0, 0, 0.2);
 	padding: 30rpx;
-	padding-bottom: 100rpx;
+	padding-bottom: 30rpx;
 }
 
 .filter-card {

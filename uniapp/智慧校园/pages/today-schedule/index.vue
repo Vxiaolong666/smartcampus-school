@@ -49,7 +49,7 @@
 								<text class="status-free">非今日</text>
 							</block>
 							<block v-else-if="allCoursesEnded">
-								<text class="status-ended">今日的课上完了</text>
+								<text class="status-ended">今日课程结束了</text>
 							</block>
 							<block v-else-if="isEndingSoon">
 								<text class="status-ending">即将下课</text>

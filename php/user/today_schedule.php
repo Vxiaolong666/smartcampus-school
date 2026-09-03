@@ -376,7 +376,7 @@ if (!empty($dayCourses)) {
                                 <div class="fw-bold fs-5" id="currentTime"><?php echo $currentTime; ?></div>
                                 <div class="text-muted" id="currentStatus">
                                     <?php if($allCoursesEnded && $isToday): ?>
-                                        <span class="text-success"><i class="fa fa-check-circle me-1"></i>今日的课上完了</span>
+                                        <span class="text-success"><i class="fa fa-check-circle me-1"></i>今日课程结束了</span>
                                     <?php elseif($notStarted && $isToday): ?>
                                         <span class="text-info"><i class="fa fa-sun me-1"></i>课程未开始，还有<?php echo $minutesToNext; ?>分钟上课</span>
                                     <?php elseif($currentCourse): ?>
@@ -403,7 +403,7 @@ if (!empty($dayCourses)) {
                         <div class="card border-success">
                             <div class="card-body text-center py-4">
                                 <i class="fa fa-check-circle text-success fa-3x mb-3"></i>
-                                <h5 class="text-success mb-2">今日的课上完了</h5>
+                                <h5 class="text-success mb-2">今日课程结束了</h5>
                                 <p class="text-muted mb-0">共<?php echo count($dayCourses); ?>节课，辛苦了！好好休息吧~</p>
                             </div>
                         </div>

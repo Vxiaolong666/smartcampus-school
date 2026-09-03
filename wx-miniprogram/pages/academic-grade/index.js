@@ -68,43 +68,25 @@ Page({
     // 调用API获取学期列表
     api.getSemesterList()
       .then(res => {
-        // 取出学期列表数据，无数据时默认空数组
-        const semesters = res.data || [];
-        // 当前选中的学期ID
-        let currentSemester = '';
-        // 当前选中的学期索引
-        let semesterIndex = 0;
-
-        // 如果有学期数据
-        if (semesters.length > 0) {
-          // 遍历查找当前学期（isdqxq === '1' 表示当前学期）
-          for (let i = 0; i < semesters.length; i++) {
-            if (semesters[i].isdqxq === '1') {
-              // 记录当前学期的ID和索引
-              currentSemester = semesters[i].semesterId;
-              semesterIndex = i;
-              break;
-            }
-          }
-          
-          // 如果没有找到当前学期标记，默认选择第一个学期
-          if (!currentSemester) {
-            currentSemester = semesters[0].semesterId;
-          }
-        }
+        const data = res.data || {};
+        const list = data.list || [];
+        const def = data.default || null;
+        // 默认项展示「学期名称（默认）」，选中时把对应学期 id 传给后端
+        const defaultOption = {
+          semesterId: def && def.id ? def.id : '',
+          semesterName: (def && def.name) ? def.name + '（默认）' : '默认'
+        };
+        const semesters = [defaultOption].concat(list);
 
         // 更新页面数据：学期列表、选中索引、当前学期、取消加载状态
-        this.setData({ 
+        this.setData({
           semesters: semesters,
-          semesterIndex: semesterIndex,
-          currentSemester: currentSemester,
+          semesterIndex: 0,
+          currentSemester: defaultOption.semesterId,
           loading: false
         });
 
-        // 如果有当前学期，自动加载该学期的成绩
-        if (currentSemester) {
-          this.loadGrades();
-        }
+        this.loadGrades();
       })
       .catch(err => {
         // 获取学期列表失败，取消加载状态并提示
@@ -132,14 +114,8 @@ Page({
 
   //加载成绩数据
   loadGrades() {
-    // 解构获取当前选中的学期ID
+    // 解构获取当前选中的学期ID（为空时后端使用后台配置学期）
     const { currentSemester } = this.data;
-
-    // 未选择学期时提示并返回
-    if (!currentSemester) {
-      wx.showToast({ title: '请选择学期', icon: 'none' });
-      return;
-    }
 
     // 设置加载状态
     this.setData({ loading: true });

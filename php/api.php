@@ -941,7 +941,18 @@ switch($act) {
         $savingThreshold = floatval($config['usage_saving_threshold'] ?? 0.5);
         $normalThreshold = floatval($config['usage_normal_threshold'] ?? 1.0);
         
-        $records = $DB->getAll("SELECT * FROM nteam_power_daily_records WHERE room_num = '$roomNum' ORDER BY record_time ASC");
+        // 按时间筛选（历史电费记录 / 趋势 / 统计均按所选区间）
+        $timeWhere = "room_num = '$roomNum'";
+        $filterStart = isset($_REQUEST['start']) ? trim($_REQUEST['start']) : '';
+        $filterEnd = isset($_REQUEST['end']) ? trim($_REQUEST['end']) : '';
+        if ($filterStart !== '' && strtotime($filterStart) !== false) {
+            $timeWhere .= " AND record_time >= '" . date('Y-m-d 00:00:00', strtotime($filterStart)) . "'";
+        }
+        if ($filterEnd !== '' && strtotime($filterEnd) !== false) {
+            $timeWhere .= " AND record_time <= '" . date('Y-m-d 23:59:59', strtotime($filterEnd)) . "'";
+        }
+
+        $records = $DB->getAll("SELECT * FROM nteam_power_daily_records WHERE $timeWhere ORDER BY record_time ASC");
         
         $totalUsage = 0;
         $totalCost = 0;
@@ -1127,16 +1138,24 @@ switch($act) {
         $token = $tokenResult['token'];
         
         if (empty($semester)) {
-            $semesterResult = AcademicSystem::getSemesterList($token);
-            if (isset($semesterResult['code']) && $semesterResult['code'] == 1 && !empty($semesterResult['data'])) {
-                foreach ($semesterResult['data'] as $s) {
-                    if (isset($s['isdqxq']) && $s['isdqxq'] == '1') {
-                        $semester = $s['semesterId'];
-                        break;
+            // 未提交指定学期时，优先使用后台「成绩推送学期」配置
+            // （Adminq/academic_push_config.php?tab=config 设置，uniapp 与微信小程序共用）
+            $cfgRow = $DB->getRow("SELECT grade_semester FROM nteam_academic_push_config WHERE id = 1");
+            if ($cfgRow && !empty($cfgRow['grade_semester'])) {
+                $semester = $cfgRow['grade_semester'];
+            } else {
+                // 未配置则回退为教务系统当前学期
+                $semesterResult = AcademicSystem::getSemesterList($token);
+                if (isset($semesterResult['code']) && $semesterResult['code'] == 1 && !empty($semesterResult['data'])) {
+                    foreach ($semesterResult['data'] as $s) {
+                        if (isset($s['isdqxq']) && $s['isdqxq'] == '1') {
+                            $semester = $s['semesterId'];
+                            break;
+                        }
                     }
-                }
-                if (empty($semester)) {
-                    $semester = $semesterResult['data'][0]['semesterId'];
+                    if (empty($semester)) {
+                        $semester = $semesterResult['data'][0]['semesterId'];
+                    }
                 }
             }
         }
@@ -1327,7 +1346,39 @@ switch($act) {
         $semesterResult = AcademicSystem::getSemesterList($token);
         
         if (isset($semesterResult['code']) && $semesterResult['code'] == 1) {
-            jsonResponse(0, '查询成功', $semesterResult['data'] ?? []);
+            $list = $semesterResult['data'] ?? [];
+            
+            // 解析默认学期：与成绩查询接口一致（后台「成绩推送学期」配置 > 当前学期 > 第一个）
+            $defaultId = '';
+            $defaultName = '';
+            $cfgRow = $DB->getRow("SELECT grade_semester FROM nteam_academic_push_config WHERE id = 1");
+            $configSemester = ($cfgRow && !empty($cfgRow['grade_semester'])) ? $cfgRow['grade_semester'] : '';
+            if ($configSemester) {
+                $defaultId = $configSemester;
+            } elseif (!empty($list)) {
+                foreach ($list as $s) {
+                    if (isset($s['isdqxq']) && $s['isdqxq'] == '1') {
+                        $defaultId = $s['semesterId'];
+                        break;
+                    }
+                }
+                if ($defaultId === '') {
+                    $defaultId = $list[0]['semesterId'];
+                }
+            }
+            if ($defaultId !== '' && !empty($list)) {
+                foreach ($list as $s) {
+                    if (isset($s['semesterId']) && $s['semesterId'] == $defaultId) {
+                        $defaultName = $s['semesterName'] ?? '';
+                        break;
+                    }
+                }
+            }
+            
+            jsonResponse(0, '查询成功', [
+                'list' => $list,
+                'default' => ['id' => $defaultId, 'name' => $defaultName]
+            ]);
         } else {
             jsonResponse(-1, $semesterResult['msg'] ?? $semesterResult['Msg'] ?? '获取学期列表失败');
         }

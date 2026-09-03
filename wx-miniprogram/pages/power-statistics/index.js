@@ -16,7 +16,10 @@ Page({
         dailyTrend: [],        // 每日趋势数据（用于折线图）
         records: [],           // 用电记录列表
         pricePerKwh: 0.61,     // 每度电价格（元）
-        loading: true          // 加载状态
+        loading: true,         // 加载状态
+        timeRange: 'all',      // 时间筛选：all=全部, 7=近7天, 30=近30天, custom=自定义
+        customStart: '',       // 自定义开始日期
+        customEnd: ''          // 自定义结束日期
     },
 
     //页面加载
@@ -100,6 +103,50 @@ Page({
         this.loadStatistics();
     },
 
+    //时间筛选切换
+    setTimeRange(e) {
+        const range = e.currentTarget.dataset.range;
+        this.setData({ timeRange: range });
+        this.loadStatistics();
+    },
+
+    //自定义开始日期
+    onCustomStart(e) {
+        this.setData({ customStart: e.detail.value });
+        this.loadStatistics();
+    },
+
+    //自定义结束日期
+    onCustomEnd(e) {
+        this.setData({ customEnd: e.detail.value });
+        this.loadStatistics();
+    },
+
+    //构造查询参数（含时间筛选）
+    buildQuery(roomNum) {
+        const params = { room_num: roomNum };
+        const range = this.data.timeRange;
+        if (range === '7' || range === '30') {
+            const days = range === '7' ? 6 : 29;
+            const end = this.formatDate(new Date());
+            const start = this.formatDate(new Date(Date.now() - days * 86400000));
+            params.start = start;
+            params.end = end;
+        } else if (range === 'custom') {
+            if (this.data.customStart) params.start = this.data.customStart;
+            if (this.data.customEnd) params.end = this.data.customEnd;
+        }
+        return params;
+    },
+
+    //格式化日期为 Y-m-d
+    formatDate(d) {
+        const y = d.getFullYear();
+        const m = (d.getMonth() + 1 < 10 ? '0' : '') + (d.getMonth() + 1);
+        const day = (d.getDate() < 10 ? '0' : '') + d.getDate();
+        return y + '-' + m + '-' + day;
+    },
+
     //加载用电统计数据
     async loadStatistics() {
         // 解构获取宿舍列表和选中索引
@@ -119,9 +166,7 @@ Page({
             const res = await api.request({
                 act: 'get_power_statistics',
                 method: 'GET',
-                data: {
-                    room_num: dorm.room_num
-                }
+                data: this.buildQuery(dorm.room_num)
             });
 
             // 取出响应数据
