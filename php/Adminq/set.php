@@ -63,12 +63,7 @@ include './head.php';
                         </div>
                     </div>
                     <div class="row">
-                        <div class="col-mb-5">
-                            <div class="mb-4">
-                                <label class="form-label" for="Iindex_Image"><b>首页背景图</b></label>
-                                <input type="text" class="form-control form-control-lg" id="index_image" name="index_image" value="<?php echo conf('Index_Image');?>" placeholder="请输入首页背景图Url">
-                            </div>
-                        </div>
+
                         <div class="col-md-7">
                             <div class="mb-4">
                                 <label class="form-label" for="Descriptison"><b>网站描述</b></label>
@@ -85,21 +80,6 @@ include './head.php';
                                     <div class="form-check form-check-inline">
                                         <label class="form-check-label">
                                             <input class="form-check-input" type="radio" name="index_fang" value="1" <?=conf('Index_Fang')==1?"checked":""?>>启用
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="mb-4">
-                                <label class="form-label"><b>饼盒一键登录开关</b></label>
-                                <div class="space-x-2">
-                                    <div class="form-check form-check-inline">
-                                        <label class="form-check-label">
-                                            <input class="form-check-input" type="radio" name="cookiebox_login" value="0" <?=conf('cookiebox_login')==0?"checked":""?>>禁用
-                                        </label>
-                                    </div>
-                                    <div class="form-check form-check-inline">
-                                        <label class="form-check-label">
-                                            <input class="form-check-input" type="radio" name="cookiebox_login" value="1" <?=conf('cookiebox_login')==1?"checked":""?>>启用
                                         </label>
                                     </div>
                                 </div>
