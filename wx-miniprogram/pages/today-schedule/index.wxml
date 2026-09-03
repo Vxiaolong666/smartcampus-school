@@ -1,0 +1,307 @@
+<view class="container">
+  <top-menu showBack="{{false}}">
+    <view class="nav-title">今日课程</view>
+    <view slot="right" class="nav-action" bindtap="goToFullSchedule">
+      <text class="action-text">完整课表</text>
+    </view>
+  </top-menu>
+
+  <view class="background-wrapper">
+    <image class="background" src="/assets/wxmp-banner.jpg" mode="aspectFill" />
+    <view class="background-mask"></view>
+  </view>
+
+  <view class="content-wrapper">
+    <view wx:if="{{announcement}}">
+      <announcement content="{{announcement.content}}" type="{{announcement.type}}" closable="{{true}}" />
+    </view>
+
+    <view class="day-selector">
+      <view 
+        class="day-item {{selectedDay === index ? 'active' : ''}} {{todayDayOfWeek === index ? 'today' : ''}}" 
+        wx:for="{{weekDates}}" 
+        wx:key="dateStr"
+        data-day="{{index}}"
+        bindtap="onDaySelect"
+      >
+        <view class="day-name">{{['周日','周一','周二','周三','周四','周五','周六'][index]}}</view>
+        <view class="day-date">{{item.date}}</view>
+        <view class="day-tag" wx:if="{{todayDayOfWeek === index}}">今天</view>
+      </view>
+    </view>
+
+    <view class="info-cards">
+      <view class="info-card date-card">
+        <image class="info-icon" src="/assets/wxmp-calendar.svg" mode="widthFix"></image>
+        <view class="info-content">
+          <view class="info-title">{{['星期日','星期一','星期二','星期三','星期四','星期五','星期六'][selectedDay]}}{{selectedDay === todayDayOfWeek ? ' (今天)' : ''}}</view>
+          <view class="info-sub">{{weekDates[selectedDay].full}} · 第{{currentWeek}}周</view>
+        </view>
+      </view>
+      <view class="info-card time-card">
+        <image class="info-icon" src="/assets/wxmp-clock.svg" mode="widthFix"></image>
+        <view class="info-content">
+          <view class="info-title">
+            {{currentTime}}
+          </view>
+          <view class="info-sub">
+            <block wx:if="{{selectedDay !== todayDayOfWeek}}">
+              <text class="status-free">非今日</text>
+            </block>
+            <block wx:elif="{{allCoursesEnded}}">
+              <text class="status-ended">今日的课上完了</text>
+            </block>
+            <block wx:elif="{{isEndingSoon}}">
+              <text class="status-ending">即将下课</text>
+            </block>
+            <block wx:elif="{{currentCourse}}">
+              <text class="status-current">上课中</text>
+            </block>
+            <block wx:elif="{{notStarted || inBreak}}">
+              <text class="status-waiting">即将上课</text>
+            </block>
+            <block wx:else>
+              <text class="status-free">课余时间</text>
+            </block>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{currentCourse || nextCourse || allCoursesEnded || notStarted}}" class="status-cards">
+      <view wx:if="{{allCoursesEnded && selectedDay === todayDayOfWeek}}" class="status-card ended">
+        <view class="status-header">
+          <image class="status-label-icon" src="/assets/wxmp-check.svg" mode="widthFix"></image>
+          <text class="status-label">今日课程已结束</text>
+        </view>
+        <view class="status-body">
+          <view class="status-title">今日的课上完了，好好休息吧~</view>
+        </view>
+      </view>
+
+      <view wx:if="{{notStarted && selectedDay === todayDayOfWeek && nextCourse}}" class="status-card waiting" style="border-color: {{nextCourse.color.text}};">
+        <view class="status-header" style="background-color: {{nextCourse.color.text}};">
+          <image class="status-label-icon large" src="/assets/wxmp-alarm-white.svg" mode="widthFix"></image>
+          <text class="status-label">课程未开始</text>
+          <text class="status-time">还有{{minutesToNext}}分钟上课</text>
+        </view>
+        <view class="status-body" style="background: linear-gradient(135deg, {{nextCourse.color.bg}} 0%, #ffffff 100%);">
+          <view class="status-title" style="color: {{nextCourse.color.text}};">{{nextCourse.courseName}}</view>
+          <view class="status-info-row" wx:if="{{nextCourse.location || nextCourse.teacher}}">
+            <view class="status-info-item" wx:if="{{nextCourse.location}}">
+              <image class="status-icon" src="/assets/wxmp-location.svg" mode="widthFix"></image>
+              <text>{{nextCourse.location}}</text>
+            </view>
+            <view class="status-info-item" wx:if="{{nextCourse.teacher}}">
+              <image class="status-icon" src="/assets/wxmp-user.svg" mode="widthFix"></image>
+              <text>{{nextCourse.teacher}}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <view wx:if="{{currentCourse && selectedDay === todayDayOfWeek}}" class="status-card current" style="border-color: {{currentCourse.color.text}};">
+        <view class="status-header" style="background-color: {{currentCourse.color.text}};">
+          <image class="status-label-icon large" src="/assets/wxmp-play-white.svg" mode="widthFix"></image>
+          <text class="status-label">正在上课</text>
+          <text class="status-time">还有{{minutesToEnd}}分钟下课</text>
+        </view>
+        <view class="status-body" style="background: linear-gradient(135deg, {{currentCourse.color.bg}} 0%, #ffffff 100%);">
+          <view class="status-title" style="color: {{currentCourse.color.text}};">{{currentCourse.courseName}}</view>
+          <view class="status-info-row" wx:if="{{currentCourse.location || currentCourse.teacher}}">
+            <view class="status-info-item" wx:if="{{currentCourse.location}}">
+              <image class="status-icon" src="/assets/wxmp-location.svg" mode="widthFix"></image>
+              <text>{{currentCourse.location}}</text>
+            </view>
+            <view class="status-info-item" wx:if="{{currentCourse.teacher}}">
+              <image class="status-icon" src="/assets/wxmp-user.svg" mode="widthFix"></image>
+              <text>{{currentCourse.teacher}}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <view wx:if="{{inBreak && nextCourse && selectedDay === todayDayOfWeek}}" class="status-card next" style="border-color: {{nextCourse.color.text}};">
+        <view class="status-header" style="background-color: {{nextCourse.color.text}};">
+          <image class="status-label-icon large" src="/assets/wxmp-alarm-white.svg" mode="widthFix"></image>
+          <text class="status-label">课间休息</text>
+          <text class="status-time">还有{{minutesToNext}}分钟上课</text>
+        </view>
+        <view class="status-body" style="background: linear-gradient(135deg, {{nextCourse.color.bg}} 0%, #ffffff 100%);">
+          <view class="status-title" style="color: {{nextCourse.color.text}};">{{nextCourse.courseName}}</view>
+          <view class="status-info-row" wx:if="{{nextCourse.location || nextCourse.teacher}}">
+            <view class="status-info-item" wx:if="{{nextCourse.location}}">
+              <image class="status-icon" src="/assets/wxmp-location.svg" mode="widthFix"></image>
+              <text>{{nextCourse.location}}</text>
+            </view>
+            <view class="status-info-item" wx:if="{{nextCourse.teacher}}">
+              <image class="status-icon" src="/assets/wxmp-user.svg" mode="widthFix"></image>
+              <text>{{nextCourse.teacher}}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{loading}}" class="loading-wrapper">
+      <view class="loading-text">加载中...</view>
+    </view>
+
+    <view wx:elif="{{dayCourses.length > 0}}" class="course-list-wrapper">
+      <view wx:if="{{morningCourses.length > 0}}" class="course-section">
+        <view class="section-header">
+          <view class="section-title">
+            <image class="section-icon" src="/assets/wxmp-sun.svg" mode="widthFix"></image>
+            <text>上午</text>
+          </view>
+          <text class="section-count">{{morningCourses.length}}节</text>
+        </view>
+        <view class="course-timeline">
+          <view 
+            class="course-card-wrapper {{currentCourse && currentCourse.courseName === item.courseName ? 'current' : ''}} {{item.isEnded ? 'ended' : ''}}" 
+            wx:for="{{morningCourses}}" 
+            wx:key="classTime"
+            data-course="{{item}}"
+            bindtap="onCourseTap"
+          >
+            <view class="timeline-left">
+              <view class="timeline-line-top" wx:if="{{index > 0}}"></view>
+              <view class="timeline-dot" style="background-color: {{item.isEnded ? '#cccccc' : item.color.text}};"></view>
+              <view class="timeline-line-bottom" wx:if="{{index < morningCourses.length - 1}}"></view>
+            </view>
+            <view class="course-card" style="{{currentCourse && currentCourse.courseName === item.courseName ? 'border: 2rpx solid ' + item.color.text : ''}}">
+              <view class="course-content">
+                <view class="course-header">
+                  <view class="course-slot" style="color: {{item.isEnded ? '#999999' : item.color.text}};">
+                    第{{item.slots[0]}}节
+                  </view>
+                  <view class="course-time">{{item.timeDisplay}}</view>
+                </view>
+                <view class="course-name-row">
+                  <view class="course-icon-book" style="color: {{item.isEnded ? '#999999' : item.color.text}};"></view>
+                  <text class="course-name" style="color: {{item.isEnded ? '#999999' : item.color.text}};">{{item.courseName}}</text>
+                </view>
+                <view class="course-info-row" wx:if="{{item.location || item.teacher}}">
+                  <view class="course-info-item" wx:if="{{item.location}}">
+                    <image class="course-icon" src="/assets/wxmp-location.svg" mode="widthFix"></image>
+                    <text>{{item.location}}</text>
+                  </view>
+                  <view class="course-info-item" wx:if="{{item.teacher}}">
+                    <image class="course-icon" src="/assets/wxmp-user.svg" mode="widthFix"></image>
+                    <text>{{item.teacher}}</text>
+                  </view>
+                </view>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <view wx:if="{{afternoonCourses.length > 0}}" class="course-section">
+        <view class="section-header">
+          <view class="section-title">
+            <image class="section-icon" src="/assets/wxmp-cloud.svg" mode="widthFix"></image>
+            <text>下午</text>
+          </view>
+          <text class="section-count">{{afternoonCourses.length}}节</text>
+        </view>
+        <view class="course-timeline">
+          <view 
+            class="course-card-wrapper {{currentCourse && currentCourse.courseName === item.courseName ? 'current' : ''}} {{item.isEnded ? 'ended' : ''}}" 
+            wx:for="{{afternoonCourses}}" 
+            wx:key="classTime"
+            data-course="{{item}}"
+            bindtap="onCourseTap"
+          >
+            <view class="timeline-left">
+              <view class="timeline-line-top" wx:if="{{index > 0}}"></view>
+              <view class="timeline-dot" style="background-color: {{item.isEnded ? '#cccccc' : item.color.text}};"></view>
+              <view class="timeline-line-bottom" wx:if="{{index < afternoonCourses.length - 1}}"></view>
+            </view>
+            <view class="course-card" style="{{currentCourse && currentCourse.courseName === item.courseName ? 'border: 2rpx solid ' + item.color.text : ''}}">
+              <view class="course-content">
+                <view class="course-header">
+                  <view class="course-slot" style="color: {{item.isEnded ? '#999999' : item.color.text}};">
+                    第{{item.slots[0]}}节
+                  </view>
+                  <view class="course-time">{{item.timeDisplay}}</view>
+                </view>
+                <view class="course-name-row">
+                  <view class="course-icon-book" style="color: {{item.isEnded ? '#999999' : item.color.text}};"></view>
+                  <text class="course-name" style="color: {{item.isEnded ? '#999999' : item.color.text}};">{{item.courseName}}</text>
+                </view>
+                <view class="course-info-row" wx:if="{{item.location || item.teacher}}">
+                  <view class="course-info-item" wx:if="{{item.location}}">
+                    <image class="course-icon" src="/assets/wxmp-location.svg" mode="widthFix"></image>
+                    <text>{{item.location}}</text>
+                  </view>
+                  <view class="course-info-item" wx:if="{{item.teacher}}">
+                    <image class="course-icon" src="/assets/wxmp-user.svg" mode="widthFix"></image>
+                    <text>{{item.teacher}}</text>
+                  </view>
+                </view>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <view wx:if="{{eveningCourses.length > 0}}" class="course-section">
+        <view class="section-header">
+          <view class="section-title">
+            <image class="section-icon" src="/assets/wxmp-moon.svg" mode="widthFix"></image>
+            <text>晚上</text>
+          </view>
+          <text class="section-count">{{eveningCourses.length}}节</text>
+        </view>
+        <view class="course-timeline">
+          <view 
+            class="course-card-wrapper {{currentCourse && currentCourse.courseName === item.courseName ? 'current' : ''}} {{item.isEnded ? 'ended' : ''}}" 
+            wx:for="{{eveningCourses}}" 
+            wx:key="classTime"
+            data-course="{{item}}"
+            bindtap="onCourseTap"
+          >
+            <view class="timeline-left">
+              <view class="timeline-line-top" wx:if="{{index > 0}}"></view>
+              <view class="timeline-dot" style="background-color: {{item.isEnded ? '#cccccc' : item.color.text}};"></view>
+              <view class="timeline-line-bottom" wx:if="{{index < eveningCourses.length - 1}}"></view>
+            </view>
+            <view class="course-card" style="{{currentCourse && currentCourse.courseName === item.courseName ? 'border: 2rpx solid ' + item.color.text : ''}}">
+              <view class="course-content">
+                <view class="course-header">
+                  <view class="course-slot" style="color: {{item.isEnded ? '#999999' : item.color.text}};">
+                    第{{item.slots[0]}}节
+                  </view>
+                  <view class="course-time">{{item.timeDisplay}}</view>
+                </view>
+                <view class="course-name-row">
+                  <view class="course-icon-book" style="color: {{item.isEnded ? '#999999' : item.color.text}};"></view>
+                  <text class="course-name" style="color: {{item.isEnded ? '#999999' : item.color.text}};">{{item.courseName}}</text>
+                </view>
+                <view class="course-info-row" wx:if="{{item.location || item.teacher}}">
+                  <view class="course-info-item" wx:if="{{item.location}}">
+                    <image class="course-icon" src="/assets/wxmp-location.svg" mode="widthFix"></image>
+                    <text>{{item.location}}</text>
+                  </view>
+                  <view class="course-info-item" wx:if="{{item.teacher}}">
+                    <image class="course-icon" src="/assets/wxmp-user.svg" mode="widthFix"></image>
+                    <text>{{item.teacher}}</text>
+                  </view>
+                </view>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view wx:else class="empty-wrapper">
+      <image class="empty-icon" src="/assets/wxmp-book-gray.svg" mode="widthFix"></image>
+      <view class="empty-title">{{['星期日','星期一','星期二','星期三','星期四','星期五','星期六'][selectedDay]}}没有课程</view>
+      <view class="empty-text">
+        {{selectedDay === todayDayOfWeek ? '今天没有课程，好好休息一下吧~' : '这一天没有安排课程，看看其他天吧~'}}
+      </view>
+    </view>
+  </view>
+</view>

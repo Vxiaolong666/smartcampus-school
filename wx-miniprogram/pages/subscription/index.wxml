@@ -1,0 +1,105 @@
+<view class="container">
+    <top-menu showBack="{{true}}">
+        <view class="nav-title">订阅消息管理</view>
+    </top-menu>
+
+    <view class="background-wrapper">
+        <image class="background" src="/assets/wxmp-banner.jpg" mode="aspectFill" />
+        <view class="background-mask"></view>
+    </view>
+
+    <view class="content-wrapper">
+        <view class="card">
+            <view class="card-title">订阅消息管理</view>
+            <view class="card-desc">管理您的订阅消息授权和剩余次数</view>
+        </view>
+
+        <view class="action-card">
+            <view class="action-title">
+                <image class="action-icon" src="/assets/wxmp-lightbulb.svg" mode="widthFix"></image>
+                <text>订阅说明</text>
+            </view>
+            <view class="action-desc">订阅消息需要您主动授权，每次授权可增加一次订阅次数。当订阅次数用完后，将无法收到对应类型的推送通知。</view>
+        </view>
+
+        <view class="action-card">
+            <view class="action-title">
+                <image class="action-icon" src="/assets/wxmp-question.svg" mode="widthFix"></image>
+                <text>为什么需要一次一次订阅？</text>
+            </view>
+            <view class="action-desc">这是微信小程序的规定，订阅消息必须由用户主动授权，且每次授权只能发送一条消息。这是为了保护用户不被骚扰，确保每条推送都是用户知情同意的。</view>
+        </view>
+
+        <view wx:if="{{loading}}" class="loading-wrapper">
+            <view class="loading-spinner"></view>
+            <view class="loading-text">加载中...</view>
+        </view>
+
+        <view wx:elif="{{subscriptions.length === 0}}" class="empty-wrapper">
+            <image class="empty-icon" src="/assets/wxmp-empty.svg" mode="widthFix"></image>
+            <view class="empty-text">暂无可用的订阅消息模板</view>
+        </view>
+
+        <view wx:else class="subscription-list">
+            <view wx:for="{{subscriptions}}" wx:key="id" class="subscription-item {{item.subscribe_count >= 2 ? 'status-ok' : item.subscribe_count > 0 ? 'status-low' : 'status-empty'}}">
+                <view class="subscription-header">
+                    <view class="subscription-name">{{item.name}}</view>
+                    <view class="subscription-scene">{{item.sceneName}}</view>
+                </view>
+                
+                <view class="subscription-desc" wx:if="{{item.description}}">{{item.description}}</view>
+                
+                <view class="subscription-footer">
+                    <view class="subscription-count">
+                        <text class="count-label">剩余次数</text>
+                        <text class="count-value">{{item.subscribe_count}}</text>
+                    </view>
+                    
+                    <view class="subscription-actions">
+                        <button 
+                            class="subscribe-btn {{item.subscribe_count >= 2 ? 'secondary' : 'primary'}}" 
+                            data-template-id="{{item.template_id}}"
+                            bindtap="onRequestSubscribe"
+                        >
+                            <image class="btn-icon" src="{{item.subscribe_count >= 2 ? '/assets/wxmp-subscribe-teal.svg' : '/assets/wxmp-subscribe.svg'}}" mode="widthFix"></image>
+                            <text>{{item.subscribe_count >= 2 ? '增加订阅' : '立即订阅'}}</text>
+                        </button>
+                    </view>
+                </view>
+                
+                <view wx:if="{{item.subscribe_time}}" class="subscription-time">
+                    最后订阅: {{item.subscribe_time}}
+                </view>
+            </view>
+        </view>
+
+        <view class="action-card">
+            <view class="action-title">如何增加订阅次数？</view>
+            <view class="action-steps">
+                <view class="step-item">
+                    <view class="step-num">1</view>
+                    <view class="step-text">点击对应模板的"立即订阅"按钮</view>
+                </view>
+                <view class="step-item">
+                    <view class="step-num">2</view>
+                    <view class="step-text">在弹出的授权窗口中点击"允许"</view>
+                </view>
+                <view class="step-item">
+                    <view class="step-num">3</view>
+                    <view class="step-text">每次授权可增加一次订阅次数</view>
+                </view>
+            </view>
+        </view>
+
+        <view class="bottom-actions">
+            <button class="action-btn secondary" bindtap="goToPushTest">
+                <image class="btn-icon" src="/assets/wxmp-test.svg" mode="widthFix"></image>
+                <text>推送测试</text>
+            </button>
+            <button class="action-btn primary" bindtap="onRefresh">
+                <image class="btn-icon" src="/assets/wxmp-refresh.svg" mode="widthFix"></image>
+                <text>刷新数据</text>
+            </button>
+        </view>
+    </view>
+</view>

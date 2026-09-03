@@ -1,0 +1,206 @@
+{
+	"pages": [
+		{
+			"path": "pages/white-home/index",
+			"style": {
+				"navigationBarTitleText": "首页"
+			}
+		},
+		{
+			"path": "pages/login/index",
+			"style": {
+				"navigationBarTitleText": "登录"
+			}
+		},
+		{
+			"path": "pages/register/index",
+			"style": {
+				"navigationBarTitleText": "注册"
+			}
+		},
+		{
+			"path": "pages/forgot/index",
+			"style": {
+				"navigationBarTitleText": "忘记密码"
+			}
+		},
+		{
+			"path": "pages/send-verify/index",
+			"style": {
+				"navigationBarTitleText": "发送验证码"
+			}
+		},
+		{
+			"path": "pages/new_cs/index",
+			"style": {
+				"navigationBarTitleText": "新程设"
+			}
+		},
+		{
+			"path": "pages/change-password/index",
+			"style": {
+				"navigationBarTitleText": "修改密码"
+			}
+		},
+		{
+			"path": "pages/profile/index",
+			"style": {
+				"navigationBarTitleText": "个人资料"
+			}
+		},
+		{
+			"path": "pages/wx-bind/index",
+			"style": {
+				"navigationBarTitleText": "微信绑定"
+			}
+		},
+		{
+			"path": "pages/academic-bind/index",
+			"style": {
+				"navigationBarTitleText": "教务绑定"
+			}
+		},
+		{
+			"path": "pages/academic-grade/index",
+			"style": {
+				"navigationBarTitleText": "成绩查询"
+			}
+		},
+		{
+			"path": "pages/academic-schedule/index",
+			"style": {
+				"navigationBarTitleText": "课程表"
+			}
+		},
+		{
+			"path": "pages/academic-info/index",
+			"style": {
+				"navigationBarTitleText": "学籍信息"
+			}
+		},
+		{
+			"path": "pages/today-schedule/index",
+			"style": {
+				"navigationBarTitleText": "今日课程"
+			}
+		},
+		{
+			"path": "pages/dormitory-bind/index",
+			"style": {
+				"navigationBarTitleText": "宿舍绑定"
+			}
+		},
+		{
+			"path": "pages/power-fee/index",
+			"style": {
+				"navigationBarTitleText": "电费查询"
+			}
+		},
+		{
+			"path": "pages/power-statistics/index",
+			"style": {
+				"navigationBarTitleText": "用电统计"
+			}
+		},
+		{
+			"path": "pages/push-settings/index",
+			"style": {
+				"navigationBarTitleText": "电费推送设置"
+			}
+		},
+		{
+			"path": "pages/subscription/index",
+			"style": {
+				"navigationBarTitleText": "订阅管理"
+			}
+		},
+		{
+			"path": "pages/black-mine/index",
+			"style": {
+				"navigationBarTitleText": "我的"
+			}
+		},
+		{
+			"path": "pages/black-notice/index",
+			"style": {
+				"navigationBarTitleText": "通知公告"
+			}
+		},
+		{
+			"path": "pages/black-notice-info/index",
+			"style": {
+				"navigationBarTitleText": "通知详情"
+			}
+		},
+		{
+			"path": "pages/academic-push-settings/index",
+			"style": {
+				"navigationBarTitleText": "学术推送设置"
+			}
+		},
+		{
+			"path": "pages/about/index",
+			"style": {
+				"navigationBarTitleText": "关于我们"
+			}
+		},
+		{
+			"path": "pages/power-fee-batch/index",
+			"style": {
+				"navigationBarTitleText": "批量查询"
+			}
+		},
+		{
+			"path": "pages/subscription-history/index",
+			"style": {
+				"navigationBarTitleText": "订阅历史记录"
+			}
+		},
+		{
+			"path": "pages/maintenance/index",
+			"style": {
+				"navigationBarTitleText": "系统维护"
+			}
+		},
+		{
+			"path": "pages/privacy/index",
+			"style": {
+				"navigationBarTitleText": "隐私协议"
+			}
+		}
+	],
+	"globalStyle": {
+		"navigationBarTextStyle": "black",
+		"navigationBarTitleText": "智慧校园",
+		"navigationBarBackgroundColor": "#F8F8F8",
+		"backgroundColor": "#F8F8F8",
+		"navigationStyle": "custom"
+	},
+	"tabBar": {
+		"backgroundColor": "#ffffff",
+		"color": "#767676",
+		"selectedColor": "#1296db",
+		"borderStyle": "white",
+		"list": [
+			{
+				"text": "首页",
+				"pagePath": "pages/white-home/index",
+				"iconPath": "static/assets/tab_study_1.png",
+				"selectedIconPath": "static/assets/tab_study_2.png"
+			},
+			{
+				"text": "课程",
+				"pagePath": "pages/today-schedule/index",
+				"iconPath": "static/assets/tab_expand_1.png",
+				"selectedIconPath": "static/assets/tab_expand_2.png"
+			},
+			{
+				"text": "我的",
+				"pagePath": "pages/black-mine/index",
+				"iconPath": "static/assets/tab_mine_1.png",
+				"selectedIconPath": "static/assets/tab_mine_2.png"
+			}
+		]
+	},
+	"uniIdRouter": {}
+}

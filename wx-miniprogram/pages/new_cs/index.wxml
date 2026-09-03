@@ -1,0 +1,163 @@
+<add-tips name="刀客源码网"></add-tips>
+<view class="home_index">
+    <view bindtap="gotogzh" class="vip-box data-v-3590e630">
+        <image class="vip-logo data-v-3590e630" mode="aspectFit" src="/assets/signin-gold.png"></image>
+        <view class="vip-content data-v-3590e630">
+            <text class="vip-title data-v-3590e630">刀客源码网（www.dkewl.com）</text>
+            <text class="vip-tips data-v-3590e630">{{$root.f0}}</text>
+        </view>
+        <text class="vip-right-tips data-v-3590e630">{{showVipTips}}</text>
+        <image class="right-arrows data-v-3590e630" mode="aspectFit" src="../../images/right_white.png"></image>
+    </view>
+    <view class="notice">
+        
+    </view>
+    <view class="xixia-v4"></view>
+    <view style="position: relative;left: 25rpx;font-size: 28rpx;color: #333;font-weight: 600;">短视频去水印</view>
+    <navigator openType="navigate" style="background-color: #f8f8f8;border-radius: 24rpx;bottom: 26rpx;display: flex;height: 162rpx;margin-right: 4rpx;margin-top:55rpx;margin-left:30rpx;padding: 26rpx 26rpx 0rpx 30rpx;position: relative;width: 45%;" url="/pages/video/index" version="trial">
+        <view class="tool_wrap">
+            <view style="align-items: center;border-radius: 3px;color: #fff;display: flex;font-size: 20rpx;font-weight: 500;height: 32rpx;justify-content: center;left: 250rpx;top:-35rpx;position: relative;width: 60rpx;z-index: 1;background-color: red;"> 热门 </view>
+            <view class="tool_info">
+                <view style="color: #222;font-size: 27rpx;position: relative; left: 5rpx; top: -35rpx;font-weight: 600;">短视频去水印</view>
+                <view style="color: #999;font-size: 20rpx;position: relative; left: 5rpx; top: -31rpx;font-weight: 600;margin-top: 14rpx;">永久免费使用</view>
+            </view>
+            <image src="/assets/pao.png" style="border-radius: 50%;height: 60rpx;margin-left: 230rpx;margin-top: -100rpx;width: 60rpx;position: relative;top: -70rpx;"></image>
+        </view>
+    </navigator>
+    <navigator openType="navigate" style="background-color: #f8f8f8;border-radius: 24rpx;bottom: 26rpx;display: flex;height: 162rpx;margin-right: 4rpx;margin-top:-160rpx;margin-left:390rpx;padding: 26rpx 26rpx 0rpx 30rpx;position: relative;width: 45%;" url="/pagesA/imgparse/index" version="trial">
+        <view class="tool_wrap">
+            <view style="align-items: center;border-radius: 3px;color: #fff;display: flex;font-size: 20rpx;font-weight: 500;height: 32rpx;justify-content: center;left: 250rpx;top:-35rpx;position: relative;width: 60rpx;z-index: 1;background-color: rgb(252, 80, 0);">推荐</view>
+            <view class="tool_info">
+                <view style="color: #222;font-size: 27rpx;position: relative; left: 5rpx; top: -35rpx;font-weight: 600;">图集去水印</view>
+                <view style="color: #999;font-size: 20rpx;position: relative; left: 5rpx; top: -31rpx;font-weight: 600;margin-top: 14rpx;">抖音快手微博图集去水印</view>
+            </view>
+            <image src="/assets/pao.png" style="border-radius: 50%;height: 60rpx;margin-left: 230rpx;margin-top: -100rpx;width: 60rpx;position: relative;top: -70rpx;"></image>
+        </view>
+    </navigator>
+    <navigator openType="navigate" style="background-color: #f8f8f8;border-radius: 24rpx;bottom: 26rpx;display: flex;height: 162rpx;margin-right: 4rpx;margin-top:25rpx;margin-left:30rpx;padding: 26rpx 26rpx 0rpx 30rpx;position: relative;width: 45%;" url="/pages/wbimage/index" version="trial">
+        <view class="tool_wrap">
+            <view style="align-items: center;border-radius: 3px;color: #fff;display: flex;font-size: 20rpx;font-weight: 500;height: 32rpx;justify-content: center;left: 250rpx;top:-35rpx;position: relative;width: 60rpx;z-index: 1;"></view>
+            <view class="tool_info">
+                <view style="color: #222;font-size: 27rpx;position: relative; left: 5rpx; top: -35rpx;font-weight: 600;">微博去水印</view>
+                <view style="color: #999;font-size: 20rpx;position: relative; left: 5rpx; top: -31rpx;font-weight: 600;margin-top: 14rpx;">保存微博无水印图片</view>
+            </view>
+            <image src="/assets/pao.png" style="border-radius: 50%;height: 60rpx;margin-left: 230rpx;margin-top: -100rpx;width: 60rpx;position: relative;top: -70rpx;"></image>
+        </view>
+    </navigator>
+    <navigator openType="navigate" style="background-color: #f8f8f8;border-radius: 24rpx;bottom: 26rpx;display: flex;height: 162rpx;margin-right: 4rpx;margin-top:-160rpx;margin-left:390rpx;padding: 26rpx 26rpx 0rpx 30rpx;position: relative;width: 45%;" url="/pages/xhsimage/index" version="trial">
+        <view class="tool_wrap">
+            <view style="align-items: center;border-radius: 3px;color: #fff;display: flex;font-size: 20rpx;font-weight: 500;height: 32rpx;justify-content: center;left: 250rpx;top:-35rpx;position: relative;width: 60rpx;z-index: 1;background-color: rgb(102, 76, 230);"> 推荐 </view>
+            <view class="tool_info">
+                <view style="color: #222;font-size: 27rpx;position: relative; left: 5rpx; top: -35rpx;font-weight: 600;">小红书去水印</view>
+                <view style="color: #999;font-size: 20rpx;position: relative; left: 5rpx; top: -31rpx;font-weight: 600;margin-top: 14rpx;">保存小红书无水印图片</view>
+            </view>
+            <image src="/assets/pao.png" style="border-radius: 50%;height: 60rpx;margin-left: 230rpx;margin-top: -100rpx;width: 60rpx;position: relative;top: -70rpx;"></image>
+        </view>
+    </navigator>
+    <view style="position: relative;left: 25rpx;font-size: 28rpx;color: #333;font-weight: 600;">其他工具</view>
+    <navigator openType="navigate" style="background-color: #f8f8f8;border-radius: 24rpx;bottom: 26rpx;display: flex;height: 162rpx;margin-right: 4rpx;margin-top:55rpx;margin-left:30rpx;padding: 26rpx 26rpx 0rpx 30rpx;position: relative;width: 45%;" url="/pages/music/index" version="trial">
+        <view class="tool_wrap">
+            <view style="align-items: center;border-radius: 3px;color: #fff;display: flex;font-size: 20rpx;font-weight: 500;height: 32rpx;justify-content: center;left: 250rpx;top:-35rpx;position: relative;width: 60rpx;z-index: 1;background-color: red;"> 热门 </view>
+            <view class="tool_info">
+                <view style="color: #222;font-size: 27rpx;position: relative; left: 5rpx; top: -35rpx;font-weight: 600;">网易云升级</view>
+                <view style="color: #999;font-size: 20rpx;position: relative; left: 5rpx; top: -31rpx;font-weight: 600;margin-top: 14rpx;">每天300首歌 快速升级</view>
+            </view>
+            <image src="/assets/pao.png" style="border-radius: 50%;height: 60rpx;margin-left: 230rpx;margin-top: -100rpx;width: 60rpx;position: relative;top: -70rpx;"></image>
+        </view>
+    </navigator>
+    <navigator openType="navigate" style="background-color: #f8f8f8;border-radius: 24rpx;bottom: 26rpx;display: flex;height: 162rpx;margin-right: 4rpx;margin-top:-160rpx;margin-left:390rpx;padding: 26rpx 26rpx 0rpx 30rpx;position: relative;width: 45%;" url="/pages/milogin/index" version="trial">
+        <view class="tool_wrap">
+            <view style="align-items: center;border-radius: 3px;color: #fff;display: flex;font-size: 20rpx;font-weight: 500;height: 32rpx;justify-content: center;left: 250rpx;top:-35rpx;position: relative;width: 60rpx;z-index: 1;background-color: rgb(63, 202, 7);"> 上新 </view>
+            <view class="tool_info">
+                <view style="color: #222;font-size: 27rpx;position: relative; left: 5rpx; top: -35rpx;font-weight: 600;">帮我出去走走</view>
+                <view style="color: #999;font-size: 20rpx;position: relative; left: 5rpx; top: -31rpx;font-weight: 600;margin-top: 14rpx;">帮我出去走走 bu数</view>
+            </view>
+            <image src="/assets/pao.png" style="border-radius: 50%;height: 60rpx;margin-left: 230rpx;margin-top: -100rpx;width: 60rpx;position: relative;top: -70rpx;"></image>
+        </view>
+    </navigator>
+    <navigator openType="navigate" style="background-color: #f8f8f8;border-radius: 24rpx;bottom: 26rpx;display: flex;height: 162rpx;margin-right: 4rpx;margin-top:25rpx;margin-left:30rpx;padding: 26rpx 26rpx 0rpx 30rpx;position: relative;width: 45%;" url="/pagesA/photomark/photomark" version="trial">
+        <view class="tool_wrap">
+            <view style="align-items: center;border-radius: 3px;color: #fff;display: flex;font-size: 20rpx;font-weight: 500;height: 32rpx;justify-content: center;left: 250rpx;top:-35rpx;position: relative;width: 60rpx;z-index: 1;"></view>
+            <view class="tool_info">
+                <view style="color: #222;font-size: 27rpx;position: relative; left: 5rpx; top: -35rpx;font-weight: 600;">图片加水印</view>
+                <view style="color: #999;font-size: 20rpx;position: relative; left: 5rpx; top: -31rpx;font-weight: 600;margin-top: 14rpx;">证件/图片加水印</view>
+            </view>
+            <image src="/assets/pao.png" style="border-radius: 50%;height: 60rpx;margin-left: 230rpx;margin-top: -100rpx;width: 60rpx;position: relative;top: -70rpx;"></image>
+        </view>
+    </navigator>
+    <navigator openType="navigate" style="background-color: #f8f8f8;border-radius: 24rpx;bottom: 26rpx;display: flex;height: 162rpx;margin-right: 4rpx;margin-top:-160rpx;margin-left:390rpx;padding: 26rpx 26rpx 0rpx 30rpx;position: relative;width: 45%;" url="/pagesA/album/index" version="trial">
+        <view class="tool_wrap">
+            <view style="align-items: center;border-radius: 3px;color: #fff;display: flex;font-size: 20rpx;font-weight: 500;height: 32rpx;justify-content: center;left: 250rpx;top:-35rpx;position: relative;width: 60rpx;z-index: 1;background-color: rgb(241, 129, 0);"> 推荐 </view>
+            <view class="tool_info">
+                <view style="color: #222;font-size: 27rpx;position: relative; left: 5rpx; top: -35rpx;font-weight: 600;">带壳截图</view>
+                <view style="color: #999;font-size: 20rpx;position: relative; left: 5rpx; top: -31rpx;font-weight: 600;margin-top: 14rpx;">轻松让你图片套上手机壳</view>
+            </view>
+            <image src="/assets/pao.png" style="border-radius: 50%;height: 60rpx;margin-left: 230rpx;margin-top: -100rpx;width: 60rpx;position: relative;top: -70rpx;"></image>
+        </view>
+    </navigator>
+    <view style="position: relative;left: 25rpx;font-size: 28rpx;color: #333;font-weight: 600;">更多好玩</view>
+    <navigator openType="navigate" style="background-color: #f8f8f8;border-radius: 24rpx;bottom: 26rpx;display: flex;height: 162rpx;margin-right: 4rpx;margin-top:55rpx;margin-left:30rpx;padding: 26rpx 26rpx 0rpx 30rpx;position: relative;width: 45%;" url="/pagesA/waimai/index" version="trial">
+        <view class="tool_wrap">
+            <view style="align-items: center;border-radius: 3px;color: #fff;display: flex;font-size: 20rpx;font-weight: 500;height: 32rpx;justify-content: center;left: 250rpx;top:-35rpx;position: relative;width: 60rpx;z-index: 1;background-color: red;"> 热门 </view>
+            <view class="tool_info">
+                <view style="color: #222;font-size: 27rpx;position: relative; left: 5rpx; top: -35rpx;font-weight: 600;">外卖红包</view>
+                <view style="color: #999;font-size: 20rpx;position: relative; left: 5rpx; top: -31rpx;font-weight: 600;margin-top: 14rpx;">饿了么/美团券免费领</view>
+            </view>
+            <image src="/assets/pao.png" style="border-radius: 50%;height: 60rpx;margin-left: 230rpx;margin-top: -100rpx;width: 60rpx;position: relative;top: -70rpx;"></image>
+        </view>
+    </navigator>
+    <navigator openType="navigate" style="background-color: #f8f8f8;border-radius: 24rpx;bottom: 26rpx;display: flex;height: 162rpx;margin-right: 4rpx;margin-top:-160rpx;margin-left:390rpx;padding: 26rpx 26rpx 0rpx 30rpx;position: relative;width: 45%;" url="/pagesA/dache/index" version="trial">
+        <view class="tool_wrap">
+            <view style="align-items: center;border-radius: 3px;color: #fff;display: flex;font-size: 20rpx;font-weight: 500;height: 32rpx;justify-content: center;left: 250rpx;top:-35rpx;position: relative;width: 60rpx;z-index: 1;background-color: rgb(247, 8, 8);"> 热门 </view>
+            <view class="tool_info">
+                <view style="color: #222;font-size: 27rpx;position: relative; left: 5rpx; top: -35rpx;font-weight: 600;">打车红包</view>
+                <view style="color: #999;font-size: 20rpx;position: relative; left: 5rpx; top: -31rpx;font-weight: 600;margin-top: 14rpx;">打车优惠免费领</view>
+            </view>
+            <image src="/assets/pao.png" style="border-radius: 50%;height: 60rpx;margin-left: 230rpx;margin-top: -100rpx;width: 60rpx;position: relative;top: -70rpx;"></image>
+        </view>
+    </navigator>
+    <navigator openType="navigate" style="background-color: #f8f8f8;border-radius: 24rpx;bottom: 26rpx;display: flex;height: 162rpx;margin-right: 4rpx;margin-top:25rpx;margin-left:30rpx;padding: 26rpx 26rpx 0rpx 30rpx;position: relative;width: 45%;" url="/pagesA/phone/phone" version="trial">
+        <view class="tool_wrap">
+            <view class="tool_info">
+                <view style="align-items: center;border-radius: 3px;color: #fff;display: flex;font-size: 20rpx;font-weight: 500;height: 32rpx;justify-content: center;left: 250rpx;top:-35rpx;position: relative;width: 60rpx;z-index: 1;background-color: #27c4ac;"> 上新 </view>
+                <view style="color: #222;font-size: 27rpx;position: relative; left: 5rpx; top: -35rpx;font-weight: 600;">手机检测</view>
+                <view style="color: #999;font-size: 20rpx;position: relative; left: 5rpx; top: -31rpx;font-weight: 600;margin-top: 14rpx;">一键辨真假</view>
+            </view>
+            <image src="/assets/pao.png" style="border-radius: 50%;height: 60rpx;margin-left: 230rpx;margin-top: -100rpx;width: 60rpx;position: relative;top: -70rpx;"></image>
+        </view>
+    </navigator>
+    <navigator appId="wxcd193c428295987e" openType="navigate" style="background-color: #f8f8f8;border-radius: 24rpx;bottom: 26rpx;display: flex;height: 162rpx;margin-right: 4rpx;margin-top:-160rpx;margin-left:390rpx;padding: 26rpx 26rpx 0rpx 30rpx;position: relative;width: 45%;" target="miniProgram" version="trial">
+        <view class="tool_wrap">
+            <view style="align-items: center;border-radius: 3px;color: #fff;display: flex;font-size: 20rpx;font-weight: 500;height: 32rpx;justify-content: center;left: 250rpx;top:-35rpx;position: relative;width: 60rpx;z-index: 1;background-color: rgb(247, 191, 8);"> 高清 </view>
+            <view class="tool_info">
+                <view style="color: rgb(2, 2, 2);font-size: 27rpx;position: relative; left: 5rpx; top: -35rpx;font-weight: 600;">高清壁纸下载</view>
+                <view style="color: #999;font-size: 20rpx;position: relative; left: 5rpx; top: -31rpx;font-weight: 600;margin-top: 14rpx;">4k、壁纸/头像下载</view>
+            </view>
+            <image src="/assets/pao.png" style="border-radius: 50%;height: 60rpx;margin-left: 230rpx;margin-top: -100rpx;width: 60rpx;position: relative;top: -70rpx;"></image>
+        </view>
+    </navigator>
+    <navigator appId="wxcd193c428295987e" openType="navigate" style="background-color: #f8f8f8;border-radius: 24rpx;bottom: 26rpx;display: flex;height: 162rpx;margin-right: 4rpx;margin-top:25rpx;margin-left:30rpx;padding: 26rpx 26rpx 0rpx 30rpx;position: relative;width: 45%;" target="miniProgram" version="trial">
+        <view class="tool_wrap">
+            <view class="tool_info">
+                <view style="align-items: center;border-radius: 3px;color: #fff;display: flex;font-size: 20rpx;font-weight: 500;height: 32rpx;justify-content: center;left: 250rpx;top:-35rpx;position: relative;width: 60rpx;z-index: 1;background-color: #e709a4;"> 更多 </view>
+                <view style="color: #222;font-size: 27rpx;position: relative; left: 5rpx; top: -35rpx;font-weight: 600;">更多小工具</view>
+                <view style="color: #999;font-size: 20rpx;position: relative; left: 5rpx; top: -31rpx;font-weight: 600;margin-top: 14rpx;">免费各种头像在线生成</view>
+            </view>
+            <image src="/assets/pao.png" style="border-radius: 50%;height: 60rpx;margin-left: 230rpx;margin-top: -100rpx;width: 60rpx;position: relative;top: -70rpx;"></image>
+        </view>
+    </navigator>
+    <navigator openType="navigate" style="background-color: #f8f8f8;border-radius: 24rpx;bottom: 26rpx;display: flex;height: 162rpx;margin-right: 4rpx;margin-top:-160rpx;margin-left:390rpx;padding: 26rpx 26rpx 0rpx 30rpx;position: relative;width: 45%;" url="/pages/bizhi/add" version="trial">
+        <view class="tool_wrap">
+            <view style="align-items: center;border-radius: 3px;color: #fff;display: flex;font-size: 20rpx;font-weight: 500;height: 32rpx;justify-content: center;left: 250rpx;top:-35rpx;position: relative;width: 60rpx;z-index: 1;background-color: rgb(247, 8, 8);"> 热门 </view>
+            <view class="tool_info">
+                <view style="color: #222;font-size: 27rpx;position: relative; left: 5rpx; top: -35rpx;font-weight: 600;">免费壁纸素材</view>
+                <view style="color: #999;font-size: 20rpx;position: relative; left: 5rpx; top: -31rpx;font-weight: 600;margin-top: 14rpx;">高清壁纸素材</view>
+            </view>
+            <image src="/assets/pao.png" style="border-radius: 50%;height: 60rpx;margin-left: 230rpx;margin-top: -100rpx;width: 60rpx;position: relative;top: -70rpx;"></image>
+        </view>
+    </navigator>
+    <view class="more_hint">官网：刀客源码网</view>
+    <view class="more_hint">地址：www.dkewl.com</view>
+    <view class="more_hint">更多功能持续更新中，敬请期待...</view>
+</view>
+<button class="shareCon" hoverClass="shareget" openType="share" size="mini">分享给小伙伴</button>

@@ -1,0 +1,45 @@
+<view class="container">
+  <top-menu showBack="{{true}}">
+    <view class="nav-title">通知公告</view>
+  </top-menu>
+
+  <view class="background-wrapper">
+    <image class="background" src="/assets/wxmp-banner.jpg" mode="aspectFill" />
+    <view class="background-mask"></view>
+  </view>
+
+  <view class="content-wrapper">
+    <view class="info-card">
+      <image class="info-icon" src="/assets/wxmp-notice.svg" mode="widthFix"></image>
+      <view class="info-content">
+        <view class="info-text">共有{{notices.length}}条通知</view>
+      </view>
+    </view>
+
+    <view wx:if="{{notices.length === 0 && !loading}}" class="empty">
+      <image class="empty-icon" src="/assets/wxmp-empty.svg" mode="widthFix"></image>
+      <view class="empty-text">暂无通知</view>
+    </view>
+    
+    <view wx:else class="notice-list">
+      <view wx:for="{{notices}}" wx:key="id" class="notice-item" bind:tap="handleNoticeDetail" data-id="{{item.id}}">
+        <image wx:if="{{item.cover}}" class="notice-cover" src="{{item.cover}}" mode="aspectFill"></image>
+        <view class="notice-info">
+          <view class="notice-title">
+            <text wx:if="{{item.is_top == 1}}" class="top-badge">置顶</text>
+            {{item.title}}
+          </view>
+          <view class="notice-date">{{item.create_time}}</view>
+        </view>
+      </view>
+    </view>
+    
+    <view wx:if="{{loading}}" class="loading">
+      <view class="loading-text">加载中...</view>
+    </view>
+    
+    <view wx:if="{{!hasMore && notices.length > 0}}" class="no-more">
+      <view class="no-more-text">没有更多了</view>
+    </view>
+  </view>
+</view>

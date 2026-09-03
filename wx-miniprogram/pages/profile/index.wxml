@@ -1,0 +1,70 @@
+<view class="container">
+  <top-menu showBack="{{true}}">
+    <view class="nav-title">个人资料</view>
+  </top-menu>
+
+  <view class="background-wrapper">
+    <image class="background" src="/assets/wxmp-banner.jpg" mode="aspectFill" />
+    <view class="background-mask"></view>
+  </view>
+
+  <view class="content-wrapper">
+    <view class="card">
+      <view class="card-title">个人资料</view>
+      <view class="card-desc">管理您的个人信息和账号设置</view>
+    </view>
+
+    <view class="form-card avatar-card">
+      <view class="avatar-section">
+        <image wx:if="{{avatar}}" class="avatar" src="{{avatar}}" mode="aspectFill" />
+        <view wx:else class="avatar-placeholder">
+          <text>{{nickname[0] || '*'}}</text>
+        </view>
+        <view class="avatar-actions" style="width: 498rpx; display: flex; box-sizing: border-box">
+          <button class="avatar-btn" bindtap="onChooseAvatar">从相册选择</button>
+          <button class="avatar-btn wx-btn" open-type="chooseAvatar" bindchooseavatar="onGetWxAvatar">使用微信头像</button>
+        </view>
+      </view>
+    </view>
+
+    <view class="form-card">
+      <view class="form-item">
+        <view class="form-label">昵称</view>
+        <input 
+          class="form-input" 
+          type="nickname" 
+          placeholder="请输入昵称" 
+          value="{{nickname}}"
+          bindinput="onNicknameInput"
+          bindblur="onNicknameBlur"
+          maxlength="20"
+        />
+      </view>
+      
+      <view class="form-item">
+        <view class="form-label">用户名</view>
+        <view class="form-value">{{userInfo.username}}</view>
+      </view>
+
+      <view class="form-item">
+        <view class="form-label">邮箱</view>
+        <view class="form-value">{{userInfo.email}}</view>
+      </view>
+
+      <view class="form-item" bindtap="onGoToWxBind">
+        <view class="form-label">微信绑定</view>
+        <view class="form-value link">
+          <text>{{hasWxOpenid ? '已绑定' : '未绑定'}}</text>
+          <text class="arrow">›</text>
+        </view>
+      </view>
+
+      <view class="form-item">
+        <view class="form-label">注册时间</view>
+        <view class="form-value">{{userInfo.register_time}}</view>
+      </view>
+
+      <button class="save-btn" bindtap="onSave">保存修改</button>
+    </view>
+  </view>
+</view>

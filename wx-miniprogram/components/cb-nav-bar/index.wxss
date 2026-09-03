@@ -1,0 +1,32 @@
+.nav-bar {
+  position: relative;
+  z-index: 999;
+}
+
+.nav-bar-content {
+  display: flex;
+  align-items: center;
+  padding: 0 20rpx;
+}
+
+.nav-bar-back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 60rpx;
+  height: 60rpx;
+  margin-right: 10rpx;
+}
+
+.nav-bar-back-icon {
+    width: 20rpx;
+    height: 20rpx;
+    border-left: 4rpx solid #333;
+    border-bottom: 4rpx solid #333;
+    transform: rotate(45deg);
+    margin-left: 6rpx;
+}
+
+.nav-bar-content.no-back {
+    padding-left: 70rpx;
+}

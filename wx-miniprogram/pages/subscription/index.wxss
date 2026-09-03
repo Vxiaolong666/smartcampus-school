@@ -1,0 +1,371 @@
+page {
+    background: #eff1ff;
+}
+
+.nav-title {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    font-size: 32rpx;
+    font-weight: bold;
+    position: relative;
+    z-index: 1;
+    color: white;
+    letter-spacing: 6rpx;
+}
+
+.background-wrapper {
+    position: fixed;
+    width: 100%;
+    top: 0;
+}
+
+.background {
+    width: 100%;
+    position: absolute;
+    top: 0;
+    height: 800rpx;
+}
+
+.background-mask {
+    background-image: linear-gradient(rgba(0, 0, 0, .8), transparent);
+    height: 600rpx;
+    position: absolute;
+    width: 100%;
+    top: 0;
+}
+
+.content-wrapper {
+    position: relative;
+    z-index: 1;
+    background: #eff1ff;
+    top: 30rpx;
+    min-height: calc(100vh - 200rpx);
+    border-top-left-radius: 60rpx;
+    border-top-right-radius: 60rpx;
+    box-shadow: 0 -80rpx 80rpx 40rpx rgba(0, 0, 0, .2);
+    padding: 30rpx;
+    padding-bottom: 100rpx;
+}
+
+.card {
+    background: white;
+    border-radius: 20rpx;
+    padding: 30rpx;
+    margin-bottom: 24rpx;
+    margin-top: 25rpx;
+    box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.05);
+}
+
+.card-title {
+    font-size: 32rpx;
+    font-weight: bold;
+    color: #48416f;
+    margin-bottom: 12rpx;
+}
+
+.card-desc {
+    font-size: 26rpx;
+    color: #948eb3;
+}
+
+.loading-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80rpx 0;
+}
+
+.loading-spinner {
+    width: 60rpx;
+    height: 60rpx;
+    border: 4rpx solid #e8e8e8;
+    border-top-color: #13c2c2;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.loading-text {
+    font-size: 26rpx;
+    color: #948eb3;
+    margin-top: 20rpx;
+}
+
+.empty-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80rpx 0;
+}
+
+.empty-icon {
+    width: 80rpx;
+    height: 80rpx;
+    margin-bottom: 20rpx;
+}
+
+.empty-text {
+    font-size: 28rpx;
+    color: #948eb3;
+}
+
+.subscription-list {
+    margin-bottom: 24rpx;
+}
+
+.subscription-item {
+    background: white;
+    border-radius: 16rpx;
+    padding: 24rpx;
+    margin-bottom: 20rpx;
+}
+
+.subscription-item.status-low {
+    background: #fffbe6;
+}
+
+.subscription-item.status-empty {
+    background: #fff2f0;
+}
+
+.subscription-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12rpx;
+}
+
+.subscription-name {
+    font-size: 30rpx;
+    font-weight: bold;
+    color: #48416f;
+}
+
+.subscription-scene {
+    font-size: 22rpx;
+    color: white;
+    background: #13c2c2;
+    padding: 4rpx 12rpx;
+    border-radius: 6rpx;
+}
+
+.subscription-item.status-low .subscription-scene {
+    background: #faad14;
+}
+
+.subscription-item.status-empty .subscription-scene {
+    background: #ff4d4f;
+}
+
+.subscription-desc {
+    font-size: 24rpx;
+    color: #948eb3;
+    margin-bottom: 16rpx;
+    line-height: 1.5;
+}
+
+.subscription-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 16rpx;
+    border-top: 1rpx solid #f0f0f0;
+}
+
+.subscription-count {
+    display: flex;
+    flex-direction: column;
+}
+
+.count-label {
+    font-size: 22rpx;
+    color: #948eb3;
+}
+
+.subscription-item.status-low .count-label {
+    color: #d48806;
+}
+
+.subscription-item.status-empty .count-label {
+    color: #cf1322;
+}
+
+.count-value {
+    font-size: 36rpx;
+    font-weight: bold;
+    color: #52c41a;
+}
+
+.subscription-item.status-low .count-value {
+    color: #faad14;
+}
+
+.subscription-item.status-empty .count-value {
+    color: #ff4d4f;
+}
+
+.subscription-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+.subscribe-btn {
+    font-size: 26rpx;
+    padding: 16rpx 28rpx;
+    border-radius: 8rpx;
+    margin: 0;
+    line-height: 1.4;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    flex: none;
+}
+
+.subscribe-btn::after {
+    border: none;
+}
+
+.subscribe-btn .btn-icon {
+    width: 24rpx;
+    height: 24rpx;
+    margin-right: 6rpx;
+}
+
+.subscribe-btn text {
+    color: inherit;
+}
+
+.subscribe-btn.primary {
+    background: #13c2c2;
+    color: white;
+}
+
+.subscription-item.status-low .subscribe-btn.primary {
+    background: #faad14;
+}
+
+.subscription-item.status-empty .subscribe-btn.primary {
+    background: #ff4d4f;
+}
+
+.subscribe-btn.secondary {
+    background: white;
+    color: #13c2c2;
+    border: 1rpx solid #13c2c2;
+}
+
+.subscription-time {
+    font-size: 22rpx;
+    color: #c0c0c0;
+    margin-top: 12rpx;
+}
+
+.action-card {
+    background: white;
+    border-radius: 16rpx;
+    padding: 24rpx;
+    margin-bottom: 24rpx;
+}
+
+.action-title {
+    font-size: 28rpx;
+    font-weight: bold;
+    color: #48416f;
+    margin-bottom: 20rpx;
+    display: flex;
+    align-items: center;
+}
+
+.action-icon {
+    width: 28rpx;
+    height: 28rpx;
+    margin-right: 10rpx;
+}
+
+.action-desc {
+    font-size: 26rpx;
+    color: #948eb3;
+    line-height: 1.6;
+}
+
+.action-steps {
+    padding-left: 8rpx;
+}
+
+.step-item {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 16rpx;
+}
+
+.step-item:last-child {
+    margin-bottom: 0;
+}
+
+.step-num {
+    width: 40rpx;
+    height: 40rpx;
+    background: #13c2c2;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22rpx;
+    font-weight: bold;
+    margin-right: 16rpx;
+    flex-shrink: 0;
+}
+
+.step-text {
+    font-size: 26rpx;
+    color: #48416f;
+    line-height: 40rpx;
+}
+
+.bottom-actions {
+    display: flex;
+    gap: 20rpx;
+    margin-top: 20rpx;
+}
+
+.action-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26rpx;
+    padding: 24rpx;
+    border-radius: 12rpx;
+    margin: 0;
+}
+
+.action-btn.primary {
+    background: #13c2c2;
+    color: white;
+}
+
+.action-btn.secondary {
+    background: white;
+    color: #13c2c2;
+    border: 1rpx solid #13c2c2;
+}
+
+.btn-icon {
+    width: 32rpx;
+    height: 32rpx;
+    margin-right: 8rpx;
+}

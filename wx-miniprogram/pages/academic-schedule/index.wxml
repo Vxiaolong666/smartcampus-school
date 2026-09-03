@@ -1,0 +1,111 @@
+<view class="container">
+  <top-menu showBack="{{true}}">
+    <view class="nav-title">课程表</view>
+  </top-menu>
+
+  <view class="background-wrapper">
+    <image class="background" src="/assets/wxmp-banner.jpg" mode="aspectFill" />
+    <view class="background-mask"></view>
+  </view>
+
+  <view class="content-wrapper">
+    <announcement wx:if="{{announcement}}" content="{{announcement}}" type="info" />
+
+    <view class="filter-card">
+      <view class="filter-row">
+        <view class="filter-item">
+          <view class="filter-label">类别</view>
+          <picker mode="selector" range="{{modes}}" range-key="kbjcmsmc" value="{{modeIndex}}" bindchange="onModeChange">
+            <view class="filter-value">{{modes[modeIndex].kbjcmsmc || '请选择'}}</view>
+          </picker>
+        </view>
+        <view class="filter-item">
+          <view class="filter-label">周次</view>
+          <picker mode="selector" range="{{weeks}}" value="{{weekIndex}}" bindchange="onWeekChange">
+            <view class="filter-value">{{weeks[weekIndex]}}</view>
+          </picker>
+        </view>
+        <button class="query-btn" bindtap="onQuery" loading="{{loading}}">查询</button>
+      </view>
+    </view>
+
+    <view wx:if="{{loading}}" class="loading-wrapper">
+      <view class="loading-text">加载中...</view>
+    </view>
+
+    <view wx:elif="{{schedule.length === 0}}" class="empty-wrapper">
+      <image class="empty-icon" src="/assets/wxmp-book-gray.svg" mode="widthFix"></image>
+      <view class="empty-text">暂无课程数据</view>
+    </view>
+
+    <view wx:else class="schedule-wrapper">
+      <view class="schedule-header">
+        <view class="header-item">节次</view>
+        <view class="header-item">周一</view>
+        <view class="header-item">周二</view>
+        <view class="header-item">周三</view>
+        <view class="header-item">周四</view>
+        <view class="header-item">周五</view>
+        <view class="header-item">周六</view>
+        <view class="header-item">周日</view>
+      </view>
+
+      <view class="schedule-body">
+        <view class="schedule-row" wx:for="{{schedule}}" wx:key="index" wx:for-index="rowIndex" wx:for-item="row">
+          <view class="row-label">第{{rowIndex + 1}}节</view>
+          <view class="row-cells">
+            <view 
+              class="cell {{cell.hasCourse ? 'has-course' : ''}}" 
+              wx:for="{{row}}" 
+              wx:key="index" 
+              wx:for-item="cell"
+              wx:for-index="dayIndex"
+              bindtap="onCourseTap"
+              data-day="{{dayIndex}}"
+              data-section="{{rowIndex}}"
+              style="{{cell.hasCourse && cell.color ? 'background-color: ' + cell.color.bg + '; border-left: 4rpx solid ' + cell.color.border : ''}}"
+            >
+              <block wx:if="{{cell.hasCourse}}">
+                <view class="course-name" style="{{cell.color ? 'color: ' + cell.color.text : ''}}">{{cell.courseName}}</view>
+                <view class="course-info">{{cell.location}}</view>
+              </block>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="course-list" wx:if="{{!loading && courses.length > 0}}">
+      <view class="list-title">本周课程详情</view>
+      <view 
+        class="course-item" 
+        wx:for="{{courses}}" 
+        wx:key="index"
+        data-course="{{item}}"
+        bindtap="onCourseItemTap"
+      >
+        <view class="course-header">
+          <view class="course-name">
+            <view class="course-color-dot" style="background-color: {{item.color.text}};"></view>
+            {{item.courseName}}
+          </view>
+          <view class="course-time" style="background-color: {{item.color.bg}}; color: {{item.color.text}};">{{item.weekDay}} 第{{item.section}}节</view>
+        </view>
+        <view class="course-detail">
+          <view class="detail-item">
+            <text class="detail-label">地点：</text>
+            <text class="detail-value">{{item.location || '待定'}}</text>
+          </view>
+          <view class="detail-item">
+            <text class="detail-label">教师：</text>
+            <text class="detail-value">{{item.teacher || '待定'}}</text>
+          </view>
+          <view class="detail-item">
+            <text class="detail-label">周次：</text>
+            <text class="detail-value">{{item.weeks || '-'}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,650 @@
+<template>
+	<view class="home_index">
+		<view @click="gotogzh" class="vip-box data-v-3590e630">
+			<image class="vip-logo data-v-3590e630" mode="aspectFit" src="/static/assets/signin-gold.png"></image>
+			<view class="vip-content data-v-3590e630">
+				<text class="vip-title data-v-3590e630">刀客源码网（www.dkewl.com）</text>
+				<text class="vip-tips data-v-3590e630">{{ $root.f0 }}</text>
+			</view>
+			<text class="vip-right-tips data-v-3590e630">{{ showVipTips }}</text>
+			<image class="right-arrows data-v-3590e630" mode="aspectFit" src="/static/assets/pao.png"></image>
+		</view>
+		<view class="notice"></view>
+		<view class="xixia-v4"></view>
+		<view style="position: relative; left: 25rpx; font-size: 28rpx; color: #333; font-weight: 600">短视频去水印</view>
+		<navigator
+			open-type="navigate"
+			style="background-color: #f8f8f8; border-radius: 24rpx; bottom: 26rpx; display: flex; height: 162rpx; margin-right: 4rpx; margin-top: 55rpx; margin-left: 30rpx; padding: 26rpx 26rpx 0rpx 30rpx; position: relative; width: 45%"
+			url="/pages/video/index"
+		>
+			<view class="tool_wrap">
+				<view
+					style="align-items: center; border-radius: 3px; color: #fff; display: flex; font-size: 20rpx; font-weight: 500; height: 32rpx; justify-content: center; left: 250rpx; top: -35rpx; position: relative; width: 60rpx; z-index: 1; background-color: red"
+				>
+					热门
+				</view>
+				<view class="tool_info">
+					<view style="color: #222; font-size: 27rpx; position: relative; left: 5rpx; top: -35rpx; font-weight: 600">短视频去水印</view>
+					<view style="color: #999; font-size: 20rpx; position: relative; left: 5rpx; top: -31rpx; font-weight: 600; margin-top: 14rpx">永久免费使用</view>
+				</view>
+				<image
+					src="/static/assets/pao.png"
+					style="border-radius: 50%; height: 60rpx; margin-left: 230rpx; margin-top: -100rpx; width: 60rpx; position: relative; top: -70rpx"
+				></image>
+			</view>
+		</navigator>
+		<navigator
+			open-type="navigate"
+			style="background-color: #f8f8f8; border-radius: 24rpx; bottom: 26rpx; display: flex; height: 162rpx; margin-right: 4rpx; margin-top: -160rpx; margin-left: 390rpx; padding: 26rpx 26rpx 0rpx 30rpx; position: relative; width: 45%"
+			url="/pagesA/imgparse/index"
+		>
+			<view class="tool_wrap">
+				<view
+					style="align-items: center; border-radius: 3px; color: #fff; display: flex; font-size: 20rpx; font-weight: 500; height: 32rpx; justify-content: center; left: 250rpx; top: -35rpx; position: relative; width: 60rpx; z-index: 1; background-color: rgb(252, 80, 0)"
+				>
+					推荐
+				</view>
+				<view class="tool_info">
+					<view style="color: #222; font-size: 27rpx; position: relative; left: 5rpx; top: -35rpx; font-weight: 600">图集去水印</view>
+					<view style="color: #999; font-size: 20rpx; position: relative; left: 5rpx; top: -31rpx; font-weight: 600; margin-top: 14rpx">抖音快手微博图集去水印</view>
+				</view>
+				<image
+					src="/static/assets/pao.png"
+					style="border-radius: 50%; height: 60rpx; margin-left: 230rpx; margin-top: -100rpx; width: 60rpx; position: relative; top: -70rpx"
+				></image>
+			</view>
+		</navigator>
+		<navigator
+			open-type="navigate"
+			style="background-color: #f8f8f8; border-radius: 24rpx; bottom: 26rpx; display: flex; height: 162rpx; margin-right: 4rpx; margin-top: 25rpx; margin-left: 30rpx; padding: 26rpx 26rpx 0rpx 30rpx; position: relative; width: 45%"
+			url="/pages/wbimage/index"
+		>
+			<view class="tool_wrap">
+				<view
+					style="align-items: center; border-radius: 3px; color: #fff; display: flex; font-size: 20rpx; font-weight: 500; height: 32rpx; justify-content: center; left: 250rpx; top: -35rpx; position: relative; width: 60rpx; z-index: 1"
+				></view>
+				<view class="tool_info">
+					<view style="color: #222; font-size: 27rpx; position: relative; left: 5rpx; top: -35rpx; font-weight: 600">微博去水印</view>
+					<view style="color: #999; font-size: 20rpx; position: relative; left: 5rpx; top: -31rpx; font-weight: 600; margin-top: 14rpx">保存微博无水印图片</view>
+				</view>
+				<image
+					src="/static/assets/pao.png"
+					style="border-radius: 50%; height: 60rpx; margin-left: 230rpx; margin-top: -100rpx; width: 60rpx; position: relative; top: -70rpx"
+				></image>
+			</view>
+		</navigator>
+		<navigator
+			open-type="navigate"
+			style="background-color: #f8f8f8; border-radius: 24rpx; bottom: 26rpx; display: flex; height: 162rpx; margin-right: 4rpx; margin-top: -160rpx; margin-left: 390rpx; padding: 26rpx 26rpx 0rpx 30rpx; position: relative; width: 45%"
+			url="/pages/xhsimage/index"
+		>
+			<view class="tool_wrap">
+				<view
+					style="align-items: center; border-radius: 3px; color: #fff; display: flex; font-size: 20rpx; font-weight: 500; height: 32rpx; justify-content: center; left: 250rpx; top: -35rpx; position: relative; width: 60rpx; z-index: 1; background-color: rgb(102, 76, 230)"
+				>
+					推荐
+				</view>
+				<view class="tool_info">
+					<view style="color: #222; font-size: 27rpx; position: relative; left: 5rpx; top: -35rpx; font-weight: 600">小红书去水印</view>
+					<view style="color: #999; font-size: 20rpx; position: relative; left: 5rpx; top: -31rpx; font-weight: 600; margin-top: 14rpx">保存小红书无水印图片</view>
+				</view>
+				<image
+					src="/static/assets/pao.png"
+					style="border-radius: 50%; height: 60rpx; margin-left: 230rpx; margin-top: -100rpx; width: 60rpx; position: relative; top: -70rpx"
+				></image>
+			</view>
+		</navigator>
+		<view style="position: relative; left: 25rpx; font-size: 28rpx; color: #333; font-weight: 600">其他工具</view>
+		<navigator
+			open-type="navigate"
+			style="background-color: #f8f8f8; border-radius: 24rpx; bottom: 26rpx; display: flex; height: 162rpx; margin-right: 4rpx; margin-top: 55rpx; margin-left: 30rpx; padding: 26rpx 26rpx 0rpx 30rpx; position: relative; width: 45%"
+			url="/pages/music/index"
+		>
+			<view class="tool_wrap">
+				<view
+					style="align-items: center; border-radius: 3px; color: #fff; display: flex; font-size: 20rpx; font-weight: 500; height: 32rpx; justify-content: center; left: 250rpx; top: -35rpx; position: relative; width: 60rpx; z-index: 1; background-color: red"
+				>
+					热门
+				</view>
+				<view class="tool_info">
+					<view style="color: #222; font-size: 27rpx; position: relative; left: 5rpx; top: -35rpx; font-weight: 600">网易云升级</view>
+					<view style="color: #999; font-size: 20rpx; position: relative; left: 5rpx; top: -31rpx; font-weight: 600; margin-top: 14rpx">每天300首歌 快速升级</view>
+				</view>
+				<image
+					src="/static/assets/pao.png"
+					style="border-radius: 50%; height: 60rpx; margin-left: 230rpx; margin-top: -100rpx; width: 60rpx; position: relative; top: -70rpx"
+				></image>
+			</view>
+		</navigator>
+		<navigator
+			open-type="navigate"
+			style="background-color: #f8f8f8; border-radius: 24rpx; bottom: 26rpx; display: flex; height: 162rpx; margin-right: 4rpx; margin-top: -160rpx; margin-left: 390rpx; padding: 26rpx 26rpx 0rpx 30rpx; position: relative; width: 45%"
+			url="/pages/milogin/index"
+		>
+			<view class="tool_wrap">
+				<view
+					style="align-items: center; border-radius: 3px; color: #fff; display: flex; font-size: 20rpx; font-weight: 500; height: 32rpx; justify-content: center; left: 250rpx; top: -35rpx; position: relative; width: 60rpx; z-index: 1; background-color: rgb(63, 202, 7)"
+				>
+					上新
+				</view>
+				<view class="tool_info">
+					<view style="color: #222; font-size: 27rpx; position: relative; left: 5rpx; top: -35rpx; font-weight: 600">帮我出去走走</view>
+					<view style="color: #999; font-size: 20rpx; position: relative; left: 5rpx; top: -31rpx; font-weight: 600; margin-top: 14rpx">帮我出去走走 bu数</view>
+				</view>
+				<image
+					src="/static/assets/pao.png"
+					style="border-radius: 50%; height: 60rpx; margin-left: 230rpx; margin-top: -100rpx; width: 60rpx; position: relative; top: -70rpx"
+				></image>
+			</view>
+		</navigator>
+		<navigator
+			open-type="navigate"
+			style="background-color: #f8f8f8; border-radius: 24rpx; bottom: 26rpx; display: flex; height: 162rpx; margin-right: 4rpx; margin-top: 25rpx; margin-left: 30rpx; padding: 26rpx 26rpx 0rpx 30rpx; position: relative; width: 45%"
+			url="/pagesA/photomark/photomark"
+		>
+			<view class="tool_wrap">
+				<view
+					style="align-items: center; border-radius: 3px; color: #fff; display: flex; font-size: 20rpx; font-weight: 500; height: 32rpx; justify-content: center; left: 250rpx; top: -35rpx; position: relative; width: 60rpx; z-index: 1"
+				></view>
+				<view class="tool_info">
+					<view style="color: #222; font-size: 27rpx; position: relative; left: 5rpx; top: -35rpx; font-weight: 600">图片加水印</view>
+					<view style="color: #999; font-size: 20rpx; position: relative; left: 5rpx; top: -31rpx; font-weight: 600; margin-top: 14rpx">证件/图片加水印</view>
+				</view>
+				<image
+					src="/static/assets/pao.png"
+					style="border-radius: 50%; height: 60rpx; margin-left: 230rpx; margin-top: -100rpx; width: 60rpx; position: relative; top: -70rpx"
+				></image>
+			</view>
+		</navigator>
+		<navigator
+			open-type="navigate"
+			style="background-color: #f8f8f8; border-radius: 24rpx; bottom: 26rpx; display: flex; height: 162rpx; margin-right: 4rpx; margin-top: -160rpx; margin-left: 390rpx; padding: 26rpx 26rpx 0rpx 30rpx; position: relative; width: 45%"
+			url="/pagesA/album/index"
+		>
+			<view class="tool_wrap">
+				<view
+					style="align-items: center; border-radius: 3px; color: #fff; display: flex; font-size: 20rpx; font-weight: 500; height: 32rpx; justify-content: center; left: 250rpx; top: -35rpx; position: relative; width: 60rpx; z-index: 1; background-color: rgb(241, 129, 0)"
+				>
+					推荐
+				</view>
+				<view class="tool_info">
+					<view style="color: #222; font-size: 27rpx; position: relative; left: 5rpx; top: -35rpx; font-weight: 600">带壳截图</view>
+					<view style="color: #999; font-size: 20rpx; position: relative; left: 5rpx; top: -31rpx; font-weight: 600; margin-top: 14rpx">轻松让你图片套上手机壳</view>
+				</view>
+				<image
+					src="/static/assets/pao.png"
+					style="border-radius: 50%; height: 60rpx; margin-left: 230rpx; margin-top: -100rpx; width: 60rpx; position: relative; top: -70rpx"
+				></image>
+			</view>
+		</navigator>
+		<view style="position: relative; left: 25rpx; font-size: 28rpx; color: #333; font-weight: 600">更多好玩</view>
+		<navigator
+			open-type="navigate"
+			style="background-color: #f8f8f8; border-radius: 24rpx; bottom: 26rpx; display: flex; height: 162rpx; margin-right: 4rpx; margin-top: 55rpx; margin-left: 30rpx; padding: 26rpx 26rpx 0rpx 30rpx; position: relative; width: 45%"
+			url="/pagesA/waimai/index"
+		>
+			<view class="tool_wrap">
+				<view
+					style="align-items: center; border-radius: 3px; color: #fff; display: flex; font-size: 20rpx; font-weight: 500; height: 32rpx; justify-content: center; left: 250rpx; top: -35rpx; position: relative; width: 60rpx; z-index: 1; background-color: red"
+				>
+					热门
+				</view>
+				<view class="tool_info">
+					<view style="color: #222; font-size: 27rpx; position: relative; left: 5rpx; top: -35rpx; font-weight: 600">外卖红包</view>
+					<view style="color: #999; font-size: 20rpx; position: relative; left: 5rpx; top: -31rpx; font-weight: 600; margin-top: 14rpx">饿了么/美团券免费领</view>
+				</view>
+				<image
+					src="/static/assets/pao.png"
+					style="border-radius: 50%; height: 60rpx; margin-left: 230rpx; margin-top: -100rpx; width: 60rpx; position: relative; top: -70rpx"
+				></image>
+			</view>
+		</navigator>
+		<navigator
+			open-type="navigate"
+			style="background-color: #f8f8f8; border-radius: 24rpx; bottom: 26rpx; display: flex; height: 162rpx; margin-right: 4rpx; margin-top: -160rpx; margin-left: 390rpx; padding: 26rpx 26rpx 0rpx 30rpx; position: relative; width: 45%"
+			url="/pagesA/dache/index"
+		>
+			<view class="tool_wrap">
+				<view
+					style="align-items: center; border-radius: 3px; color: #fff; display: flex; font-size: 20rpx; font-weight: 500; height: 32rpx; justify-content: center; left: 250rpx; top: -35rpx; position: relative; width: 60rpx; z-index: 1; background-color: rgb(247, 8, 8)"
+				>
+					热门
+				</view>
+				<view class="tool_info">
+					<view style="color: #222; font-size: 27rpx; position: relative; left: 5rpx; top: -35rpx; font-weight: 600">打车红包</view>
+					<view style="color: #999; font-size: 20rpx; position: relative; left: 5rpx; top: -31rpx; font-weight: 600; margin-top: 14rpx">打车优惠免费领</view>
+				</view>
+				<image
+					src="/static/assets/pao.png"
+					style="border-radius: 50%; height: 60rpx; margin-left: 230rpx; margin-top: -100rpx; width: 60rpx; position: relative; top: -70rpx"
+				></image>
+			</view>
+		</navigator>
+		<navigator
+			open-type="navigate"
+			style="background-color: #f8f8f8; border-radius: 24rpx; bottom: 26rpx; display: flex; height: 162rpx; margin-right: 4rpx; margin-top: 25rpx; margin-left: 30rpx; padding: 26rpx 26rpx 0rpx 30rpx; position: relative; width: 45%"
+			url="/pagesA/phone/phone"
+		>
+			<view class="tool_wrap">
+				<view class="tool_info">
+					<view
+						style="align-items: center; border-radius: 3px; color: #fff; display: flex; font-size: 20rpx; font-weight: 500; height: 32rpx; justify-content: center; left: 250rpx; top: -35rpx; position: relative; width: 60rpx; z-index: 1; background-color: #27c4ac"
+					>
+						上新
+					</view>
+					<view style="color: #222; font-size: 27rpx; position: relative; left: 5rpx; top: -35rpx; font-weight: 600">手机检测</view>
+					<view style="color: #999; font-size: 20rpx; position: relative; left: 5rpx; top: -31rpx; font-weight: 600; margin-top: 14rpx">一键辨真假</view>
+				</view>
+				<image
+					src="/static/assets/pao.png"
+					style="border-radius: 50%; height: 60rpx; margin-left: 230rpx; margin-top: -100rpx; width: 60rpx; position: relative; top: -70rpx"
+				></image>
+			</view>
+		</navigator>
+		<navigator
+			open-type="navigate"
+			style="background-color: #f8f8f8; border-radius: 24rpx; bottom: 26rpx; display: flex; height: 162rpx; margin-right: 4rpx; margin-top: -160rpx; margin-left: 390rpx; padding: 26rpx 26rpx 0rpx 30rpx; position: relative; width: 45%"
+			url="/pagesA/album/index"
+		>
+			<view class="tool_wrap">
+				<view
+					style="align-items: center; border-radius: 3px; color: #fff; display: flex; font-size: 20rpx; font-weight: 500; height: 32rpx; justify-content: center; left: 250rpx; top: -35rpx; position: relative; width: 60rpx; z-index: 1; background-color: rgb(247, 191, 8)"
+				>
+					高清
+				</view>
+				<view class="tool_info">
+					<view style="color: rgb(2, 2, 2); font-size: 27rpx; position: relative; left: 5rpx; top: -35rpx; font-weight: 600">高清壁纸下载</view>
+					<view style="color: #999; font-size: 20rpx; position: relative; left: 5rpx; top: -31rpx; font-weight: 600; margin-top: 14rpx">4k、壁纸/头像下载</view>
+				</view>
+				<image
+					src="/static/assets/pao.png"
+					style="border-radius: 50%; height: 60rpx; margin-left: 230rpx; margin-top: -100rpx; width: 60rpx; position: relative; top: -70rpx"
+				></image>
+			</view>
+		</navigator>
+		<navigator
+			open-type="navigate"
+			style="background-color: #f8f8f8; border-radius: 24rpx; bottom: 26rpx; display: flex; height: 162rpx; margin-right: 4rpx; margin-top: 25rpx; margin-left: 30rpx; padding: 26rpx 26rpx 0rpx 30rpx; position: relative; width: 45%"
+			url="/pagesA/album/index"
+		>
+			<view class="tool_wrap">
+				<view class="tool_info">
+					<view
+						style="align-items: center; border-radius: 3px; color: #fff; display: flex; font-size: 20rpx; font-weight: 500; height: 32rpx; justify-content: center; left: 250rpx; top: -35rpx; position: relative; width: 60rpx; z-index: 1; background-color: #e709a4"
+					>
+						更多
+					</view>
+					<view style="color: #222; font-size: 27rpx; position: relative; left: 5rpx; top: -35rpx; font-weight: 600">更多小工具</view>
+					<view style="color: #999; font-size: 20rpx; position: relative; left: 5rpx; top: -31rpx; font-weight: 600; margin-top: 14rpx">免费各种头像在线生成</view>
+				</view>
+				<image
+					src="/static/assets/pao.png"
+					style="border-radius: 50%; height: 60rpx; margin-left: 230rpx; margin-top: -100rpx; width: 60rpx; position: relative; top: -70rpx"
+				></image>
+			</view>
+		</navigator>
+		<navigator
+			open-type="navigate"
+			style="background-color: #f8f8f8; border-radius: 24rpx; bottom: 26rpx; display: flex; height: 162rpx; margin-right: 4rpx; margin-top: -160rpx; margin-left: 390rpx; padding: 26rpx 26rpx 0rpx 30rpx; position: relative; width: 45%"
+			url="/pages/bizhi/add"
+		>
+			<view class="tool_wrap">
+				<view
+					style="align-items: center; border-radius: 3px; color: #fff; display: flex; font-size: 20rpx; font-weight: 500; height: 32rpx; justify-content: center; left: 250rpx; top: -35rpx; position: relative; width: 60rpx; z-index: 1; background-color: rgb(247, 8, 8)"
+				>
+					热门
+				</view>
+				<view class="tool_info">
+					<view style="color: #222; font-size: 27rpx; position: relative; left: 5rpx; top: -35rpx; font-weight: 600">免费壁纸素材</view>
+					<view style="color: #999; font-size: 20rpx; position: relative; left: 5rpx; top: -31rpx; font-weight: 600; margin-top: 14rpx">高清壁纸素材</view>
+				</view>
+				<image
+					src="/static/assets/pao.png"
+					style="border-radius: 50%; height: 60rpx; margin-left: 230rpx; margin-top: -100rpx; width: 60rpx; position: relative; top: -70rpx"
+				></image>
+			</view>
+		</navigator>
+		<view class="more_hint">官网：刀客源码网</view>
+		<view class="more_hint">地址：www.dkewl.com</view>
+		<view class="more_hint">更多功能持续更新中，敬请期待...</view>
+
+		<!-- #ifdef MP-WEIXIN -->
+		<button class="shareCon" hover-class="shareget" open-type="share" size="mini">分享给小伙伴</button>
+		<!-- #endif -->
+	</view>
+</template>
+
+<script>
+const defaultAvatarUrl =
+	'https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07jQodd2FJGIYQfG0LAJGFxM4FbnQP6yfMxBgJ0F3YRqJCJ1aPAK2dQagdusBZg/0';
+
+export default {
+	data() {
+		return {
+			motto: 'Hello World',
+			userInfo: {
+				avatarUrl: defaultAvatarUrl,
+				nickName: ''
+			},
+			hasUserInfo: false,
+			canIUseGetUserProfile: false,
+			canIUseNicknameComp: false,
+			showVipTips: ''
+		};
+	},
+	methods: {
+		gotogzh() {},
+		bindViewTap() {},
+		onChooseAvatar(e) {
+			const { avatarUrl } = e.detail;
+			const { nickName } = this.userInfo;
+			this.userInfo.avatarUrl = avatarUrl;
+			this.hasUserInfo = nickName && avatarUrl && avatarUrl !== defaultAvatarUrl;
+		},
+		onInputChange(e) {
+			const nickName = e.detail.value;
+			const { avatarUrl } = this.userInfo;
+			this.userInfo.nickName = nickName;
+			this.hasUserInfo = nickName && avatarUrl && avatarUrl !== defaultAvatarUrl;
+		}
+	}
+};
+</script>
+
+<style>
+page {
+	background: #ffffff;
+}
+</style>
+
+<style scoped>
+.home_index {
+	padding-bottom: 80rpx;
+}
+
+.home_swiper {
+	margin: 24rpx 24rpx 0;
+}
+
+.home_swiper,
+.home_swiper swiper {
+	border-radius: 24rpx;
+	overflow: hidden;
+	transform: translateY(0);
+}
+
+.home_swiper swiper {
+	height: 240rpx;
+}
+
+.home_swiper swiper image {
+	width: 100%;
+}
+
+.group_chat {
+	align-items: center;
+	border: 2rpx solid #e5e5e5;
+	border-radius: 24rpx;
+	display: flex;
+	flex-direction: row;
+	justify-content: center;
+	margin: 30rpx 24rpx 0rpx;
+	padding: 36rpx 30rpx;
+}
+
+.group_chat image {
+	border-radius: 8rpx;
+	height: 75rpx;
+	width: 75rpx;
+}
+
+.group_chat .group_chat_wrap {
+	flex: 1;
+	margin-left: 24rpx;
+}
+
+.group_chat .group_chat_wrap .group_chat_name {
+	color: #333;
+	font-size: 28rpx;
+	font-weight: 500;
+}
+
+.group_chat .group_chat_wrap .group_chat_hint {
+	color: #999;
+	font-size: 22rpx;
+	margin-top: 6rpx;
+}
+
+.group_chat .gorup_chat_add {
+	background-color: #f8f8f8;
+	border-radius: 50rpx;
+	color: #000;
+	font-size: 20rpx;
+	margin-left: 10rpx;
+	padding: 14rpx 26rpx;
+}
+
+.home_tool {
+	padding-left: 24rpx;
+}
+
+.home_tool .group_name {
+	color: #333;
+	font-size: 28rpx;
+	font-weight: 600;
+	padding-top: 36rpx;
+}
+
+.home_tool .tool_list {
+	display: flex;
+	flex-wrap: wrap;
+}
+
+.home_tool .tool_list navigator {
+	height: 168rpx;
+	margin-right: 24rpx;
+	margin-top: 24rpx;
+	width: 339rpx;
+}
+
+.home_tool .tool_list navigator .label_wrap {
+	align-items: center;
+	border-radius: 3px;
+	color: #fff;
+	display: flex;
+	font-size: 20rpx;
+	font-weight: 500;
+	height: 32rpx;
+	justify-content: center;
+	left: 284rpx;
+	position: relative;
+	width: 60rpx;
+	z-index: 1;
+}
+
+.home_tool .tool_list navigator .tool_wrap {
+	background-color: #f8f8f8;
+	border-radius: 24rpx;
+	bottom: 26rpx;
+	display: flex;
+	height: 162rpx;
+	margin-right: 4rpx;
+	padding: 26rpx 26rpx 0rpx 30rpx;
+	position: relative;
+	width: 100%;
+}
+
+.home_tool .tool_list navigator .tool_wrap .tool_info {
+	flex: 1;
+}
+
+.home_tool .tool_list navigator .tool_wrap .tool_info .tool_name {
+	color: #000;
+	font-size: 27rpx;
+	font-weight: 600;
+}
+
+.home_tool .tool_list navigator .tool_wrap .tool_info .tool_hint {
+	color: #999;
+	font-size: 20rpx;
+	font-weight: 600;
+	margin-top: 14rpx;
+}
+
+.home_tool .tool_list navigator .tool_wrap image {
+	border-radius: 50%;
+	height: 60rpx;
+	margin-left: 30rpx;
+	margin-top: 6rpx;
+	width: 60rpx;
+}
+
+.more_hint {
+	align-items: center;
+	color: #999;
+	display: flex;
+	font-size: 25rpx;
+	justify-content: center;
+	margin-top: 30rpx;
+}
+
+.vip-box.data-v-3590e630 {
+	align-items: center;
+	background-image: url(data:image/png;base64,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);
+	background-position: 50%;
+	background-repeat: no-repeat;
+	background-size: cover;
+	border-radius: 20rpx;
+	display: flex;
+	height: 150rpx;
+	justify-content: space-between;
+	margin: 10rpx 30rpx;
+	padding: 0 50rpx;
+	width: 695rpx;
+}
+
+.vip-logo.data-v-3590e630 {
+	height: 80rpx;
+	width: 80rpx;
+}
+
+.vip-content.data-v-3590e630 {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	margin-left: 30rpx;
+}
+
+.vip-title.data-v-3590e630 {
+	color: #fff;
+	font-size: 32rpx;
+}
+
+.vip-tips.data-v-3590e630 {
+	color: hsla(0, 0%, 100%, 0.7);
+	font-size: 22rpx;
+	margin-top: 10rpx;
+}
+
+.vip-right-tips.data-v-3590e630 {
+	color: hsla(0, 0%, 100%, 0.7);
+	font-size: 24rpx;
+	margin-right: 10rpx;
+}
+
+.right-arrows.data-v-3590e630 {
+	height: 32rpx;
+	margin-left: 10rpx;
+	width: 32rpx;
+}
+
+.shareCon {
+	background-image: linear-gradient(#ffd622, #eb7200, hsla(0, 0%, 100%, 0));
+	border-radius: 100px 0 0 100px;
+	bottom: 150rpx;
+	color: #fff;
+	position: fixed;
+	right: 0rpx;
+}
+
+.page {
+	background: #ffffff;
+}
+
+.notice {
+	margin-top: 22rpx;
+}
+
+.notice,
+.xixia {
+	align-items: center;
+	display: flex;
+	justify-content: center;
+}
+
+.xixia {
+	background: #f7f7f7;
+	border-radius: 10px;
+	box-shadow: 0 1px 1px 1px hsla(0, 3%, 79%, 0.993);
+	height: 80rpx;
+	width: 700rpx;
+}
+
+.line {
+	background: #aaa;
+	border-radius: 8rpx;
+	height: 44rpx;
+	margin: 0 25rpx;
+	width: 2px;
+}
+
+.tab-right {
+	width: 500rpx;
+}
+
+.content-item {
+	display: flex;
+	font-size: 25rpx;
+	justify-content: space-around;
+	overflow: hidden;
+	position: absolute;
+	top: 50%;
+	transform: translateY(-50%);
+	width: 100%;
+}
+
+.name {
+	color: #f80000;
+	letter-spacing: 2rpx;
+}
+
+.notice-containTitle {
+	color: #020202;
+	font-size: 28rpx;
+	font-weight: 700;
+}
+
+.xixia-v4 {
+	margin-top: 20rpx;
+}
+
+.iconfont {
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+	font-family: iconfont !important;
+	font-size: 16px;
+	font-style: normal;
+}
+
+iamge,
+navigator,
+page,
+swiper,
+swiper-item,
+text,
+view {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+}
+</style>

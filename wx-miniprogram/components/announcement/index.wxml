@@ -1,0 +1,8 @@
+
+<view wx:if="{{visible}}" class="announcement {{typeClass}}">
+  <image class="announcement-icon" src="{{icon}}" mode="aspectFit"></image>
+  <view class="announcement-content" bindtap="onTap">{{content}}</view>
+  <view wx:if="{{closable}}" class="announcement-close" bindtap="onClose">
+    <text>×</text>
+  </view>
+</view>

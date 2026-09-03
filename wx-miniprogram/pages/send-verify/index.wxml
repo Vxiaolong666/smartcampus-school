@@ -1,0 +1,54 @@
+<view class="container">
+  <top-menu showBack="{{true}}">
+    <view class="nav-title">发送验证邮件</view>
+  </top-menu>
+
+  <view class="background-wrapper">
+    <image class="background" src="/assets/wxmp-banner.jpg" mode="aspectFill" />
+    <view class="background-mask"></view>
+  </view>
+
+  <view class="content-wrapper">
+    <view class="logo-section">
+      <image class="logo" src="/assets/wxmp-email.svg" mode="widthFix"></image>
+      <view class="app-name">验证邮箱</view>
+      <view class="app-desc">重新发送注册验证邮件</view>
+    </view>
+
+    <view class="form-card">
+      <view class="card-header">
+        <image class="card-icon" src="/assets/wxmp-email.svg" mode="widthFix"></image>
+        <text class="card-title">输入注册邮箱</text>
+      </view>
+
+      <view class="form-item">
+        <view class="input-wrapper">
+          <image class="input-icon" src="/assets/wxmp-email.svg" mode="widthFix"></image>
+          <input 
+            class="form-input" 
+            type="text" 
+            placeholder="请输入注册时的邮箱" 
+            value="{{email}}"
+            bindinput="onEmailInput"
+          />
+        </view>
+      </view>
+
+      <view class="tips">
+      
+        <text>如果您的账号尚未验证邮箱，输入注册邮箱后我们将重新发送验证邮件。
+        </text>
+      </view>
+
+      <button class="submit-btn" bindtap="onSubmit" loading="{{loading}}">
+        <text>发送验证邮件</text>
+      </button>
+
+      <view class="bottom-links">
+        <text class="link" bindtap="onLogin">返回登录</text>
+        <text class="divider-text">|</text>
+        <text class="link" bindtap="onForgot">忘记密码</text>
+      </view>
+    </view>
+  </view>
+</view>

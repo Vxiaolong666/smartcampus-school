@@ -1,0 +1,7 @@
+{
+  "navigationStyle": "custom",
+  "usingComponents": {
+    "top-menu": "/components/cb-nav-bar/index",
+    "announcement": "/components/announcement/index"
+  }
+}

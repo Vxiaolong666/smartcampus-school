@@ -1,0 +1,68 @@
+<view class="container">
+  <top-menu showBack="{{true}}">
+    <view class="nav-title">关于我们</view>
+  </top-menu>
+
+  <view class="background-wrapper">
+    <image class="background" src="/assets/wxmp-banner.jpg" mode="aspectFill" />
+    <view class="background-mask"></view>
+  </view>
+
+  <view class="content-wrapper">
+    <view class="about-card">
+      <view class="card-header">
+        <image class="card-logo" src="/assets/wxmp-logo.svg" mode="widthFix"></image>
+        <view class="card-title">关于我们</view>
+      </view>
+
+      <view class="about-content">
+        <view class="about-section">
+          <view class="section-title">项目介绍</view>
+          <view class="section-text">
+            本小程序由在校学生自主开发，非学校官方应用。初衷是为同学们提供更便捷、更好用的校园服务体验，仅供学习交流使用。
+          </view>
+        </view>
+
+        <view class="about-section">
+          <view class="section-title">免责声明</view>
+          <view class="section-text">
+            本小程序为个人学习项目，与学校官方无关。所有数据均来源于学校公开系统，仅供学习参考，请以学校官方信息为准。如有任何问题，请联系我们进行处理。
+          </view>
+        </view>
+
+        <view class="about-section">
+          <view class="section-title">功能特性</view>
+          <view class="feature-list">
+            <view class="feature-item">
+              <image class="feature-icon" src="/assets/wxmp-check.svg" mode="widthFix"></image>
+              <text>教务系统查询</text>
+            </view>
+            <view class="feature-item">
+              <image class="feature-icon" src="/assets/wxmp-check.svg" mode="widthFix"></image>
+              <text>课程表管理</text>
+            </view>
+            <view class="feature-item">
+              <image class="feature-icon" src="/assets/wxmp-check.svg" mode="widthFix"></image>
+              <text>宿舍电费查询</text>
+            </view>
+            <view class="feature-item">
+              <image class="feature-icon" src="/assets/wxmp-check.svg" mode="widthFix"></image>
+              <text>消息推送通知</text>
+            </view>
+          </view>
+        </view>
+
+        <view class="about-section">
+          <view class="section-title">联系我们</view>
+          <view class="section-text">
+            如有问题或建议，请通过"我的"页面中的"联系客服"功能与我们取得联系。
+          </view>
+        </view>
+      </view>
+
+      <view class="about-footer">
+        <text class="footer-text">版本 1.0.0</text>
+      </view>
+    </view>
+  </view>
+</view>

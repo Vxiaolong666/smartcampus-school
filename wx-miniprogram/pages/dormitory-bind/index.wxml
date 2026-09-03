@@ -1,0 +1,103 @@
+<view class="container">
+  <top-menu showBack="{{true}}">
+    <view class="nav-title">宿舍绑定</view>
+  </top-menu>
+
+  <view class="background-wrapper">
+    <image class="background" src="/assets/wxmp-banner.jpg" mode="aspectFill" />
+    <view class="background-mask"></view>
+  </view>
+
+  <view class="content-wrapper">
+    <view wx:if="{{announcement}}">
+      <announcement content="{{announcement.content}}" type="{{announcement.type}}" closable="{{true}}" />
+    </view>
+
+    <view class="info-card">
+      <image class="info-icon" src="/assets/wxmp-home2.svg" mode="widthFix"></image>
+      <view class="info-content">
+        <view class="info-text">最多可绑定{{maxDormitories}}个宿舍，当前已绑定{{dormitories.length}}个</view>
+      </view>
+    </view>
+
+    <view class="btn-group">
+      <button wx:if="{{dormitories.length < maxDormitories}}" class="primary-btn" bindtap="showAddPanel">
+        <image class="btn-icon" src="/assets/wxmp-add.svg" mode="widthFix"></image>
+        添加宿舍
+      </button>
+      <button wx:if="{{dormitories.length > 0}}" class="secondary-btn" bindtap="goToPowerFee">
+        <image class="btn-icon" src="/assets/wxmp-search.svg" mode="widthFix"></image>
+        查询电费
+      </button>
+    </view>
+
+    <view wx:if="{{loading}}" class="loading-wrapper">
+      <view class="loading-text">加载中...</view>
+    </view>
+
+    <view wx:elif="{{dormitories.length > 0}}" class="dorm-list">
+      <view class="dorm-item" wx:for="{{dormitories}}" wx:key="id">
+        <view class="dorm-info">
+          <view class="dorm-name">
+            {{item.displayName}}
+            <text wx:if="{{item.is_default == 1}}" class="default-tag">默认</text>
+          </view>
+          <view class="dorm-detail">{{item.school_area}} · {{item.room_num}}</view>
+          <view class="dorm-time">绑定于 {{item.bind_time}}</view>
+        </view>
+        <view class="dorm-actions">
+          <button wx:if="{{item.is_default != 1}}" class="action-btn default-btn" data-id="{{item.id}}" bindtap="onSetDefault">
+            <image class="btn-icon" src="/assets/wxmp-star.svg" mode="widthFix"></image>
+            设为默认
+          </button>
+          <button class="action-btn unbind-btn" data-id="{{item.id}}" bindtap="onUnbind">
+            <image class="btn-icon" src="/assets/wxmp-delete.svg" mode="widthFix"></image>
+            解绑
+          </button>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{!loading && dormitories.length === 0}}" class="empty-wrapper">
+      <image class="empty-icon" src="/assets/wxmp-home2-gray.svg" mode="widthFix"></image>
+      <view class="empty-text">暂无绑定的宿舍</view>
+    </view>
+  </view>
+
+  <view class="modal-mask" wx:if="{{showAddPanel}}" bindtap="hideAddPanel">
+    <view class="modal-content" catchtap="">
+      <view class="modal-header">
+        <view class="modal-title">添加宿舍</view>
+        <view class="modal-close" bindtap="hideAddPanel">×</view>
+      </view>
+      <view class="modal-body">
+        <view class="form-item" catchtap="preventBubble">
+          <view class="form-label">校区</view>
+          <picker mode="selector" range="{{areas}}" value="{{areaIndex}}" bindchange="onAreaChange">
+            <view class="form-value">{{areaIndex >= 0 ? areas[areaIndex] : '请选择校区'}}</view>
+          </picker>
+        </view>
+        <view class="form-item" catchtap="preventBubble">
+          <view class="form-label">楼栋</view>
+          <picker mode="selector" range="{{buildings}}" value="{{buildingIndex}}" bindchange="onBuildingChange">
+            <view class="form-value">{{buildingIndex >= 0 ? buildings[buildingIndex] : '请选择楼栋'}}</view>
+          </picker>
+        </view>
+        <view class="form-item" catchtap="preventBubble">
+          <view class="form-label">房间</view>
+          <picker mode="selector" range="{{rooms}}" range-key="room" value="{{roomIndex}}" bindchange="onRoomChange">
+            <view class="form-value">{{roomIndex >= 0 ? rooms[roomIndex].room : '请选择房间'}}</view>
+          </picker>
+        </view>
+        <view class="form-item" catchtap="preventBubble">
+          <view class="form-label">别名（可选）</view>
+          <input class="form-input" placeholder="例如：我的宿舍" value="{{alias}}" bindinput="onAliasInput" />
+        </view>
+      </view>
+      <view class="modal-footer">
+        <button class="modal-btn cancel-btn" bindtap="hideAddPanel">取消</button>
+        <button class="modal-btn confirm-btn" bindtap="onBindSubmit">绑定</button>
+      </view>
+    </view>
+  </view>
+</view>

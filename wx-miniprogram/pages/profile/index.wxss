@@ -1,0 +1,208 @@
+page {
+    background: #eff1ff;
+}
+
+.nav-title {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    font-size: 32rpx;
+    font-weight: bold;
+    position: relative;
+    z-index: 1;
+    color: white;
+    letter-spacing: 6rpx;
+}
+
+.background-wrapper {
+    position: fixed;
+    width: 100%;
+    top: 0;
+}
+
+.background {
+    width: 100%;
+    position: absolute;
+    top: 0;
+    height: 800rpx;
+}
+
+.background-mask {
+    background-image: linear-gradient(rgba(0, 0, 0, .8), transparent);
+    height: 600rpx;
+    position: absolute;
+    width: 100%;
+    top: 0;
+}
+
+.content-wrapper {
+    position: relative;
+    z-index: 1;
+    background: #eff1ff;
+    top: 30rpx;
+    min-height: calc(100vh - 200rpx);
+    border-top-left-radius: 60rpx;
+    border-top-right-radius: 60rpx;
+    box-shadow: 0 -80rpx 80rpx 40rpx rgba(0, 0, 0, .2);
+    padding: 30rpx;
+}
+
+.card {
+    background: white;
+    border-radius: 20rpx;
+    padding: 30rpx;
+    margin-bottom: 24rpx;
+    margin-top: 25rpx;
+    box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.05);
+}
+
+.card-title {
+    font-size: 32rpx;
+    font-weight: bold;
+    color: #48416f;
+    margin-bottom: 12rpx;
+}
+
+.card-desc {
+    font-size: 26rpx;
+    color: #948eb3;
+}
+
+.avatar-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 30rpx 0 40rpx 0;
+}
+
+.avatar {
+    width: 140rpx;
+    height: 140rpx;
+    border-radius: 50%;
+    border: 4rpx solid #f0f0f0;
+}
+
+.avatar-placeholder {
+    width: 140rpx;
+    height: 140rpx;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #13c2c2 0%, #10aeff 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 4rpx solid #f0f0f0;
+}
+
+.avatar-placeholder text {
+    font-size: 56rpx;
+    color: white;
+    font-weight: bold;
+}
+
+.avatar-actions {
+    display: flex;
+    gap: 20rpx;
+    margin-top: 24rpx;
+}
+
+.avatar-btn {
+    padding: 16rpx 32rpx;
+    font-size: 24rpx;
+    border-radius: 40rpx;
+    background: transparent;
+    color: #48416f;
+    line-height: 1.4;
+    border: 1rpx solid #bfbfbf;
+    transition: all 0.3s ease;
+}
+
+.avatar-btn.wx-btn {
+    background: transparent;
+    color: #13c2c2;
+    border: 1rpx solid #13c2c2;
+}
+
+.avatar-btn::after {
+    border: none;
+}
+
+.form-card {
+    background: white;
+    border-radius: 20rpx;
+    padding: 24rpx 30rpx 28rpx 30rpx;
+    box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.05);
+}
+
+.form-card.avatar-card {
+    margin-bottom: 24rpx;
+}
+
+.form-item {
+    padding: 24rpx 0;
+    border-bottom: 1rpx solid #f0f0f0;
+    display: flex;
+    align-items: center;
+}
+
+.form-item:last-child {
+    border-bottom: none;
+}
+
+.form-label {
+    font-size: 28rpx;
+    color: #948eb3;
+    width: 160rpx;
+    flex-shrink: 0;
+}
+
+.form-input {
+    flex: 1;
+    font-size: 28rpx;
+    color: #48416f;
+    text-align: right;
+}
+
+.form-value {
+    flex: 1;
+    font-size: 28rpx;
+    color: #48416f;
+    text-align: right;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+.form-value.link {
+    color: #13c2c2;
+}
+
+.form-value .arrow {
+    font-size: 32rpx;
+    margin-left: 8rpx;
+    color: #c0c0c0;
+}
+
+.save-btn {
+    width: 100%;
+    height: 88rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #13c2c2;
+    color: #fff;
+    font-size: 28rpx;
+    border-radius: 16rpx;
+    font-weight: bold;
+    margin-top: 30rpx;
+    border: none;
+}
+
+.save-btn:active {
+    opacity: 0.9;
+    transform: scale(0.98);
+}
+
+.save-btn::before,
+.save-btn::after {
+    display: none;
+}

@@ -1,0 +1,174 @@
+<view class="page-container">
+
+  <top-menu>
+    <view class="nav-title">我的</view>
+  </top-menu>
+
+  <view class="background-wrapper">
+    <image class="background" src="/assets/wxmp-banner.jpg" mode="aspectFill" />
+    <view class="background-mask"></view>
+  </view>
+
+  <view class="content-wrapper">
+
+    <view class="profile-card" bindtap="{{isLoggedIn ? 'handleProfile' : 'handleLogin'}}">
+      <view class="profile-content">
+        <block wx:if="{{isLoggedIn && apiUserInfo}}">
+          <view class="profile-avatar-wrap">
+            <image wx:if="{{userAvatar}}" class="profile-avatar-img" src="{{userAvatar}}" mode="aspectFill" />
+            <view wx:else class="profile-avatar-text">{{apiUserInfo.nickname || apiUserInfo.username[0]}}</view>
+          </view>
+          <view class="profile-info">
+            <view class="profile-name">{{apiUserInfo.nickname || apiUserInfo.username}}</view>
+            <view class="profile-meta">
+              <view class="profile-meta-item">
+                <text class="meta-value">{{apiUserInfo.points || 0}}</text>
+                <text class="meta-label">积分</text>
+              </view>
+              <view class="meta-divider"></view>
+              <view class="profile-meta-item">
+                <text class="meta-value">Lv.{{apiUserInfo.level || 1}}</text>
+                <text class="meta-label">等级</text>
+              </view>
+            </view>
+          </view>
+          <image class="profile-arrow" src="/assets/wxmp-right.svg" mode="widthFix" />
+        </block>
+        <block wx:else>
+          <view class="profile-avatar-wrap">
+            <view class="profile-avatar-placeholder">
+              <image class="avatar-placeholder-icon" src="/assets/wxmp-user.svg" mode="widthFix"></image>
+            </view>
+          </view>
+          <view class="profile-info">
+            <view class="profile-name">未登录</view>
+            <view class="profile-meta">
+              <view class="profile-login-hint">点击登录账号</view>
+            </view>
+          </view>
+          <image class="profile-arrow" src="/assets/wxmp-right.svg" mode="widthFix" />
+        </block>
+      </view>
+    </view>
+
+    <view class="item-bar">
+
+      <block wx:if="{{isLoggedIn}}">
+        <view class="item-group">
+          <view class="item-group-title">账号绑定</view>
+          <view class="item-group-content">
+            <view class="item-item" bind:tap="handleAcademic">
+              <image class="item-logo" src="/assets/icon_cvoieudado/a-199_dangan-07.svg" mode="widthFix"></image>
+              <view class="item-text">教务账号绑定</view>
+              <text class="status-text {{academicBound ? 'status-bound' : 'status-unbound'}}">{{academicBound ? '已绑定' : '未绑定'}}</text>
+              <image class="item-right" src="/assets/wxmp-right.svg" mode="widthFix"></image>
+            </view>
+            <view class="item-item" bind:tap="handleDormitory">
+              <image class="item-logo" src="/assets/icon_cvoieudado/a-199_zhuye.svg" mode="widthFix"></image>
+              <view class="item-text">宿舍绑定</view>
+              <text class="status-text {{dormitoryCount > 0 ? 'status-bound' : 'status-unbound'}}">{{dormitoryCount > 0 ? '已绑定 ' + dormitoryCount + '/' + maxDormitories : '未绑定'}}</text>
+              <image class="item-right" src="/assets/wxmp-right.svg" mode="widthFix"></image>
+            </view>
+          </view>
+        </view>
+
+        <view class="item-group">
+          <view class="item-group-title">订阅功能设置</view>
+          <view class="item-group-content">
+            <view class="item-item" bind:tap="handleSubscription">
+              <image class="item-logo" src="/assets/icon_cvoieudado/a-199_biaoji.svg" mode="widthFix"></image>
+              <view class="item-text">订阅管理</view>
+              <text class="status-text status-{{subscriptionStatus === '正常' ? 'ok' : subscriptionStatus === '即将不足' ? 'low' : 'empty'}}">{{subscriptionStatus}}</text>
+              <image class="item-right" src="/assets/wxmp-right.svg" mode="widthFix"></image>
+            </view>
+            <view class="item-item" bind:tap="handleAcademicPushSettings">
+              <image class="item-logo" src="/assets/icon_cvoieudado/a-199_tixing.svg" mode="widthFix"></image>
+              <view class="item-text">课程推送设置</view>
+              <image class="item-right" src="/assets/wxmp-right.svg" mode="widthFix"></image>
+            </view>
+            <view class="item-item" bind:tap="handleAcademicPushSettings">
+              <image class="item-logo" src="/assets/icon_cvoieudado/a-199_jiangzhang.svg" mode="widthFix"></image>
+              <view class="item-text">成绩推送设置</view>
+              <image class="item-right" src="/assets/wxmp-right.svg" mode="widthFix"></image>
+            </view>
+            <view class="item-item" bind:tap="handlePowerPushSettings">
+              <image class="item-logo" src="/assets/icon_cvoieudado/a-199_jishi.svg" mode="widthFix"></image>
+              <view class="item-text">电费推送设置</view>
+              <image class="item-right" src="/assets/wxmp-right.svg" mode="widthFix"></image>
+            </view>
+          </view>
+        </view>
+
+        <view class="item-group">
+          <view class="item-group-title">账户与安全</view>
+          <view class="item-group-content">
+            <view class="item-item" bind:tap="handleProfile">
+              <image class="item-logo" src="/assets/icon_cvoieudado/a-199_bianji-24.svg" mode="widthFix"></image>
+              <view class="item-text">编辑资料</view>
+              <image class="item-right" src="/assets/wxmp-right.svg" mode="widthFix"></image>
+            </view>
+
+            <view class="item-item" bind:tap="handleChangePassword">
+              <image class="item-logo" src="/assets/icon_cvoieudado/a-199_anquan.svg" mode="widthFix"></image>
+              <view class="item-text">修改密码</view>
+              <image class="item-right" src="/assets/wxmp-right.svg" mode="widthFix"></image>
+            </view>
+
+            <view class="item-item" bind:tap="handleWxBind">
+              <image class="item-logo" src="/assets/icon_cvoieudado/a-199_zhekou.svg" mode="widthFix"></image>
+              <view class="item-text">微信绑定</view>
+              <text class="status-text {{wxBound ? 'status-bound' : 'status-unbound'}}">{{wxBound ? '已绑定' : '未绑定'}}</text>
+              <image class="item-right" src="/assets/wxmp-right.svg" mode="widthFix"></image>
+            </view>
+          </view>
+        </view>
+      </block>
+
+      <view wx:else class="item-group">
+        <view class="item-group-content">
+          <view class="item-item" bind:tap="handleLogin">
+            <image class="item-logo" src="/assets/icon_cvoieudado/a-199_gongkai.svg" mode="widthFix"></image>
+            <view class="item-text">登录 / 注册</view>
+            <image class="item-right" src="/assets/wxmp-right.svg" mode="widthFix"></image>
+          </view>
+        </view>
+      </view>
+
+      <view class="item-group">
+        <view class="item-group-title">客服与支持</view>
+        <view class="item-group-content">
+          <button class="item-item" open-type="contact">
+            <image class="item-logo" src="/assets/icon_cvoieudado/a-199_duihua.svg" mode="widthFix"></image>
+            <view class="item-text">联系客服</view>
+            <image class="item-right" src="/assets/wxmp-right.svg" mode="widthFix"></image>
+          </button>
+
+          <view class="item-item" bind:tap="handleAgreement">
+            <image class="item-logo" src="/assets/icon_cvoieudado/a-199_wenjian.svg" mode="widthFix"></image>
+            <view class="item-text">隐私协议</view>
+            <image class="item-right" src="/assets/wxmp-right.svg" mode="widthFix"></image>
+          </view>
+
+          <view class="item-item" bind:tap="handleAbout">
+            <image class="item-logo" src="/assets/icon_cvoieudado/a-199_zhuye.svg" mode="widthFix"></image>
+            <view class="item-text">关于我们</view>
+            <image class="item-right" src="/assets/wxmp-right.svg" mode="widthFix"></image>
+          </view>
+        </view>
+      </view>
+
+      <view wx:if="{{isLoggedIn}}" class="bottom-buttons">
+        <button class="bottom-btn switch-btn" bindtap="handleSwitchAccount">
+          <image class="bottom-btn-icon" src="/assets/wxmp-switch.svg" mode="widthFix"></image>
+          <text>切换账号</text>
+        </button>
+        <button class="bottom-btn logout-btn" bindtap="handleLogout">
+          <image class="bottom-btn-icon" src="/assets/wxmp-logout.svg" mode="widthFix"></image>
+          <text>退出登录</text>
+        </button>
+      </view>
+
+    </view>
+  </view>
+
+</view>

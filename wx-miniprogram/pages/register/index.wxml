@@ -1,0 +1,86 @@
+<view class="container">
+  <top-menu showBack="{{true}}">
+    <view class="nav-title">注册</view>
+  </top-menu>
+
+  <view class="background-wrapper">
+    <image class="background" src="/assets/wxmp-banner.jpg" mode="aspectFill" />
+    <view class="background-mask"></view>
+  </view>
+
+  <view class="content-wrapper">
+    <view class="logo-section">
+      <image class="logo" src="/assets/wxmp-logo.svg" mode="widthFix"></image>
+      <view class="app-name">注册账号</view>
+      <view class="app-desc">创建账号，享受校园服务</view>
+    </view>
+
+    <view class="form-card">
+      <view class="card-header">
+        <image class="card-icon" src="/assets/wxmp-edit.svg" mode="widthFix"></image>
+        <text class="card-title">填写信息</text>
+      </view>
+
+      <view class="form-item">
+        <view class="input-wrapper">
+          <image class="input-icon" src="/assets/wxmp-user.svg" mode="widthFix"></image>
+          <input 
+            class="form-input" 
+            type="text" 
+            placeholder="请输入用户名" 
+            value="{{username}}"
+            bindinput="onUsernameInput"
+          />
+        </view>
+      </view>
+
+      <view class="form-item">
+        <view class="input-wrapper">
+          <image class="input-icon" src="/assets/wxmp-email.svg" mode="widthFix"></image>
+          <input 
+            class="form-input" 
+            type="text" 
+            placeholder="请输入邮箱" 
+            value="{{email}}"
+            bindinput="onEmailInput"
+          />
+        </view>
+      </view>
+      
+      <view class="form-item">
+        <view class="input-wrapper">
+          <image class="input-icon" src="/assets/wxmp-lock.svg" mode="widthFix"></image>
+          <input 
+            class="form-input" 
+            type="password" 
+            placeholder="请输入密码（至少6位）" 
+            value="{{password}}"
+            bindinput="onPasswordInput"
+          />
+        </view>
+      </view>
+
+      <view class="form-item">
+        <view class="input-wrapper">
+          <image class="input-icon" src="/assets/wxmp-lock.svg" mode="widthFix"></image>
+          <input 
+            class="form-input" 
+            type="password" 
+            placeholder="请再次输入密码" 
+            value="{{confirmPassword}}"
+            bindinput="onConfirmPasswordInput"
+          />
+        </view>
+      </view>
+
+      <button class="register-btn" bindtap="onRegister" loading="{{loading}}" style="height: 95rpx; display: flex; box-sizing: border-box; left: -1rpx; top: 4rpx; width: 351rpx; position: relative">
+        <text>注 册</text>
+      </button>
+
+      <view class="login-link">
+        <text>已有账号？</text>
+        <text class="link" bindtap="onLogin">立即登录</text>
+      </view>
+    </view>
+  </view>
+</view>

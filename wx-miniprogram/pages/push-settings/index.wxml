@@ -1,0 +1,98 @@
+<view class="container">
+    <top-menu showBack="{{true}}">
+        <view class="nav-title">电费信息推送设置</view>
+    </top-menu>
+
+    <view class="background-wrapper">
+        <image class="background" src="/assets/wxmp-banner.jpg" mode="aspectFill" />
+        <view class="background-mask"></view>
+    </view>
+
+    <view class="content-wrapper">
+        <announcement wx:if="{{announcement}}" content="{{announcement}}" type="info" />
+
+        <view wx:if="{{loading}}" class="loading-section">
+            <view class="loading-spinner"></view>
+            <text class="loading-text">加载中...</text>
+        </view>
+        
+        <view wx:elif="{{dormitories.length === 0}}" class="empty-section">
+            <image class="empty-icon" src="/assets/wxmp-home2-gray.svg" mode="widthFix"></image>
+            <text class="empty-text">未绑定宿舍，请先绑定宿舍</text>
+            <button class="bind-btn" bindtap="goToBind">前往绑定</button>
+        </view>
+        
+        <view wx:else class="settings-list">
+            <view class="action-card">
+                <view class="action-title">
+                    <image class="action-icon" src="/assets/wxmp-lightbulb.svg" mode="widthFix"></image>
+                    <text>推送说明</text>
+                </view>
+                <view class="action-desc">开启推送后，系统会根据您的设置自动推送电费相关提醒消息</view>
+            </view>
+            
+            <view wx:for="{{dormitories}}" wx:key="id" class="dorm-card">
+                <view class="dorm-header">
+                    <view class="dorm-name">
+                        <image class="dorm-icon" src="/assets/wxmp-home2.svg" mode="widthFix"></image>
+                        <text>{{item.displayName}}</text>
+                        <text wx:if="{{item.is_default == 1}}" class="default-tag">默认</text>
+                    </view>
+                    <switch checked="{{item.isEnabled}}" bindchange="togglePush" data-index="{{index}}" color="#13c2c2" />
+                </view>
+                
+                <view wx:if="{{item.isEnabled}}" class="dorm-content">
+                    <view class="form-section">
+                        <view class="section-title">推送方式</view>
+                        <view class="checkbox-group">
+                            <label class="checkbox-item">
+                                <checkbox value="wechat" checked="{{item.pushWechat}}" bindchange="onPushTypeChange" data-index="{{index}}" data-type="wechat" color="#13c2c2" />
+                                <text>微信订阅消息</text>
+                            </label>
+                            <label class="checkbox-item">
+                                <checkbox value="email" checked="{{item.pushEmail}}" bindchange="onPushTypeChange" data-index="{{index}}" data-type="email" color="#13c2c2" />
+                                <text>邮件推送</text>
+                            </label>
+                        </view>
+                    </view>
+                    
+                    <view class="form-section">
+                        <view class="section-title">推送消息类型</view>
+                        <view class="checkbox-group vertical">
+                            <label class="checkbox-item">
+                                <checkbox value="daily_summary" checked="{{item.notifyDaily}}" bindchange="onNotifyTypeChange" data-index="{{index}}" data-type="daily_summary" color="#13c2c2" disabled="{{!item.dailySummaryEnabled}}" />
+                                <text class="{{!item.dailySummaryEnabled ? 'disabled' : ''}}">每日用电汇总</text>
+                            </label>
+                            <label class="checkbox-item">
+                                <checkbox value="balance_low" checked="{{item.notifyLow}}" bindchange="onNotifyTypeChange" data-index="{{index}}" data-type="balance_low" color="#13c2c2" disabled="{{!item.lowBalanceEnabled}}" />
+                                <text class="{{!item.lowBalanceEnabled ? 'disabled' : ''}}">余额不足提醒</text>
+                            </label>
+                            <label class="checkbox-item">
+                                <checkbox value="balance_critical" checked="{{item.notifyCritical}}" bindchange="onNotifyTypeChange" data-index="{{index}}" data-type="balance_critical" color="#13c2c2" disabled="{{!item.criticalBalanceEnabled}}" />
+                                <text class="{{!item.criticalBalanceEnabled ? 'disabled' : ''}}">余额即将耗尽</text>
+                            </label>
+                            <label class="checkbox-item">
+                                <checkbox value="arrears" checked="{{item.notifyArrears}}" bindchange="onNotifyTypeChange" data-index="{{index}}" data-type="arrears" color="#13c2c2" disabled="{{!item.arrearsEnabled}}" />
+                                <text class="{{!item.arrearsEnabled ? 'disabled' : ''}}">欠费提醒</text>
+                            </label>
+                        </view>
+                    </view>
+                    
+                    <view class="form-section">
+                        <view class="section-title">阈值设置</view>
+                        <view class="input-row">
+                            <text class="input-label">余额不足阈值(元)</text>
+                            <input type="digit" value="{{item.balanceLowThreshold}}" bindinput="onThresholdChange" data-index="{{index}}" data-type="low" placeholder="30" />
+                        </view>
+                        <view class="input-row">
+                            <text class="input-label">即将耗尽阈值(元)</text>
+                            <input type="digit" value="{{item.balanceCriticalThreshold}}" bindinput="onThresholdChange" data-index="{{index}}" data-type="critical" placeholder="10" />
+                        </view>
+                    </view>
+                    
+                    <button class="save-btn" bindtap="onSubmit" data-index="{{index}}">保存设置</button>
+                </view>
+            </view>
+        </view>
+    </view>
+</view>

@@ -1,0 +1,47 @@
+<view class="container">
+  <top-menu showBack="{{true}}">
+    <view class="nav-title">找回密码</view>
+  </top-menu>
+
+  <view class="background-wrapper">
+    <image class="background" src="/assets/wxmp-banner.jpg" mode="aspectFill" />
+    <view class="background-mask"></view>
+  </view>
+
+  <view class="content-wrapper">
+    <view class="logo-section">
+      <image class="logo" src="/assets/wxmp-logo.svg" mode="widthFix"></image>
+      <view class="app-name">找回密码</view>
+      <view class="app-desc">输入注册邮箱，我们将发送重置链接</view>
+    </view>
+
+    <view class="form-card">
+      <view class="card-header">
+        <image class="card-icon" src="/assets/wxmp-lock.svg" mode="widthFix"></image>
+        <text class="card-title">重置密码</text>
+      </view>
+
+      <view class="form-item">
+        <view class="input-wrapper">
+          <image class="input-icon" src="/assets/wxmp-email.svg" mode="widthFix"></image>
+          <input 
+            class="form-input" 
+            type="text" 
+            placeholder="请输入注册时使用的邮箱" 
+            value="{{email}}"
+            bindinput="onEmailInput"
+          />
+        </view>
+      </view>
+
+      <button class="submit-btn" bindtap="onSubmit" loading="{{loading}}">
+        <text>发送重置链接</text>
+      </button>
+
+      <view class="login-link">
+        <text>想起密码了？</text>
+        <text class="link" bindtap="onLogin">返回登录</text>
+      </view>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,53 @@
+<view class="container">
+  <top-menu showBack="{{false}}">
+    <view class="nav-title">系统维护</view>
+  </top-menu>
+
+  <view class="background-wrapper">
+    <image class="background" src="/assets/wxmp-banner.jpg" mode="aspectFill" />
+    <view class="background-mask"></view>
+  </view>
+
+  <view class="content-wrapper">
+    <view class="maintenance-card">
+      <view class="card-header">
+        <image class="card-logo" src="/assets/wxmp-logo.svg" mode="widthFix"></image>
+        <view class="card-title">系统维护中</view>
+      </view>
+
+      <view class="maintenance-content">
+        <!-- 维护图标 -->
+        <view class="maintenance-icon-wrapper">
+          <image class="maintenance-icon" src="/assets/wxmp-clock.svg" mode="widthFix"></image>
+        </view>
+
+        <!-- 维护提示 -->
+        <view class="maintenance-section">
+          <view class="section-title">维护时间</view>
+          <view class="time-display">
+            <text class="time-text">{{maintenanceTime}}</text>
+          </view>
+        </view>
+
+        <!-- 维护公告 -->
+        <view wx:if="{{notice}}" class="maintenance-section notice-section">
+          <view class="section-title">维护公告</view>
+          <view class="section-card">
+            <view class="section-text">{{notice.content}}</view>
+          </view>
+        </view>
+
+        <view class="maintenance-section">
+          <view class="section-title">温馨提示</view>
+          <view class="section-text">
+            受学校教务系统每晚关闭维护影响，相关系统功能在每日23时至次日上午6时不可用。如需紧急帮助，请通过"我的"页面中的"联系客服"功能与我们取得联系。
+          </view>
+        </view>
+      </view>
+
+      <view class="maintenance-footer">
+        <text class="footer-text">感谢您的耐心等待</text>
+      </view>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,40 @@
+<view class="container">
+  <top-menu showBack="{{true}}">
+    <view class="nav-title">通知详情</view>
+  </top-menu>
+
+  <view class="background-wrapper">
+    <image class="background" src="{{notice.cover || '/assets/wxmp-banner.jpg'}}" mode="aspectFill" />
+    <view class="background-mask"></view>
+  </view>
+
+  <view class="content-wrapper">
+    <view wx:if="{{loading}}" class="loading-section">
+      <view class="loading-spinner"></view>
+      <text class="loading-text">加载中...</text>
+    </view>
+    
+    <view wx:elif="{{notice}}" class="notice-detail">
+      <view class="notice-card">
+        <image wx:if="{{notice.cover}}" class="notice-cover" src="{{notice.cover}}" mode="widthFix" bind:tap="onPreviewCover" />
+        <view class="notice-title">
+        <text wx:if="{{notice.is_top == 1}}" class="top-badge">置顶</text>
+        {{notice.title}}
+      </view>
+        <view class="notice-meta">
+          <text wx:if="{{notice.author}}">作者：{{notice.author}}</text>
+          <text>浏览：{{notice.view_count}}</text>
+          <text>{{notice.create_time}}</text>
+        </view>
+        <view class="divider"></view>
+        <view class="notice-content">{{notice.content}}</view>
+        <image wx:if="{{notice.image}}" class="notice-image" src="{{notice.image}}" mode="widthFix" bind:tap="onPreviewImage" />
+      </view>
+    </view>
+    
+    <view wx:else class="empty-section">
+      <image class="empty-icon" src="/assets/wxmp-empty.svg" mode="widthFix"></image>
+      <text class="empty-text">通知不存在</text>
+    </view>
+  </view>
+</view>

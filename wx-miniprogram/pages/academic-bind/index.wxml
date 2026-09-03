@@ -1,0 +1,97 @@
+<view class="container">
+  <top-menu showBack="{{true}}">
+    <view class="nav-title">教务账号</view>
+  </top-menu>
+
+  <view class="background-wrapper">
+    <image class="background" src="/assets/wxmp-banner.jpg" mode="aspectFill" />
+    <view class="background-mask"></view>
+  </view>
+
+  <view class="content-wrapper">
+    <view class="form-card">
+      <view class="card-header">
+        <image class="card-logo" src="/assets/058-video-conference.svg" mode="widthFix"></image>
+        <view class="card-title">教务账号绑定</view>
+        <view class="card-desc">绑定后可查询成绩、课表等信息</view>
+      </view>
+
+      <block wx:if="{{!isBound}}">
+        <view class="form-item">
+          <view class="form-label">学工号</view>
+          <input 
+            class="form-input" 
+            type="text" 
+            placeholder="请输入学工号" 
+            value="{{studentId}}"
+            bindinput="onStudentIdInput"
+          />
+        </view>
+        
+        <view class="form-item">
+          <view class="form-label">教务密码</view>
+          <input 
+            class="form-input" 
+            type="password" 
+            placeholder="请输入教务密码" 
+            value="{{password}}"
+            bindinput="onPasswordInput"
+          />
+        </view>
+
+        <view class="form-item">
+          <view class="form-label">真实姓名（选填）</view>
+          <input 
+            class="form-input" 
+            type="text" 
+            placeholder="请输入真实姓名" 
+            value="{{realName}}"
+            bindinput="onRealNameInput"
+          />
+        </view>
+
+        <button class="submit-btn" bindtap="onBind" loading="{{loading}}">绑定账号</button>
+      </block>
+
+      <block wx:else>
+        <view class="bound-info">
+          <view class="bound-item">
+            <view class="bound-label">学工号</view>
+            <view class="bound-value">{{academicInfo.student_id}}</view>
+          </view>
+          <view class="bound-item">
+            <view class="bound-label">真实姓名</view>
+            <view class="bound-value">{{academicInfo.real_name || '未设置'}}</view>
+          </view>
+          <view class="bound-item">
+            <view class="bound-label">绑定时间</view>
+            <view class="bound-value">{{academicInfo.bind_time}}</view>
+          </view>
+        </view>
+
+        <view class="action-btns">
+          <button class="unbind-btn" bindtap="onUnbind">解绑账号</button>
+        </view>
+      </block>
+    </view>
+
+    <view class="menu-card" wx:if="{{isBound}}">
+      <view class="menu-title">教务功能</view>
+      <view class="menu-item" bindtap="goToGrade">
+        <image class="menu-icon" src="/assets/wxmp-read.svg" mode="widthFix"></image>
+        <view class="menu-text">成绩查询</view>
+        <image class="menu-arrow" src="/assets/wxmp-right.svg" mode="widthFix"></image>
+      </view>
+      <view class="menu-item" bindtap="goToSchedule">
+        <image class="menu-icon" src="/assets/wxmp-calendar-gray.svg" mode="widthFix"></image>
+        <view class="menu-text">课程表查询</view>
+        <image class="menu-arrow" src="/assets/wxmp-right.svg" mode="widthFix"></image>
+      </view>
+      <view class="menu-item" bindtap="goToStudentInfo">
+        <image class="menu-icon" src="/assets/wxmp-about.svg" mode="widthFix"></image>
+        <view class="menu-text">学籍信息</view>
+        <image class="menu-arrow" src="/assets/wxmp-right.svg" mode="widthFix"></image>
+      </view>
+    </view>
+  </view>
+</view>

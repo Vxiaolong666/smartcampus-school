@@ -1,0 +1,140 @@
+page {
+    background: #eff1ff;
+}
+
+.nav-title {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    font-size: 32rpx;
+    font-weight: bold;
+    position: relative;
+    z-index: 1;
+    color: white;
+    letter-spacing: 6rpx;
+}
+
+.background-wrapper {
+    position: fixed;
+    width: 100%;
+    top: 0;
+}
+
+.background {
+    width: 100%;
+    position: absolute;
+    top: 0;
+    height: 800rpx;
+}
+
+.background-mask {
+    background-image: linear-gradient(rgba(0, 0, 0, .8), transparent);
+    height: 600rpx;
+    position: absolute;
+    width: 100%;
+    top: 0;
+}
+
+.content-wrapper {
+    position: relative;
+    z-index: 1;
+    background: #eff1ff;
+    top: 30rpx;
+    min-height: calc(100vh - 200rpx);
+    border-top-left-radius: 60rpx;
+    border-top-right-radius: 60rpx;
+    box-shadow: 0 -80rpx 80rpx 40rpx rgba(0, 0, 0, .2);
+    padding: 30rpx;
+    padding-bottom: 100rpx;
+}
+
+.about-card {
+    background: white;
+    border-radius: 20rpx;
+    overflow: hidden;
+    box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.05);
+}
+
+.card-header {
+    display: flex;
+    align-items: center;
+    padding: 40rpx 30rpx;
+    border-bottom: 1rpx solid #f0f0f0;
+}
+
+.card-logo {
+    width: 60rpx;
+    height: 60rpx;
+    margin-right: 20rpx;
+}
+
+.card-title {
+    font-size: 32rpx;
+    font-weight: bold;
+    color: #48416f;
+}
+
+.about-content {
+    padding: 30rpx;
+}
+
+.about-section {
+    margin-bottom: 40rpx;
+}
+
+.about-section:last-child {
+    margin-bottom: 0;
+}
+
+.section-title {
+    font-size: 28rpx;
+    font-weight: bold;
+    color: #48416f;
+    margin-bottom: 20rpx;
+    padding-left: 16rpx;
+    border-left: 6rpx solid #13c2c2;
+}
+
+.section-text {
+    font-size: 26rpx;
+    color: #767676;
+    line-height: 1.8;
+    text-indent: 2em;
+}
+
+.feature-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20rpx;
+}
+
+.feature-item {
+    display: flex;
+    align-items: center;
+    width: 45%;
+    padding: 16rpx 20rpx;
+    background: #f7f8fc;
+    border-radius: 12rpx;
+}
+
+.feature-icon {
+    width: 28rpx;
+    height: 28rpx;
+    margin-right: 12rpx;
+}
+
+.feature-item text {
+    font-size: 24rpx;
+    color: #48416f;
+}
+
+.about-footer {
+    padding: 30rpx;
+    text-align: center;
+    border-top: 1rpx solid #f0f0f0;
+}
+
+.footer-text {
+    font-size: 22rpx;
+    color: #948eb3;
+}

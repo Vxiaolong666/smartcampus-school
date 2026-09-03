@@ -1,0 +1,9 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" width="200" height="200">
+  <path d="M888 792H200V168c0-4.4-3.6-8-8-8h-56c-4.4 0-8 3.6-8 8v688c0 4.4 3.6 8 8 8h752c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8z" fill="#13c2c2"/>
+  <path d="M288 640h56c4.4 0 8-3.6 8-8V448c0-4.4-3.6-8-8-8h-56c-4.4 0-8 3.6-8 8v184c0 4.4 3.6 8 8 8z" fill="#13c2c2"/>
+  <path d="M424 640h56c4.4 0 8-3.6 8-8V320c0-4.4-3.6-8-8-8h-56c-4.4 0-8 3.6-8 8v312c0 4.4 3.6 8 8 8z" fill="#13c2c2"/>
+  <path d="M560 640h56c4.4 0 8-3.6 8-8V400c0-4.4-3.6-8-8-8h-56c-4.4 0-8 3.6-8 8v232c0 4.4 3.6 8 8 8z" fill="#13c2c2"/>
+  <path d="M696 640h56c4.4 0 8-3.6 8-8V288c0-4.4-3.6-8-8-8h-56c-4.4 0-8 3.6-8 8v344c0 4.4 3.6 8 8 8z" fill="#13c2c2"/>
+</svg>

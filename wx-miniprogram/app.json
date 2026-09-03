@@ -1,0 +1,67 @@
+{
+  "entryPagePath": "pages/white-home/index",
+  "pages": [
+    "pages/white-home/index",
+    "pages/login/index",
+    "pages/register/index",
+    "pages/forgot/index",
+    "pages/send-verify/index",
+    "pages/new_cs/index",
+    "pages/change-password/index",
+    "pages/profile/index",
+    "pages/wx-bind/index",
+    "pages/academic-bind/index",
+    "pages/academic-grade/index",
+    "pages/academic-schedule/index",
+    "pages/academic-info/index",
+    "pages/today-schedule/index",
+    "pages/dormitory-bind/index",
+    "pages/power-fee/index",
+    "pages/power-statistics/index",
+    "pages/push-settings/index",
+    "pages/subscription/index",
+    "pages/black-mine/index",
+    "pages/black-notice/index",
+    "pages/black-notice-info/index",
+    "pages/academic-push-settings/index",
+    "pages/about/index",
+    "pages/power-fee-batch/index",
+    "pages/push-test/index",
+    "pages/maintenance/index"
+  ],
+  "sitemapLocation": "sitemap.json",
+  "tabBar": {
+    "backgroundColor": "#ffffff",
+    "color": "#767676",
+    "selectedColor": "#1296db",
+    "borderStyle": "white",
+    "list": [
+      {
+        "text": "首页",
+        "pagePath": "pages/white-home/index",
+        "iconPath": "assets/tab_study_1.png",
+        "selectedIconPath": "assets/tab_study_2.png"
+      },
+      {
+        "text": "课程",
+        "pagePath": "pages/today-schedule/index",
+        "iconPath": "assets/tab_expand_1.png",
+        "selectedIconPath": "assets/tab_expand_2.png"
+      },
+      {
+        "text": "我的",
+        "pagePath": "pages/black-mine/index",
+        "iconPath": "assets/tab_mine_1.png",
+        "selectedIconPath": "assets/tab_mine_2.png"
+      }
+    ]
+  },
+  "style": "v2",
+  "window": {
+    "navigationStyle": "custom"
+  },
+  "lazyCodeLoading": "requiredComponents",
+  "usingComponents": {
+    "top-menu": "/components/cb-nav-bar/index"
+  }
+}

@@ -1,0 +1,53 @@
+<view class="container">
+  <top-menu showBack="{{true}}">
+    <view class="nav-title">微信绑定</view>
+  </top-menu>
+
+  <view class="background-wrapper">
+    <image class="background" src="/assets/wxmp-banner.jpg" mode="aspectFill" />
+    <view class="background-mask"></view>
+  </view>
+
+  <view class="content-wrapper">
+    <view class="bind-card">
+      <view class="card-header">
+        <image class="card-logo" src="/assets/wxmp-wechat.svg" mode="widthFix"></image>
+        <view class="card-title">微信账号绑定</view>
+        <view class="card-desc">绑定微信后可使用微信快捷登录</view>
+      </view>
+
+      <view class="status-section">
+        <view class="status-icon">
+          <icon wx:if="{{hasWxOpenid}}" type="success" size="64" color="#13c2c2" />
+          <icon wx:else type="warn" size="64" color="#ff4d4f" />
+        </view>
+        <view class="status-text">{{hasWxOpenid ? '已绑定微信账号' : '未绑定微信账号'}}</view>
+        <view class="status-desc" wx:if="{{hasWxOpenid}}">您可以使用微信快捷登录</view>
+        <view class="status-desc" wx:else>绑定后可使用微信快捷登录</view>
+      </view>
+
+      <view wx:if="{{hasWxOpenid}}" class="info-section">
+        <view class="info-item">
+          <view class="info-label">OpenID</view>
+          <view class="info-value openid">{{openidDisplay}}</view>
+        </view>
+      </view>
+
+      <button wx:if="{{hasWxOpenid}}" class="unbind-btn" bindtap="onUnbind" loading="{{loading}}">
+        解除绑定
+      </button>
+      <button wx:else class="bind-btn" bindtap="onBind" loading="{{loading}}">
+        立即绑定
+      </button>
+    </view>
+
+    <view class="tips-card">
+      <view class="tips-title">温馨提示</view>
+      <view class="tips-list">
+        <view class="tips-item">• 绑定微信后，可使用微信快捷登录</view>
+        <view class="tips-item">• 解除绑定后将无法使用微信登录</view>
+        <view class="tips-item">• 每个微信账号只能绑定一个账号</view>
+      </view>
+    </view>
+  </view>
+</view>

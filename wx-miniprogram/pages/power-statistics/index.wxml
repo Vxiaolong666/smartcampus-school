@@ -1,0 +1,202 @@
+<view class="container">
+    <top-menu showBack="{{true}}">
+        <view class="nav-title">用电统计</view>
+    </top-menu>
+
+    <view class="background-wrapper">
+        <image class="background" src="/assets/wxmp-banner.jpg" mode="aspectFill" />
+        <view class="background-mask"></view>
+    </view>
+
+    <view class="content-wrapper">
+        <view wx:if="{{announcement}}">
+            <announcement content="{{announcement.content}}" type="{{announcement.type}}" closable="{{true}}" />
+        </view>
+
+        <view wx:if="{{loading}}" class="loading-section">
+            <view class="loading-spinner"></view>
+            <text class="loading-text">加载中...</text>
+        </view>
+        
+        <view wx:elif="{{dormitories.length === 0}}" class="empty-section">
+            <image class="empty-icon" src="/assets/wxmp-home2-gray.svg" mode="widthFix"></image>
+            <view class="empty-title">请先绑定宿舍</view>
+            <view class="empty-text">绑定宿舍后可查看用电统计</view>
+        </view>
+        
+        <block wx:else>
+            <view class="filter-section">
+                <view class="filter-item">
+                    <text class="filter-label">选择宿舍</text>
+                    <picker mode="selector" range="{{dormitories}}" range-key="displayName" value="{{selectedIndex}}" bindchange="onDormitoryChange">
+                        <view class="picker-value">
+                            <image class="picker-icon" src="/assets/wxmp-home2.svg" mode="widthFix"></image>
+                            <text class="picker-text">{{dormitories[selectedIndex].displayName}}</text>
+                            <text class="picker-arrow">▼</text>
+                        </view>
+                    </picker>
+                </view>
+            </view>
+            
+            <view wx:if="{{stats}}" class="stats-section">
+                <view class="stats-header">
+                    <image class="stats-header-icon" src="/assets/wxmp-chart.svg" mode="widthFix"></image>
+                    <text class="stats-header-title">用电概览</text>
+                </view>
+                
+                <view class="stats-cards">
+                    <view class="stat-card health-{{stats.healthStatus}}">
+                        <view class="stat-card-content">
+                            <view class="stat-icon-wrapper">
+                                <image class="stat-icon" src="/assets/wxmp-heart-{{stats.healthStatus === 'saving' ? 'green' : stats.healthStatus === 'normal' ? 'yellow' : 'red'}}.svg" mode="widthFix"></image>
+                            </view>
+                            <view class="stat-info">
+                                <view class="stat-value">{{stats.healthText}}</view>
+                                <view class="stat-label">用电健康度</view>
+                            </view>
+                        </view>
+                    </view>
+                    
+                    <view class="stat-card info">
+                        <view class="stat-card-content">
+                            <view class="stat-icon-wrapper">
+                                <image class="stat-icon" src="/assets/wxmp-bolt-cyan.svg" mode="widthFix"></image>
+                            </view>
+                            <view class="stat-info">
+                                <view class="stat-value">{{stats.yesterdayUsage}}<text class="stat-unit">度</text></view>
+                                <view class="stat-label">昨日用电量</view>
+                                <view class="stat-sub">约 ¥{{stats.yesterdayCost}}</view>
+                            </view>
+                        </view>
+                    </view>
+                    
+                    <view class="stat-card primary">
+                        <view class="stat-card-content">
+                            <view class="stat-icon-wrapper">
+                                <image class="stat-icon" src="/assets/wxmp-trend-blue.svg" mode="widthFix"></image>
+                            </view>
+                            <view class="stat-info">
+                                <view class="stat-value">{{stats.dailyAvgUsage}}<text class="stat-unit">度</text></view>
+                                <view class="stat-label">日均用电量</view>
+                                <view class="stat-sub">约 ¥{{stats.dailyAvgCost}}/天</view>
+                            </view>
+                        </view>
+                    </view>
+                    
+                    <view class="stat-card success">
+                        <view class="stat-card-content">
+                            <view class="stat-icon-wrapper">
+                                <image class="stat-icon" src="/assets/wxmp-wallet-green.svg" mode="widthFix"></image>
+                            </view>
+                            <view class="stat-info">
+                                <view class="stat-value">{{stats.latestBalance || '-'}}<text class="stat-unit">元</text></view>
+                                <view class="stat-label">当前余额</view>
+                            </view>
+                        </view>
+                    </view>
+                    
+                    <view class="stat-card estimated" wx:if="{{stats.estimatedDays !== null && stats.estimatedDays !== undefined}}">
+                        <view class="stat-card-content">
+                            <view class="stat-icon-wrapper">
+                                <image class="stat-icon" src="/assets/wxmp-calendar.svg" mode="widthFix"></image>
+                            </view>
+                            <view class="stat-info">
+                                <view class="stat-value">{{stats.estimatedDays}}<text class="stat-unit">天</text></view>
+                                <view class="stat-label">预计可用</view>
+                            </view>
+                        </view>
+                    </view>
+                </view>
+            </view>
+            
+            <view class="chart-section">
+                <view class="section-header">
+                    <image class="section-icon" src="/assets/wxmp-activity.svg" mode="widthFix"></image>
+                    <text class="section-title">用电量趋势</text>
+                </view>
+                <view wx:if="{{recentTrend.length === 0}}" class="no-data">
+                    <image class="no-data-icon" src="/assets/wxmp-coffee.svg" mode="widthFix"></image>
+                    <text>暂无数据</text>
+                </view>
+                <canvas wx:else type="2d" id="recentChart" class="chart-canvas" 
+                        style="width: 100%; height: 200px;"></canvas>
+                <view class="chart-footer">
+                    <view class="chart-footer-item">
+                        <text class="chart-footer-label">数据点</text>
+                        <text class="chart-footer-value">{{recentTrend.length}}</text>
+                    </view>
+                    <view class="chart-footer-item">
+                        <text class="chart-footer-label">电价</text>
+                        <text class="chart-footer-value">{{pricePerKwh}}元/度</text>
+                    </view>
+                </view>
+            </view>
+            
+            <view class="chart-section">
+                <view class="section-header">
+                    <image class="section-icon" src="/assets/wxmp-calendar.svg" mode="widthFix"></image>
+                    <text class="section-title">每日用电总量趋势</text>
+                </view>
+                <view wx:if="{{dailyTrend.length === 0}}" class="no-data">
+                    <image class="no-data-icon" src="/assets/wxmp-coffee.svg" mode="widthFix"></image>
+                    <text>暂无数据</text>
+                </view>
+                <canvas wx:else type="2d" id="dailyChart" class="chart-canvas" 
+                        style="width: 100%; height: 200px;"></canvas>
+                <view class="chart-footer">
+                    <view class="chart-footer-item">
+                        <text class="chart-footer-label">统计天数</text>
+                        <text class="chart-footer-value">{{dailyTrend.length}}天</text>
+                    </view>
+                </view>
+            </view>
+            
+            <view class="records-section">
+                <view class="section-header">
+                    <image class="section-icon" src="/assets/wxmp-list.svg" mode="widthFix"></image>
+                    <text class="section-title">历史电费记录</text>
+                    <text class="section-count">共{{stats.recordCount}}条</text>
+                </view>
+                <view wx:if="{{records.length === 0}}" class="no-data">
+                    <image class="no-data-icon" src="/assets/wxmp-coffee.svg" mode="widthFix"></image>
+                    <text>暂无记录</text>
+                </view>
+                <view wx:else class="records-timeline">
+                    <view wx:for="{{records}}" wx:key="id" class="record-item">
+                        <view class="record-timeline-left">
+                            <view class="record-dot {{item.usageClass}}"></view>
+                            <view class="record-line" wx:if="{{index < records.length - 1}}"></view>
+                        </view>
+                        <view class="record-content">
+                            <view class="record-header">
+                                <text class="record-time">{{item.record_time || item.created_at}}</text>
+                            </view>
+                            <view class="record-data">
+                                <view class="record-main">
+                                    <view class="record-balance">
+                                        <text class="record-balance-label">余额</text>
+                                        <text class="record-balance-value">¥{{item.balance}}</text>
+                                    </view>
+                                </view>
+                                <view class="record-details" wx:if="{{item.usageDisplay !== '-'}}">
+                                    <view class="record-detail-item">
+                                        <text class="record-detail-label">用电</text>
+                                        <text class="record-detail-value {{item.usageClass}}">{{item.usageDisplay}}度</text>
+                                    </view>
+                                    <view class="record-detail-item">
+                                        <text class="record-detail-label">费用</text>
+                                        <text class="record-detail-value {{item.costClass}}">{{item.costDisplay}}元</text>
+                                    </view>
+                                </view>
+                            </view>
+                        </view>
+                    </view>
+                </view>
+                <view class="records-footer">
+                    用电量根据余额变化和电价({{pricePerKwh}}元/度)自动计算
+                </view>
+            </view>
+            
+        </block>
+    </view>
+</view>

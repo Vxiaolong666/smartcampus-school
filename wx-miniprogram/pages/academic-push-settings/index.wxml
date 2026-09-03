@@ -1,0 +1,108 @@
+<view class="container">
+  <top-menu showBack="{{true}}">
+    <view class="nav-title">学术推送设置</view>
+  </top-menu>
+
+  <view class="background-wrapper">
+    <image class="background" src="/assets/wxmp-banner.jpg" mode="aspectFill" />
+    <view class="background-mask"></view>
+  </view>
+
+  <view class="content-wrapper">
+    <announcement wx:if="{{announcement}}" content="{{announcement}}" type="info" />
+
+    <view wx:if="{{loading}}" class="loading-section">
+      <view class="loading-spinner"></view>
+      <text class="loading-text">加载中...</text>
+    </view>
+
+    <view wx:elif="{{!hasAcademicAccount}}" class="form-card">
+      <view class="card-header">
+        <image class="card-logo" src="/assets/048-presentation.svg" mode="widthFix"></image>
+        <view class="card-title">学术推送设置</view>
+        <view class="card-desc">开启后可自动推送课程提醒和成绩通知</view>
+      </view>
+      <view class="empty-tip">
+        <text>请先绑定教务账号后再设置学术推送</text>
+      </view>
+      <button class="submit-btn" bindtap="goToBind">前往绑定</button>
+    </view>
+
+    <block wx:else>
+      <view class="form-card">
+        <view class="card-header">
+          <image class="card-logo" src="/assets/048-presentation.svg" mode="widthFix"></image>
+          <view class="card-title">学术推送设置</view>
+          <view class="card-desc">开启后可自动推送课程提醒和成绩通知</view>
+        </view>
+
+        <view class="bound-info">
+          <view class="bound-item">
+            <view class="bound-label">当前账号</view>
+            <picker wx:if="{{academicAccounts.length > 1}}" range="{{academicAccounts}}" range-key="student_id" value="{{accountIndex}}" bindchange="onAccountChange">
+              <view class="bound-value">{{studentId}} <text class="switch-caret">▾</text></view>
+            </picker>
+            <view wx:else class="bound-value">{{studentId}}</view>
+          </view>
+          <view class="bound-item">
+            <view class="bound-label">推送状态</view>
+            <switch checked="{{isEnabled}}" bindchange="togglePush" color="#13c2c2" />
+          </view>
+        </view>
+
+        <block wx:if="{{isEnabled}}">
+          <view class="form-item">
+            <view class="form-label">推送方式</view>
+            <checkbox-group class="checkbox-group" bindchange="onPushTypeChange">
+              <label wx:if="{{globalConfig.wechat_push_enabled == 1}}" class="checkbox-item">
+                <checkbox value="wechat" checked="{{pushWechat}}" color="#13c2c2" />
+                <text>微信订阅消息</text>
+              </label>
+              <label wx:if="{{globalConfig.email_push_enabled == 1}}" class="checkbox-item">
+                <checkbox value="email" checked="{{pushEmail}}" color="#13c2c2" />
+                <text>邮件推送</text>
+              </label>
+            </checkbox-group>
+          </view>
+
+          <view wx:if="{{globalConfig.schedule_reminder_enabled == 1}}" class="form-item">
+            <view class="form-label">明日课程提醒</view>
+            <view class="switch-row">
+              <switch checked="{{scheduleReminderEnabled}}" bindchange="onScheduleReminderChange" color="#13c2c2" />
+              <picker wx:if="{{scheduleReminderEnabled}}" mode="time" value="{{scheduleReminderTime}}" bindchange="onTimeChange">
+                <view class="time-picker">{{scheduleReminderTime}}</view>
+              </picker>
+            </view>
+            <view class="form-tip">每天定时推送明天的课程安排</view>
+          </view>
+
+          <view wx:if="{{globalConfig.grade_notify_enabled == 1}}" class="form-item">
+            <view class="form-label">成绩发布通知</view>
+            <view class="switch-row">
+              <switch checked="{{gradeNotifyEnabled}}" bindchange="onGradeNotifyChange" color="#13c2c2" />
+            </view>
+            <view class="form-tip">当有新成绩发布时自动推送通知</view>
+          </view>
+
+          <button class="submit-btn" bindtap="onSubmit" loading="{{saving}}">保存设置</button>
+        </block>
+      </view>
+
+      <view class="menu-card" wx:if="{{logs.length > 0}}">
+        <view class="menu-title">推送记录</view>
+        <view wx:for="{{logs}}" wx:key="id" class="log-item">
+          <view class="log-header">
+            <view class="log-type">
+              <text>{{item.notify_type === 'schedule_reminder' ? '课程提醒' : '成绩通知'}}</text>
+            </view>
+            <view class="log-status {{item.status === 1 ? 'success' : 'failed'}}">
+              {{item.status === 1 ? '已发送' : '失败'}}
+            </view>
+          </view>
+          <view class="log-title">{{item.title}}</view>
+          <view class="log-time">{{item.sent_at}}</view>
+        </view>
+      </view>
+    </block>
+  </view>
+</view>

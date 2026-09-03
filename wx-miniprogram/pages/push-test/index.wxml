@@ -1,0 +1,118 @@
+<view class="container">
+  <top-menu showBack="{{true}}">
+    <view class="nav-title">推送测试</view>
+  </top-menu>
+
+  <view class="background-wrapper">
+    <image class="background" src="/assets/wxmp-banner.jpg" mode="aspectFill" />
+    <view class="background-mask"></view>
+  </view>
+
+  <view class="content-wrapper">
+    <view class="card">
+      <view class="card-title">订阅消息测试</view>
+      <view class="card-desc">测试微信小程序订阅消息推送功能</view>
+    </view>
+
+    <view class="section">
+      <view class="section-title">第一步：获取OpenID</view>
+      <view class="openid-info">
+        <view class="openid-label">当前OpenID：</view>
+        <view class="openid-value">{{openid || '未获取'}}</view>
+      </view>
+      <button class="btn primary-btn" bindtap="onGetOpenid" loading="{{loading}}">
+        {{openid ? '重新获取OpenID' : '获取OpenID'}}
+      </button>
+    </view>
+
+    <view class="section">
+      <view class="section-title">第二步：选择模板</view>
+      <view class="version-info">
+        <text class="version-label">微信版本：</text>
+        <text class="version-value">{{wxVersion}}</text>
+        <text class="version-divider">|</text>
+        <text class="version-label">基础库：</text>
+        <text class="version-value">{{sdkVersion}}</text>
+      </view>
+      <view class="form-item">
+        <view class="form-label">选择已配置模板</view>
+        <picker mode="selector" range="{{templateList}}" range-key="name" bindchange="onTemplatePickerChange">
+          <view class="form-picker">
+            <text>{{selectedTemplateName || '请选择模板'}}</text>
+            <text class="picker-arrow">▼</text>
+          </view>
+        </picker>
+      </view>
+      <view wx:if="{{selectedTemplate}}" class="template-info">
+        <view class="template-info-item">
+          <text class="template-info-label">模板ID：</text>
+          <text class="template-info-value">{{selectedTemplate.template_id}}</text>
+        </view>
+        <view wx:if="{{selectedTemplate.description}}" class="template-info-item">
+          <text class="template-info-label">描述：</text>
+          <text class="template-info-value">{{selectedTemplate.description}}</text>
+        </view>
+      </view>
+      <view class="form-item" style="margin-top: 20rpx;">
+        <view class="form-label">或手动输入模板ID</view>
+        <input class="form-input" placeholder="请输入模板ID" value="{{templateId}}" bindinput="onTemplateInput" />
+      </view>
+      <view class="form-tip">在微信公众平台 - 订阅消息中获取模板ID</view>
+      <view wx:if="{{templateId && subscribeCount !== null}}" class="subscribe-count-info">
+        <view class="subscribe-count-badge {{subscribeCount > 0 ? 'has-count' : 'no-count'}}">
+          <text class="subscribe-count-label">当前可用订阅次数</text>
+          <text class="subscribe-count-value">{{subscribeCount}}</text>
+        </view>
+        <view class="subscribe-count-tip" wx:if="{{subscribeCount === 0}}">次数不足，请先订阅</view>
+      </view>
+    </view>
+
+    <view class="section">
+      <view class="section-title">消息内容配置</view>
+      <view class="form-item">
+        <view class="form-label">消息数据（JSON格式）</view>
+        <textarea class="form-textarea" placeholder="{{defaultDataPlaceholder}}" value="{{messageData}}" bindinput="onMessageDataInput" auto-height />
+      </view>
+      <view wx:if="{{selectedTemplate && selectedTemplate.fields}}" class="fields-list">
+        <view class="fields-title">模板字段：</view>
+        <view wx:for="{{selectedTemplate.fields}}" wx:key="field" class="field-item">
+          <text class="field-name">{{item.name}}</text>
+          <text class="field-id">({{item.field}})</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="section">
+      <view class="section-title">第三步：请求订阅</view>
+      <button class="btn primary-btn" bindtap="onRequestSubscribe">
+        请求订阅消息授权
+      </button>
+      <view wx:if="{{subscribed}}" class="subscribe-status success">
+        <image class="subscribe-icon" src="/assets/wxmp-check.svg" mode="widthFix"></image>
+        <text>已授权订阅</text>
+      </view>
+    </view>
+
+    <view class="section">
+      <view class="section-title">第四步：发送测试消息</view>
+      <button class="btn secondary-btn" bindtap="onSendTest" loading="{{sending}}" disabled="{{!openid || !templateId}}">
+        发送测试消息
+      </button>
+    </view>
+
+    <view class="section">
+      <view class="section-header">
+        <view class="section-title">日志记录</view>
+        <view class="clear-btn" bindtap="clearLogs">清空</view>
+      </view>
+      <view class="logs-wrapper">
+        <view wx:if="{{logs.length === 0}}" class="logs-empty">暂无日志</view>
+        <view wx:for="{{logs}}" wx:key="time" class="log-item {{item.type}}" bindtap="onCopyLog" data-message="{{item.message}}">
+          <view class="log-time">{{item.time}}</view>
+          <view class="log-message">{{item.message}}</view>
+          <view class="log-copy">点击复制</view>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

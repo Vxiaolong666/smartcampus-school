@@ -1,0 +1,77 @@
+<view class="container">
+  <top-menu showBack="{{true}}">
+    <view class="nav-title">成绩查询</view>
+  </top-menu>
+
+  <view class="background-wrapper">
+    <image class="background" src="/assets/wxmp-banner.jpg" mode="aspectFill" />
+    <view class="background-mask"></view>
+  </view>
+
+  <view class="content-wrapper">
+    <view wx:if="{{announcement}}">
+      <announcement content="{{announcement.content}}" type="{{announcement.type}}" closable="{{true}}" />
+    </view>
+
+    <view class="filter-card">
+      <view class="filter-row">
+        <view class="filter-item">
+          <view class="filter-label">学期</view>
+          <picker mode="selector" range="{{semesters}}" range-key="semesterName" value="{{semesterIndex}}" bindchange="onSemesterChange">
+            <view class="filter-value">{{semesters[semesterIndex].semesterName || '请选择'}}</view>
+          </picker>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{loading}}" class="loading-wrapper">
+      <view class="loading-text">加载中...</view>
+    </view>
+
+    <view wx:elif="{{grades.length === 0}}" class="empty-wrapper">
+      <image class="empty-icon" src="/assets/wxmp-read.svg" mode="widthFix"></image>
+      <view class="empty-text">暂无成绩数据</view>
+    </view>
+
+    <view wx:else class="grade-list">
+      <view class="grade-item" wx:for="{{grades}}" wx:key="index">
+        <view class="grade-header">
+          <view class="grade-name">{{item.courseName}}</view>
+          <view class="grade-score {{item.score >= 60 ? 'pass' : 'fail'}}">{{item.score}}</view>
+        </view>
+        <view class="grade-info">
+          <view class="grade-info-item">
+            <text class="info-label">学分：</text>
+            <text class="info-value">{{item.credit}}</text>
+          </view>
+          <view class="grade-info-item">
+            <text class="info-label">绩点：</text>
+            <text class="info-value">{{item.gpa || '-'}}</text>
+          </view>
+          <view class="grade-info-item">
+            <text class="info-label">类型：</text>
+            <text class="info-value">{{item.courseType || '-'}}</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="summary-card">
+        <view class="summary-title">本学期统计</view>
+        <view class="summary-row">
+          <view class="summary-item">
+            <view class="summary-value">{{summary.totalCourses}}</view>
+            <view class="summary-label">课程数</view>
+          </view>
+          <view class="summary-item">
+            <view class="summary-value">{{summary.earnedCredits}}</view>
+            <view class="summary-label">已修学分</view>
+          </view>
+          <view class="summary-item">
+            <view class="summary-value">{{summary.avgGpa}}</view>
+            <view class="summary-label">平均绩点</view>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

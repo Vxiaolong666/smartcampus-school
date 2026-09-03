@@ -1,0 +1,97 @@
+<view class="container">
+  <top-menu showBack="{{true}}">
+    <view class="nav-title">批量查询</view>
+    <view slot="right" class="nav-action" bindtap="goBack">
+      <text class="action-text">返回</text>
+    </view>
+  </top-menu>
+
+  <view class="background-wrapper">
+    <image class="background" src="/assets/wxmp-banner.jpg" mode="aspectFill" />
+    <view class="background-mask"></view>
+  </view>
+
+  <view class="content-wrapper">
+    <view wx:if="{{announcement}}" class="announcement-wrapper">
+      <view class="announcement-simple">{{announcement.content}}</view>
+    </view>
+
+    <view class="filter-card">
+      <view class="filter-row">
+        <view class="filter-item half">
+          <view class="filter-label">校区</view>
+          <picker mode="selector" range="{{areas}}" value="{{areaIndex}}" bindchange="onAreaChange">
+            <view class="filter-value">{{areaIndex >= 0 ? areas[areaIndex] : '请选择校区'}}</view>
+          </picker>
+        </view>
+        <view class="filter-item half">
+          <view class="filter-label">楼栋</view>
+          <picker mode="selector" range="{{buildings}}" value="{{buildingIndex}}" bindchange="onBuildingChange">
+            <view class="filter-value">{{buildingIndex >= 0 ? buildings[buildingIndex] : '请选择楼栋'}}</view>
+          </picker>
+        </view>
+      </view>
+
+      <view wx:if="{{roomCount > 0}}" class="room-info">
+        <text class="room-count">共发现 {{roomCount}} 个房间</text>
+      </view>
+
+      <button class="query-btn" bindtap="onQuery" disabled="{{querying}}" loading="{{querying}}">
+        {{querying ? '查询中...' : '开始查询'}}
+      </button>
+    </view>
+
+    <view wx:if="{{querying}}" class="progress-card">
+      <view class="progress-text">正在查询... {{queryProgress}}/{{queryTotal}}</view>
+      <progress percent="{{queryTotal > 0 ? (queryProgress / queryTotal * 100) : 0}}" stroke-width="12" activeColor="#13c2c2" backgroundColor="#f0f0f0" />
+    </view>
+
+    <view wx:if="{{results.length > 0 && !querying}}" class="results-wrapper">
+      <view class="stats-row">
+        <view class="stat-item normal">
+          <view class="stat-value">{{stats.normal}}</view>
+          <view class="stat-label">充足</view>
+        </view>
+        <view class="stat-item warning">
+          <view class="stat-value">{{stats.warning}}</view>
+          <view class="stat-label">偏低</view>
+        </view>
+        <view class="stat-item low">
+          <view class="stat-value">{{stats.low}}</view>
+          <view class="stat-label">不足</view>
+        </view>
+        <view class="stat-item arrears">
+          <view class="stat-value">{{stats.arrears}}</view>
+          <view class="stat-label">欠费</view>
+        </view>
+      </view>
+
+      <view class="filter-row">
+        <view class="filter-item">
+          <view class="filter-label">筛选</view>
+          <picker mode="selector" range="{{['全部', '电量充足', '电量偏低', '电量不足', '已欠费']}}" value="{{filterType === 'all' ? 0 : filterType === 'normal' ? 1 : filterType === 'warning' ? 2 : filterType === 'low' ? 3 : 4}}" bindchange="onFilterChange">
+            <view class="filter-value-small">
+              {{filterType === 'all' ? '全部' : filterType === 'normal' ? '电量充足' : filterType === 'warning' ? '电量偏低' : filterType === 'low' ? '电量不足' : '已欠费'}}
+            </view>
+          </picker>
+        </view>
+      </view>
+
+      <view class="result-list">
+        <view class="result-item {{item.status}}" wx:for="{{results}}" wx:key="roomNum" wx:if="{{filterType === 'all' || item.status === filterType}}">
+          <view class="result-room">{{item.room}}</view>
+          <view class="result-balance">{{item.balance !== null ? item.balance + ' 度' : '--'}}</view>
+          <view class="result-status">
+            <text class="status-dot"></text>
+            <text>{{item.status === 'normal' ? '充足' : item.status === 'warning' ? '偏低' : item.status === 'low' ? '不足' : item.status === 'arrears' ? '欠费' : '错误'}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{!querying && results.length === 0}}" class="empty-wrapper">
+      <image class="empty-icon" src="/assets/wxmp-bolt-gray.svg" mode="widthFix"></image>
+      <view class="empty-text">选择校区和楼栋后开始查询</view>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,167 @@
+page {
+    background: #eff1ff;
+    height: 100vh;
+}
+
+.nav-title {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    font-size: 32rpx;
+    font-weight: bold;
+    position: relative;
+    z-index: 1;
+    color: white;
+    letter-spacing: 6rpx;
+}
+
+.background-wrapper {
+    position: fixed;
+    width: 100%;
+    top: 0;
+}
+
+.background {
+    width: 100%;
+    position: absolute;
+    top: 0;
+    height: 800rpx;
+}
+
+.background-mask {
+    background-image: linear-gradient(
+        to bottom,
+        rgba(0, 0, 0, .8) 0%,
+        rgba(0, 0, 0, .4) 15%,
+        transparent 40%,
+        transparent 60%,
+        rgba(239, 241, 255, 0.3) 75%,
+        rgba(239, 241, 255, 0.7) 85%,
+        rgba(239, 241, 255, 1) 100%
+    );
+    height: 800rpx;
+    position: absolute;
+    width: 100%;
+    top: 0;
+}
+
+.content-wrapper {
+    position: relative;
+    z-index: 1;
+    padding: 40rpx;
+    padding-top: 180rpx;
+}
+
+.logo-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 50rpx;
+}
+
+.logo {
+    width: 100rpx;
+    height: 100rpx;
+    margin-bottom: 16rpx;
+}
+
+.app-name {
+    font-size: 36rpx;
+    font-weight: bold;
+    color: #48416f;
+    margin-bottom: 8rpx;
+}
+
+.app-desc {
+    font-size: 24rpx;
+    color: #948eb3;
+}
+
+.form-card {
+    background: white;
+    border-radius: 20rpx;
+    overflow: hidden;
+    box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.05);
+}
+
+.card-header {
+    display: flex;
+    align-items: center;
+    padding: 30rpx;
+    border-bottom: 1rpx solid #f0f0f0;
+}
+
+.card-icon {
+    width: 36rpx;
+    height: 36rpx;
+    margin-right: 12rpx;
+}
+
+.card-title {
+    font-size: 28rpx;
+    font-weight: bold;
+    color: #48416f;
+}
+
+.form-item {
+    padding: 0 30rpx;
+    margin-top: 30rpx;
+}
+
+.input-wrapper {
+    display: flex;
+    align-items: center;
+    background: #f7f8fc;
+    border-radius: 16rpx;
+    padding: 0 20rpx;
+    height: 96rpx;
+}
+
+.input-icon {
+    width: 32rpx;
+    height: 32rpx;
+    margin-right: 16rpx;
+    flex-shrink: 0;
+}
+
+.form-input {
+    flex: 1;
+    height: 96rpx;
+    font-size: 28rpx;
+    color: #48416f;
+}
+
+.form-input::placeholder {
+    color: #948eb3;
+}
+
+.register-btn {
+    width: calc(100% - 60rpx);
+    height: 96rpx;
+    line-height: 96rpx;
+    background: #13c2c2;
+    color: #fff;
+    font-size: 30rpx;
+    border-radius: 16rpx;
+    font-weight: bold;
+    margin: 30rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.register-btn:active {
+    opacity: 0.9;
+}
+
+.login-link {
+    text-align: center;
+    padding: 30rpx;
+    font-size: 26rpx;
+    color: #948eb3;
+}
+
+.login-link .link {
+    color: #13c2c2;
+    font-weight: bold;
+}
