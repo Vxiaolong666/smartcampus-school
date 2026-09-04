@@ -311,6 +311,35 @@ if (!empty($dayCourses)) {
         }
     }
 }
+
+$aiTodayCourses = [];
+if (!empty($dayCourses)) {
+    foreach ($dayCourses as $course) {
+        $classTime = $course['classTime'] ?? '';
+        $weekNoteDetail = $course['weekNoteDetail'] ?? '';
+        $slots = getCourseTimeSlots($classTime, $weekNoteDetail);
+        $timeDisplay = '';
+        if (!empty($slots)) {
+            $firstSlot = min($slots);
+            $lastSlot = max($slots);
+            $firstCode = '1' . sprintf('%02d', $firstSlot);
+            $lastCode = '1' . sprintf('%02d', $lastSlot);
+            $firstTime = $timeSlots[$firstCode]['time'] ?? '';
+            $lastTime = $timeSlots[$lastCode]['time'] ?? '';
+            $firstParts = explode('-', $firstTime);
+            $lastParts = explode('-', $lastTime);
+            if (count($firstParts) == 2 && count($lastParts) == 2) {
+                $timeDisplay = $firstParts[0] . '-' . $lastParts[1];
+            }
+        }
+        $aiTodayCourses[] = [
+            'name' => $course['courseName'] ?? '',
+            'time' => $timeDisplay,
+            'location' => $course['location'] ?? '',
+            'teacher' => $course['teacherName'] ?? $course['teacher'] ?? '',
+        ];
+    }
+}
 ?>
 
 <div id="pjax-container">
@@ -353,6 +382,11 @@ if (!empty($dayCourses)) {
                                 </div>
                             </a>
                             <?php endfor; ?>
+                        </div>
+                        <div class="text-center mt-3">
+                            <button type="button" class="btn btn-alt-primary" id="aiAnalyzeBtn" onclick="aiAnalyzeToday()">
+                                <i class="fa fa-robot me-1"></i> AI 智能分析
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -662,6 +696,65 @@ function updateTime() {
 
 setInterval(updateTime, 1000);
 <?php endif; ?>
+</script>
+
+<!-- AI 智能分析今日课程 弹窗 -->
+<div class="modal fade" id="aiModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fa fa-robot me-1"></i>AI 智能今日课程分析</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </div>
+            <div class="modal-body">
+                <pre id="aiResult" style="white-space: pre-wrap; word-break: break-word; font-family: inherit; font-size: 14px; margin: 0;"></pre>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+window.__todayData = {
+    dayName: <?php echo json_encode($dayNamesFull[$selectDay]); ?>,
+    date: <?php echo json_encode($selectedDateDisplay); ?>,
+    courses: <?php echo json_encode($aiTodayCourses, JSON_UNESCAPED_UNICODE); ?>
+};
+function aiAnalyzeToday() {
+    if (!window.__todayData || !window.__todayData.courses || !window.__todayData.courses.length) {
+        alert('今日暂无课程，无法分析');
+        return;
+    }
+    var modal = (window.bootstrap && bootstrap.Modal) ? new bootstrap.Modal(document.getElementById('aiModal')) : null;
+    if (modal) { modal.show(); } else { $('#aiModal').modal('show'); }
+    $('#aiResult').html('<div class="text-center text-muted py-4"><i class="fa fa-spinner fa-spin me-2"></i>AI 正在分析，请稍候…</div>');
+    $.ajax({
+        url: 'ajax.php?act=ai_analyze_schedule',
+        type: 'POST',
+        data: {
+            data: JSON.stringify({
+                type: 'today',
+                dayName: window.__todayData.dayName,
+                date: window.__todayData.date,
+                courses: window.__todayData.courses
+            })
+        },
+        dataType: 'json',
+        success: function(res) {
+            if (res.code == 0) {
+                if (window.marked) {
+                    $('#aiResult').html('<div class="markdown-body">' + window.marked.parse(res.content) + '</div>');
+                } else {
+                    $('#aiResult').text(res.content);
+                }
+            } else {
+                $('#aiResult').html('<div class="alert alert-danger">' + (res.msg || '分析失败') + '</div>');
+            }
+        },
+        error: function() {
+            $('#aiResult').html('<div class="alert alert-danger">请求失败，请稍后重试</div>');
+        }
+    });
+}
 </script>
 
 <?php include 'foot.php'; ?>

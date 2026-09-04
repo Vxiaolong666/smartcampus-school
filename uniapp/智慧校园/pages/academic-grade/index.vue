@@ -80,7 +80,33 @@
 					</view>
 				</view>
 			</view>
+
+			<view class="ai-analyze-wrap" v-if="!loading && grades.length > 0">
+				<view class="ai-analyze-btn" @click="aiAnalyze" :class="{ 'ai-loading': aiLoading }">
+					<text v-if="!aiLoading">AI 智能分析成绩</text>
+					<text v-else>分析中…</text>
+				</view>
+			</view>
+
 		</view>
+		<view v-if="showAiResult" class="ai-mask" @click="closeAiResult">
+			<view class="ai-modal" :style="{ height: sheetHeight + 'px' }" @click.stop>
+				<view class="ai-modal-handle"
+					@touchstart="onSheetDragStart"
+					@touchmove="onSheetDragMove"
+					@touchend="onSheetDragEnd"></view>
+				<view class="ai-modal-header">
+					<text class="ai-modal-title">AI 智能成绩分析</text>
+					<text class="ai-modal-close" @click="closeAiResult">✕</text>
+				</view>
+				<scroll-view scroll-y="true" class="ai-modal-body">
+					<view class="ai-modal-body-inner">
+						<rich-text :nodes="aiResultHtml" class="ai-modal-content"></rich-text>
+					</view>
+				</scroll-view>
+			</view>
+		</view>
+
 	</view>
 </template>
 
@@ -91,6 +117,7 @@
  */
 import api from '../../utils/api.js';
 import feature from '../../utils/feature.js';
+import markdownToHtml from '../../utils/markdown.js';
 
 export default {
 	data() {
@@ -106,11 +133,33 @@ export default {
 				avgGpa: 0,
 				earnedCredits: 0
 			},
-			announcement: null
+			announcement: null,
+			aiLoading: false,
+			aiResult: '',
+			showAiResult: false,
+			aiCache: {},
+			windowHeight: 0,
+			sheetHeight: 0,
+			dragStartY: 0,
+			dragStartHeight: 0,
+			dragging: false
 		};
 	},
 
+	watch: {
+		showAiResult(val) {
+			if (val) {
+				this.initSheetHeight();
+			}
+		}
+	},
+
 	onLoad(options) {
+		try {
+			this.windowHeight = uni.getSystemInfoSync().windowHeight || 0;
+		} catch (e) {
+			this.windowHeight = 0;
+		}
 		if (!api.isLoggedIn()) {
 			uni.showToast({ title: '请先登录', icon: 'none' });
 			setTimeout(() => {
@@ -123,6 +172,12 @@ export default {
 			if (!canProceed) return;
 			this.loadSemesters();
 		});
+	},
+
+	computed: {
+		aiResultHtml() {
+			return markdownToHtml(this.aiResult);
+		}
 	},
 
 	methods: {
@@ -238,6 +293,85 @@ export default {
 			if (score >= 64) return '1.5';
 			if (score >= 60) return '1.0';
 			return '0';
+			},
+
+			async aiAnalyze() {
+			if (this.aiLoading) return;
+			if (this.grades.length === 0) {
+				uni.showToast({ title: '暂无成绩数据', icon: 'none' });
+				return;
+			}
+			const semesterName = (this.semesters[this.semesterIndex] && this.semesters[this.semesterIndex].semesterName) || '';
+			// 页面内已缓存，直接展示，不重新生成、不发请求
+			if (this.aiCache[semesterName]) {
+				this.aiResult = this.aiCache[semesterName];
+				this.showAiResult = true;
+				return;
+			}
+			this.aiLoading = true;
+			const payload = {
+				achievement: this.grades.map(g => ({
+					courseName: g.courseName,
+					fraction: g.score,
+					credit: g.credit,
+					gpa: g.gpa,
+					curriculumAttributes: g.courseType
+				})),
+				gpa: this.summary.avgGpa,
+				credit: this.summary.earnedCredits,
+				semester: semesterName
+			};
+			try {
+				const res = await api.aiAnalyzeGrades(payload);
+				const content = (res.data && res.data.content) ? String(res.data.content).trim() : '';
+				if (!content) {
+					uni.showToast({ title: '暂无分析结果，请重试', icon: 'none' });
+					return;
+				}
+				this.aiCache[semesterName] = content;
+				this.aiResult = content;
+				this.showAiResult = true;
+			} catch (err) {
+				uni.showToast({ title: (err && err.msg) || '分析失败', icon: 'none' });
+			} finally {
+				this.aiLoading = false;
+			}
+		},
+
+		closeAiResult() {
+			this.showAiResult = false;
+		},
+
+		initSheetHeight() {
+			if (!this.windowHeight) {
+				try {
+					this.windowHeight = uni.getSystemInfoSync().windowHeight || 0;
+				} catch (e) {
+					this.windowHeight = 0;
+				}
+			}
+			this.sheetHeight = Math.round(this.windowHeight * 0.8);
+		},
+
+		onSheetDragStart(e) {
+			this.dragging = true;
+			this.dragStartY = e.touches[0].clientY;
+			this.dragStartHeight = this.sheetHeight;
+		},
+
+		onSheetDragMove(e) {
+			if (!this.dragging) return;
+			const deltaY = e.touches[0].clientY - this.dragStartY;
+			let newH = this.dragStartHeight - deltaY;
+			const maxH = this.windowHeight || 99999;
+			const minH = Math.round((this.windowHeight || 0) * 0.25);
+			if (newH > maxH) newH = maxH;
+			if (newH < minH) newH = minH;
+			this.sheetHeight = newH;
+		},
+
+		onSheetDragEnd() {
+			this.dragging = false;
 		}
 	}
 };
@@ -470,5 +604,114 @@ page {
 	font-size: 24rpx;
 	color: #948eb3;
 	margin-top: 8rpx;
+}
+
+.ai-analyze-wrap {
+	display: flex;
+	justify-content: center;
+	margin-top: 30rpx;
+}
+
+.ai-analyze-btn {
+	background: linear-gradient(135deg, #13c2c2, #1890ff);
+	color: white;
+	font-size: 28rpx;
+	padding: 20rpx 60rpx;
+	border-radius: 40rpx;
+	box-shadow: 0 10rpx 30rpx rgba(19, 194, 194, 0.3);
+}
+
+.ai-analyze-btn.ai-loading {
+	opacity: 0.7;
+}
+
+.ai-mask {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(0, 0, 0, 0.55);
+	z-index: 999;
+	display: flex;
+	align-items: flex-end;
+	justify-content: center;
+	animation: aiMaskFade 0.25s ease;
+}
+
+@keyframes aiMaskFade {
+	from { opacity: 0; }
+	to { opacity: 1; }
+}
+
+.ai-modal {
+	width: 100%;
+	background: #fff;
+	border-radius: 32rpx 32rpx 0 0;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	box-shadow: 0 -8rpx 40rpx rgba(0, 0, 0, 0.18);
+	animation: aiModalUp 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes aiModalUp {
+	from { transform: translateY(100%); }
+	to { transform: translateY(0); }
+}
+
+.ai-modal-handle {
+	width: 72rpx;
+	height: 8rpx;
+	border-radius: 8rpx;
+	background: #d8d4e8;
+	margin: 18rpx auto 2rpx;
+	transition: background 0.2s ease;
+}
+
+.ai-modal-handle:active {
+	background: #b9b2d6;
+}
+
+.ai-modal-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 14rpx 44rpx 22rpx;
+	border-bottom: 1rpx solid #f0f0f4;
+}
+
+.ai-modal-title {
+	font-size: 32rpx;
+	font-weight: bold;
+	color: #322c54;
+}
+
+.ai-modal-close {
+	width: 56rpx;
+	height: 56rpx;
+	line-height: 56rpx;
+	text-align: center;
+	font-size: 30rpx;
+	color: #948eb3;
+	background: #f3f2f8;
+	border-radius: 50%;
+}
+
+.ai-modal-body {
+	flex: 1;
+	min-height: 0;
+}
+
+.ai-modal-body-inner {
+	padding: 30rpx 44rpx;
+}
+
+.ai-modal-content {
+	display: block;
+	font-size: 28rpx;
+	color: #48416f;
+	line-height: 1.75;
+	word-break: break-word;
 }
 </style>

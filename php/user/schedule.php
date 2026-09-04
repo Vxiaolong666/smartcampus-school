@@ -143,6 +143,7 @@ for ($i = 0; $i < 11; $i++) {
     }
 }
 
+$aiCourses = [];
 if ($schedule && !empty($schedule['courses'])) {
     $courses = $schedule['courses'];
     $courseMap = [];
@@ -167,6 +168,17 @@ if ($schedule && !empty($schedule['courses'])) {
                 $grid[$s][$day][] = $course;
             }
         }
+        
+        $aiCourses[] = [
+            'name' => $course['courseName'] ?? '',
+            'weekDay' => $course['weekDay'] ?? '',
+            'section' => $course['classTime'] ?? '',
+            'location' => $course['location'] ?? '',
+            'teacher' => $course['teacherName'] ?? $course['teacher'] ?? '',
+            'weeks' => $course['classWeek'] ?? '',
+            'credit' => $course['credit'] ?? '',
+            'nature' => $course['courseNature'] ?? '',
+        ];
     }
 }
 ?>
@@ -178,6 +190,11 @@ if ($schedule && !empty($schedule['courses'])) {
                 <h3 class="block-title">
                     <i class="fa fa-calendar-alt me-2"></i>课程查询
                 </h3>
+                <div class="block-options">
+                    <button type="button" class="btn btn-alt-primary btn-sm" id="aiAnalyzeBtn" onclick="aiAnalyzeSchedule()">
+                        <i class="fa fa-robot me-1"></i>AI 智能分析课表
+                    </button>
+                </div>
             </div>
             <div class="block-content block-content-full">
                 <?php renderFeatureAnnouncement($DB, 'schedule'); ?>
@@ -221,41 +238,32 @@ if ($schedule && !empty($schedule['courses'])) {
                             </div>
                         </form>
                     </div>
-                    <div class="col-md-4 text-md-end">
-                        <span class="text-muted">
-                            <i class="fa fa-user me-1"></i>
-                            学工号：<?php echo htmlspecialchars($academicAccount['student_id']); ?>
-                        </span>
-                    </div>
                 </div>
                 
                 <?php if($schedule !== null): ?>
                     <?php 
                     $dates = isset($schedule['date']) ? $schedule['date'] : [];
                     $courses = isset($schedule['courses']) ? $schedule['courses'] : [];
+                    $dateByXq = [];
+                    foreach ($dates as $d) {
+                        $xq = trim($d['xqmc'] ?? '');
+                        if ($xq !== '') $dateByXq[$xq] = $d['mxrq'] ?? '';
+                    }
                     ?>
-                    
-                    <?php if(!empty($dates)): ?>
-                    <div class="alert alert-info mb-3">
-                        <i class="fa fa-calendar me-2"></i>
-                        <?php if(!empty($currentWeek)): ?>
-                        <strong class="me-3">第<?php echo htmlspecialchars($currentWeek); ?>周</strong>
-                        <?php endif; ?>
-                        <?php foreach($dates as $d): ?>
-                            <span class="me-2"><?php echo htmlspecialchars($d['xqmc'] ?? ''); ?> <?php echo htmlspecialchars($d['mxrq'] ?? ''); ?></span>
-                        <?php endforeach; ?>
-                    </div>
-                    <?php endif; ?>
                     
                     <?php if(!empty($courses)): ?>
                     
                     <div class="table-responsive">
-                        <table class="table table-bordered" style="table-layout: fixed;">
+                        <table class="table table-bordered mb-0 schedule-table" style="table-layout: fixed;">
                             <thead>
                                 <tr class="bg-body-light">
-                                    <th class="text-center align-middle" style="width: 70px;">节次</th>
+                                    <th class="text-center align-middle slot-col" style="width: 70px;">节次</th>
                                     <?php foreach($days as $day): ?>
-                                    <th class="text-center"><?php echo $day; ?></th>
+                                    <?php $xq = mb_substr($day, 1, 1, 'UTF-8'); ?>
+                                    <th class="text-center" style="width: 90px;">
+                                        <?php echo $day; ?>
+                                        <div class="text-muted" style="font-weight: normal; font-size: 10px; line-height: 1.2;"><?php echo htmlspecialchars($dateByXq[$xq] ?? ''); ?></div>
+                                    </th>
                                     <?php endforeach; ?>
                                 </tr>
                             </thead>
@@ -278,7 +286,15 @@ if ($schedule && !empty($schedule['courses'])) {
                                                 $colorIndex = getCourseColorIndex($courseName);
                                                 $colorClass = isset($courseColors[$colorIndex]) ? $courseColors[$colorIndex] : 'bg-primary';
                                         ?>
-                                        <div class="<?php echo $colorClass; ?> text-white rounded p-1 mb-1" style="font-size: 11px;">
+                                        <div class="<?php echo $colorClass; ?> text-white rounded p-1 mb-1 course-card" style="font-size: 11px; cursor: pointer;" role="button"
+                                             data-bs-toggle="modal" data-bs-target="#courseModal"
+                                             data-name="<?php echo htmlspecialchars($courseName); ?>"
+                                             data-location="<?php echo htmlspecialchars($location); ?>"
+                                             data-teacher="<?php echo htmlspecialchars($teacher); ?>"
+                                             data-time="<?php echo htmlspecialchars(($slot['name'] ?? '') . ' ' . ($slot['time'] ?? '')); ?>"
+                                             data-day="<?php echo htmlspecialchars($days[$day - 1] ?? ''); ?>"
+                                             data-date="<?php echo htmlspecialchars($dateByXq[mb_substr($days[$day - 1], 1, 1, 'UTF-8')] ?? ''); ?>"
+                                             data-week="<?php echo htmlspecialchars($currentWeek); ?>">
                                             <div class="fw-bold text-truncate" title="<?php echo htmlspecialchars($courseName); ?>">
                                                 <?php echo htmlspecialchars($courseName); ?>
                                             </div>
@@ -305,54 +321,6 @@ if ($schedule && !empty($schedule['courses'])) {
                         </table>
                     </div>
                     
-                    <div class="mobile-schedule">
-                        <?php for($day = 1; $day <= 7; $day++): ?>
-                        <?php 
-                        $dayCourses = [];
-                        for ($row = 0; $row < 11; $row++) {
-                            $cellCourses = $grid[$row][$day] ?? [];
-                            foreach ($cellCourses as $course) {
-                                $key = $course['courseName'] ?? '';
-                                if (!isset($dayCourses[$key])) {
-                                    $dayCourses[$key] = $course;
-                                }
-                            }
-                        }
-                        ?>
-                        <?php if(!empty($dayCourses)): ?>
-                        <div class="mobile-day-section">
-                            <div class="mobile-day-header">
-                                <i class="fa fa-calendar-day me-2"></i><?php echo $days[$day-1]; ?>
-                            </div>
-                            <?php foreach($dayCourses as $course): ?>
-                            <?php 
-                            $courseName = $course['courseName'] ?? '';
-                            $location = $course['location'] ?? '';
-                            $teacher = $course['teacherName'] ?? $course['teacher'] ?? '';
-                            $colorIndex = getCourseColorIndex($courseName);
-                            $colorClass = isset($courseColors[$colorIndex]) ? $courseColors[$colorIndex] : 'bg-primary';
-                            ?>
-                            <div class="mobile-course-item">
-                                <div class="mobile-course-name <?php echo str_replace('bg-', 'text-', $colorClass); ?>">
-                                    <?php echo htmlspecialchars($courseName); ?>
-                                </div>
-                                <?php if($location): ?>
-                                <div class="mobile-course-info">
-                                    <i class="fa fa-map-marker-alt me-1"></i><?php echo htmlspecialchars($location); ?>
-                                </div>
-                                <?php endif; ?>
-                                <?php if(!empty($teacher)): ?>
-                                <div class="mobile-course-info">
-                                    <i class="fa fa-user me-1"></i><?php echo htmlspecialchars($teacher); ?>
-                                </div>
-                                <?php endif; ?>
-                            </div>
-                            <?php endforeach; ?>
-                        </div>
-                        <?php endif; ?>
-                        <?php endfor; ?>
-                    </div>
-                    
                     <?php else: ?>
                     <div class="alert alert-info">
                         <i class="fa fa-info-circle me-2"></i>暂无课程数据
@@ -371,6 +339,111 @@ if ($schedule && !empty($schedule['courses'])) {
     </div>
 </div>
 
+<!-- AI 智能分析课表 弹窗 -->
+<div class="modal fade" id="aiModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fa fa-robot me-1"></i>AI 智能课表分析</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </div>
+            <div class="modal-body">
+                <pre id="aiResult" style="white-space: pre-wrap; word-break: break-word; font-family: inherit; font-size: 14px; margin: 0;"></pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 课程详情 弹窗 -->
+<div class="modal fade" id="courseModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fa fa-book me-1"></i>课程详情</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </div>
+            <div class="modal-body" id="courseModalBody"></div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+window.__scheduleData = {
+    week: <?php echo json_encode($currentWeek); ?>,
+    courses: <?php echo json_encode($aiCourses, JSON_UNESCAPED_UNICODE); ?>
+};
+function aiAnalyzeSchedule() {
+    if (!window.__scheduleData || !window.__scheduleData.courses || !window.__scheduleData.courses.length) {
+        alert('暂无可分析的课程数据');
+        return;
+    }
+    var modal = (window.bootstrap && bootstrap.Modal) ? new bootstrap.Modal(document.getElementById('aiModal')) : null;
+    if (modal) { modal.show(); } else { $('#aiModal').modal('show'); }
+    $('#aiResult').html('<div class="text-center text-muted py-4"><i class="fa fa-spinner fa-spin me-2"></i>AI 正在分析，请稍候…</div>');
+    $.ajax({
+        url: 'ajax.php?act=ai_analyze_schedule',
+        type: 'POST',
+        data: {
+            data: JSON.stringify({
+                type: 'semester',
+                week: window.__scheduleData.week,
+                courses: window.__scheduleData.courses
+            })
+        },
+        dataType: 'json',
+        success: function(res) {
+            if (res.code == 0) {
+                if (window.marked) {
+                    $('#aiResult').html('<div class="markdown-body">' + window.marked.parse(res.content) + '</div>');
+                } else {
+                    $('#aiResult').text(res.content);
+                }
+            } else {
+                $('#aiResult').html('<div class="alert alert-danger">' + (res.msg || '分析失败') + '</div>');
+            }
+        },
+        error: function() {
+            $('#aiResult').html('<div class="alert alert-danger">请求失败，请稍后重试</div>');
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    var courseModalEl = document.getElementById('courseModal');
+    if (!courseModalEl) return;
+    courseModalEl.addEventListener('show.bs.modal', function(e) {
+        var t = e.relatedTarget;
+        if (!t) return;
+        var week = t.getAttribute('data-week');
+        var rows = [
+            ['课程名称', t.getAttribute('data-name')],
+            ['上课时间', (t.getAttribute('data-day') || '') + ' ' + (t.getAttribute('data-time') || '')],
+            ['上课地点', t.getAttribute('data-location')],
+            ['授课教师', t.getAttribute('data-teacher')],
+            ['日期', t.getAttribute('data-date')],
+            ['周次', week ? ('第' + week + '周') : '']
+        ];
+        var html = '<div class="mb-3"><h4 class="h5 mb-1">' + escapeHtml(t.getAttribute('data-name')) + '</h4></div>';
+        html += '<dl class="row mb-0">';
+        rows.forEach(function(r) {
+            var val = r[1];
+            if (val === null || val === '') val = '<span class="text-muted">—</span>';
+            else val = escapeHtml(val);
+            html += '<dt class="col-sm-4 text-muted">' + r[0] + '</dt><dd class="col-sm-8">' + val + '</dd>';
+        });
+        html += '</dl>';
+        document.getElementById('courseModalBody').innerHTML = html;
+    });
+    function escapeHtml(s) {
+        if (s === null || s === undefined) return '';
+        return String(s).replace(/[&<>"']/g, function(c) {
+            return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+        });
+    }
+});
+</script>
+
 <style>
 .table td {
     vertical-align: top;
@@ -386,50 +459,24 @@ if ($schedule && !empty($schedule['courses'])) {
 .bg-teal { background-color: #20c997 !important; }
 .bg-orange { background-color: #fd7e14 !important; }
 
-@media (max-width: 768px) {
-    .table-responsive {
-        display: none;
+/* 移动端：保留课程表表格，横向滚动查看，紧凑显示 */
+@media (max-width: 991.98px) {
+    .schedule-table {
+        min-width: 640px;
+        font-size: 11px;
     }
-    .mobile-schedule {
-        display: block !important;
+    .schedule-table th,
+    .schedule-table td {
+        padding: 4px 3px !important;
     }
-    .mobile-day-section {
-        margin-bottom: 1rem;
+    .schedule-table .slot-col {
+        width: 52px !important;
     }
-    .mobile-day-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 0.5rem 1rem;
-        font-weight: bold;
-        border-radius: 0.375rem 0.375rem 0 0;
-    }
-    .mobile-course-item {
-        border: 1px solid #e4e7ed;
-        border-top: none;
-        padding: 0.75rem;
-        background: white;
-    }
-    .mobile-course-item:last-child {
-        border-radius: 0 0 0.375rem 0.375rem;
-    }
-    .mobile-course-name {
-        font-weight: bold;
-        margin-bottom: 0.25rem;
-    }
-    .mobile-course-info {
-        font-size: 12px;
-        color: #6c757d;
-    }
-    .mobile-course-info i {
-        width: 14px;
+    .schedule-table thead th:not(.slot-col) {
+        width: 84px !important;
     }
     .form-select {
         font-size: 14px;
-    }
-}
-@media (min-width: 769px) {
-    .mobile-schedule {
-        display: none !important;
     }
 }
 </style>

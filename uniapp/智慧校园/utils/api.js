@@ -8,7 +8,7 @@
  * - 网络异常：reject 返回 { code: -1, msg: '网络请求失败' }
  */
 
-let API_BASE_URL = 'https://mc.xzwmc.com/csgocs/api.php';
+let API_BASE_URL = 'http://127.0.0.12/api.php';
 
 /**
  * 统一请求方法
@@ -147,6 +147,30 @@ const queryGrade = (semester) => {
     act: 'query_grade',
     method: 'POST',
     data
+  });
+};
+
+const aiAnalyzeGrades = (payload) => {
+  return request({
+    act: 'ai_analyze_grades',
+    method: 'POST',
+    data: { data: JSON.stringify(payload) }
+  });
+};
+
+const aiAnalyzePower = (payload) => {
+  return request({
+    act: 'ai_analyze_power',
+    method: 'POST',
+    data: { data: JSON.stringify(payload) }
+  });
+};
+
+const aiAnalyzeSchedule = (payload) => {
+  return request({
+    act: 'ai_analyze_schedule',
+    method: 'POST',
+    data: { data: JSON.stringify(payload) }
   });
 };
 
@@ -383,6 +407,9 @@ export default {
   getDormitories,
   queryPowerFee,
   queryGrade,
+  aiAnalyzeGrades,
+  aiAnalyzePower,
+  aiAnalyzeSchedule,
   querySchedule,
   queryStudentInfo,
   getSemesterList,

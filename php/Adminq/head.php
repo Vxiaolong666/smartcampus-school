@@ -388,7 +388,13 @@ include('../Common/Core_brain.php');
                                                     <span class="nav-main-link-name"><b>API文档</b></span>
                                                 </a>
                                             </li>
-                                        <?php } ?>
+                                            <li class="nav-main-item">
+                                                <a class="nav-main-link" href="ai_config.php">
+                                                    <i class="nav-main-link-icon fa fa-robot"></i>
+                                                    <span class="nav-main-link-name"><b>AI 配置</b></span>
+                                                </a>
+                                            </li>
+                                            <?php } ?>
                                         <li class="nav-main-heading text-center">- 更多功能敬请期待 -</li>
                                     </ul>
                                 </div>

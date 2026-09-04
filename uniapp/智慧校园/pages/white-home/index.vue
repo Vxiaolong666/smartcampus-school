@@ -199,7 +199,7 @@ import api from '../../utils/api.js';
 import feature from '../../utils/feature.js';
 import { sceneTypeNames } from '../../utils/common.js';
 
-const API_BASE = 'https://mc.xzwmc.com/csgocs';
+const API_BASE = 'http://127.0.0.12';
 const __tab__ = 0;
 
 // 诗句为静态数据，放到 data 外避免被 Vue 做无意义的响应式代理

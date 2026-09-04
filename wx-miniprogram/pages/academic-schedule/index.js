@@ -147,7 +147,7 @@ Page({
             // 遍历每门课程
             for (const course of scheduleData.courses) {
                 // 解析上课时间字符串，得到星期几和节次数组
-                const { weekDay, sections } = this.parseClassTime(course.classTime || '');
+                const { weekDay, sections } = this.parseClassTime(course);
                 // 星期超出0-6范围则跳过
                 if (weekDay < 0 || weekDay >= 7) continue;
 
@@ -163,6 +163,7 @@ Page({
                     courseName,                                                    // 课程名称
                     weekDay: weekDays[weekDay + 1],                                // 星期几的中文文本（如"周一"）
                     section: sections.map(s => s + 1).join(','),                   // 节次，从0索引转为1起始，逗号分隔
+                    _sections: sections.map(s => s + 1),                          // 节次数字数组（用于合并相邻节次）
                     location: course.location || course.classroomName || '',       // 上课地点
                     teacher: course.teacherName || '',                              // 授课教师
                     weeks: course.classWeek || '',                                  // 上课周次（如"1-16"）
@@ -196,47 +197,127 @@ Page({
             }
         }
 
-        // 去重课程列表：同一课程名+星期+节次只保留一条
-        const seen = new Set();
-        const uniqueCourses = courses.filter(c => {
-            // 用课程名+星期+节次拼接作为唯一标识
-            const key = c.courseName + c.weekDay + c.section;
-            // 已存在则过滤掉，不存在则加入Set并保留
-            return seen.has(key) ? false : (seen.add(key), true);
-        });
+        // 合并同一门课在同一天的相邻节次（与 uniapp / 网页一致）
+        const mergedCourses = this.mergeCourseSections(courses);
 
-        // 返回处理后的课程表、去重课程列表、当前周次、颜色映射
-        return { schedule, courses: uniqueCourses, currentWeek, courseColors };
+        // 返回处理后的课程表、合并后课程列表、当前周次、颜色映射
+        return { schedule, courses: mergedCourses, currentWeek, courseColors };
     },
 
-    //解析上课时间字符串
-    parseClassTime(classTime) {
-        // 空值或长度不足2位，返回默认值
-        if (!classTime || classTime.length < 2) return { weekDay: 0, sections: [] };
-        
-        // 第一个字符表示星期几（1-7），转为0索引（0-6）
-        const weekDay = parseInt(classTime.charAt(0)) - 1;
-        // 剩余字符表示节次
-        const timeStr = classTime.substring(1);
-        // 解析出的节次索引数组
-        const sections = [];
+    //合并同一门课在同一天的相邻节次（与 uniapp / 网页一致）
+    mergeCourseSections(courses) {
+        const getKey = c => [c.courseName, c.weekDay, c.location, c.teacher, c.weeks].join('|');
+        const formatSection = sections => {
+            if (!sections || sections.length === 0) return '';
+            const sorted = [...sections].sort((a, b) => a - b);
+            const parts = [];
+            let start = sorted[0], prev = sorted[0];
+            for (let i = 1; i < sorted.length; i++) {
+                if (sorted[i] === prev + 1) {
+                    prev = sorted[i];
+                } else {
+                    parts.push(start === prev ? String(start) : start + '-' + prev);
+                    start = prev = sorted[i];
+                }
+            }
+            parts.push(start === prev ? String(start) : start + '-' + prev);
+            return parts.join(',');
+        };
 
-        // 优先按两位数格式解析节次（如"0102"表示第1、2节）
-        for (let i = 0; i < timeStr.length; i += 2) {
-            const section = parseInt(timeStr.substr(i, 2));
-            // 节次有效范围1-12，转为0索引存入
-            if (section >= 1 && section <= 12) sections.push(section - 1);
-        }
+        courses = courses.slice().sort((a, b) => {
+            const ka = getKey(a);
+            const kb = getKey(b);
+            if (ka !== kb) return ka.localeCompare(kb);
+            return Math.min(...a._sections) - Math.min(...b._sections);
+        });
 
-        // 如果两位数解析失败（如"12"只有1个节次），尝试一位数格式
-        if (sections.length === 0) {
-            for (let i = 0; i < timeStr.length; i++) {
-                const section = parseInt(timeStr.charAt(i));
-                if (section >= 1 && section <= 12) sections.push(section - 1);
+        const groups = [];
+        for (const c of courses) {
+            if (!c._sections || c._sections.length === 0) continue;
+            const key = getKey(c);
+            const cMin = Math.min(...c._sections);
+            const cMax = Math.max(...c._sections);
+            let merged = false;
+            for (const g of groups) {
+                if (g._mergeKey !== key) continue;
+                const gMin = Math.min(...g._sections);
+                const gMax = Math.max(...g._sections);
+                if (cMin <= gMax + 1 && gMin <= cMax + 1) {
+                    g._sections = Array.from(new Set([...g._sections, ...c._sections])).sort((a, b) => a - b);
+                    g.section = formatSection(g._sections);
+                    if (c.startTime && (!g.startTime || c.startTime < g.startTime)) g.startTime = c.startTime;
+                    if (c.endTIme && (!g.endTIme || c.endTIme > g.endTIme)) g.endTIme = c.endTIme;
+                    merged = true;
+                    break;
+                }
+            }
+            if (!merged) {
+                groups.push({ ...c, _mergeKey: key, _sectionFirst: cMin });
             }
         }
 
-        return { weekDay, sections };
+        return groups.sort((a, b) => {
+            const wa = weekDays.indexOf(a.weekDay);
+            const wb = weekDays.indexOf(b.weekDay);
+            if (wa !== wb) return wa - wb;
+            return (a._sectionFirst || 0) - (b._sectionFirst || 0);
+        });
+    },
+
+    //解析上课时间（与网页 getCourseTimeSlots 保持一致）
+    parseClassTime(course) {
+        const classTime = course.classTime || '';
+        // 星期几：优先使用接口返回的 weekDay 字段（1-7）
+        let weekDay = -1;
+        if (course.weekDay !== undefined && course.weekDay !== null && course.weekDay !== '') {
+            const wd = parseInt(course.weekDay);
+            if (wd >= 1 && wd <= 7) weekDay = wd - 1;
+        }
+        if (weekDay < 0 && classTime.length >= 1) {
+            const wd = parseInt(classTime.charAt(0));
+            if (wd >= 1 && wd <= 7) weekDay = wd - 1;
+        }
+
+        const sections = [];
+        const pushSection = n => { if (n >= 1 && n <= 12) sections.push(n - 1); };
+
+        // 优先使用 weekNoteDetail（如 "1节,2节"）
+        const weekNoteDetail = course.weekNoteDetail || '';
+        if (weekNoteDetail && weekNoteDetail.trim()) {
+            const parts = weekNoteDetail.split(/[,，]/);
+            for (const part of parts) {
+                const p = part.trim();
+                if (p.length >= 2) {
+                    const num = parseInt(p.slice(-2));
+                    if (num >= 1 && num <= 11) pushSection(num);
+                }
+            }
+        }
+
+        // 其次按 "1XX" 节次编码扫描 classTime（如 "105106" 表示第5、6节）
+        if (sections.length === 0) {
+            for (let i = 1; i <= 11; i++) {
+                const code = '1' + ('0' + i).slice(-2);
+                if (classTime.indexOf(code) !== -1) pushSection(i);
+            }
+        }
+
+        // 兼容旧格式："星期(1位) + 两位节次拼接"（如 "20506" 表示周二第5、6节）
+        if (sections.length === 0) {
+            const timeStr = weekDay >= 0 ? classTime.substring(1) : classTime;
+            for (let i = 0; i < timeStr.length; i += 2) {
+                const section = parseInt(timeStr.substr(i, 2));
+                if (section >= 1 && section <= 12) pushSection(section);
+            }
+            if (sections.length === 0) {
+                for (let i = 0; i < timeStr.length; i++) {
+                    const section = parseInt(timeStr.charAt(i));
+                    if (section >= 1 && section <= 12) pushSection(section);
+                }
+            }
+        }
+
+        return { weekDay, sections: [...new Set(sections)].sort((a, b) => a - b) };
     },
 
     //点击课程表单元格

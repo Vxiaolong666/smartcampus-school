@@ -216,6 +216,20 @@ function calculateGpa($score) {
                         </div>
                     </div>
                     
+                    <div class="d-flex justify-content-end mb-3">
+                        <button type="button" class="btn btn-alt-primary" onclick="aiAnalyzeGrades()">
+                            <i class="fa fa-robot me-1"></i>AI 智能分析成绩
+                        </button>
+                    </div>
+                    <script>
+                        window.__gradeData = <?php echo json_encode([
+                            'achievement' => $achievement,
+                            'gpa' => $gpa,
+                            'credit' => $credit,
+                            'semester' => $semester
+                        ], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG); ?>;
+                    </script>
+                    
                     <div class="table-responsive">
                         <table class="table table-bordered table-striped table-vcenter">
                             <thead>
@@ -322,6 +336,53 @@ function calculateGpa($score) {
         </div>
     </div>
 </div>
+
+<!-- AI 智能分析成绩 弹窗 -->
+<div class="modal fade" id="aiModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fa fa-robot me-1"></i>AI 智能成绩分析</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </div>
+            <div class="modal-body">
+                <pre id="aiResult" style="white-space: pre-wrap; word-break: break-word; font-family: inherit; font-size: 14px; margin: 0;"></pre>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+function aiAnalyzeGrades() {
+    if (!window.__gradeData || !window.__gradeData.achievement || !window.__gradeData.achievement.length) {
+        alert('暂无可分析的成绩数据');
+        return;
+    }
+    var modal = (window.bootstrap && bootstrap.Modal) ? new bootstrap.Modal(document.getElementById('aiModal')) : null;
+    if (modal) { modal.show(); } else { $('#aiModal').modal('show'); }
+    $('#aiResult').html('<div class="text-center text-muted py-4"><i class="fa fa-spinner fa-spin me-2"></i>AI 正在分析，请稍候…</div>');
+    $.ajax({
+        url: 'ajax.php?act=ai_analyze_grades',
+        type: 'POST',
+        data: { data: JSON.stringify(window.__gradeData) },
+        dataType: 'json',
+        success: function(res) {
+            if (res.code == 0) {
+                if (window.marked) {
+                    $('#aiResult').html('<div class="markdown-body">'+window.marked.parse(res.content)+'</div>');
+                } else {
+                    $('#aiResult').text(res.content);
+                }
+            } else {
+                $('#aiResult').html('<div class="alert alert-danger">'+(res.msg||'分析失败')+'</div>');
+            }
+        },
+        error: function() {
+            $('#aiResult').html('<div class="alert alert-danger">请求失败，请稍后重试</div>');
+        }
+    });
+}
+</script>
 
 <?php include 'foot.php'; ?>
 <style>

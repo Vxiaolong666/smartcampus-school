@@ -86,6 +86,9 @@ $pricePerKwh = floatval($config['price_per_kwh'] ?? 0.61);
                         <button class="btn btn-primary" id="refreshBtn">
                             <i class="fa fa-refresh me-1"></i>刷新数据
                         </button>
+                        <button class="btn btn-alt-primary ms-2" onclick="aiAnalyzePower()">
+                            <i class="fa fa-robot me-1"></i>AI 智能分析
+                        </button>
                     </div>
                 </div>
                 
@@ -168,6 +171,9 @@ function loadStatistics() {
 }
 
 function renderStatistics(data) {
+    // 供 AI 智能分析使用
+    window.__powerStatsData = data;
+
     var healthClass = 'bg-success';
     var healthIcon = 'fa-leaf';
     if (data.health_status === 'high') {
@@ -495,6 +501,80 @@ $(document).ready(function() {
         loadStatistics();
     });
 });
+</script>
+
+<!-- AI 智能用电分析 弹窗 -->
+<div class="modal fade" id="aiPowerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fa fa-robot me-1"></i>AI 智能用电分析</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </div>
+            <div class="modal-body">
+                <pre id="aiPowerResult" style="white-space: pre-wrap; word-break: break-word; font-family: inherit; font-size: 14px; margin: 0;"></pre>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+function aiAnalyzePower() {
+    var d = window.__powerStatsData;
+    if (!d) {
+        layer.msg('请先加载统计数据后再使用 AI 分析', {icon: 0});
+        return;
+    }
+    var roomText = $('#roomSelect option:selected').text() || '';
+    var payload = {
+        type: 'statistics',
+        dormitory: roomText,
+        stats: {
+            healthText: d.health_text,
+            yesterdayUsage: d.yesterday_usage,
+            yesterdayCost: d.yesterday_cost,
+            dailyAvgUsage: d.daily_avg_usage,
+            dailyAvgCost: d.daily_avg_cost,
+            latestBalance: d.latest_balance,
+            estimatedDays: d.estimated_days
+        },
+        recentTrend: (d.recent_trend || []).map(function(p) {
+            return { label: p.time || p.date || '', usage: p.usage };
+        }),
+        records: (d.records || []).slice(0, 20).map(function(r) {
+            return {
+                time: r.record_time || r.created_at || '',
+                balance: r.balance,
+                usage: parseFloat(r.usage_kwh) || 0,
+                cost: parseFloat(r.usage_cost) || 0
+            };
+        })
+    };
+
+    var modal = (window.bootstrap && bootstrap.Modal) ? new bootstrap.Modal(document.getElementById('aiPowerModal')) : null;
+    if (modal) { modal.show(); } else { $('#aiPowerModal').modal('show'); }
+    $('#aiPowerResult').html('<div class="text-center text-muted py-4"><i class="fa fa-spinner fa-spin me-2"></i>AI 正在分析，请稍候…</div>');
+    $.ajax({
+        url: 'ajax.php?act=ai_analyze_power',
+        type: 'POST',
+        data: { data: JSON.stringify(payload) },
+        dataType: 'json',
+        success: function(res) {
+            if (res.code == 0) {
+                if (window.marked) {
+                    $('#aiPowerResult').html('<div class="markdown-body">' + window.marked.parse(res.content) + '</div>');
+                } else {
+                    $('#aiPowerResult').text(res.content);
+                }
+            } else {
+                $('#aiPowerResult').html('<div class="alert alert-danger">' + (res.msg || '分析失败') + '</div>');
+            }
+        },
+        error: function() {
+            $('#aiPowerResult').html('<div class="alert alert-danger">请求失败，请稍后重试</div>');
+        }
+    });
+}
 </script>
 
 <?php include 'foot.php'; ?>

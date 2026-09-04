@@ -324,6 +324,28 @@
 					{{ selectedDay === todayDayOfWeek ? '今天没有课程，好好休息一下吧~' : '这一天没有安排课程，看看其他天吧~' }}
 				</view>
 			</view>
+
+			<view v-if="dayCourses.length > 0" class="ai-action">
+				<button class="ai-btn" @click="aiAnalyze" :loading="aiLoading">AI 智能分析今日安排</button>
+			</view>
+		</view>
+
+		<view v-if="showAiResult" class="ai-mask" @click="closeAiResult">
+			<view class="ai-modal" :style="{ height: sheetHeight + 'px' }" @click.stop>
+				<view class="ai-modal-handle"
+					@touchstart="onSheetDragStart"
+					@touchmove="onSheetDragMove"
+					@touchend="onSheetDragEnd"></view>
+				<view class="ai-modal-header">
+					<text class="ai-modal-title">AI 智能日程分析</text>
+					<text class="ai-modal-close" @click="closeAiResult">✕</text>
+				</view>
+				<scroll-view scroll-y="true" class="ai-modal-body">
+					<view class="ai-modal-body-inner">
+						<rich-text :nodes="aiResultHtml" class="ai-modal-content"></rich-text>
+					</view>
+				</scroll-view>
+			</view>
 		</view>
 	</view>
 </template>
@@ -336,6 +358,7 @@
 import api from '../../utils/api.js';
 import feature from '../../utils/feature.js';
 import { getCourseColor, timeSlots, weekDays } from '../../utils/common.js';
+import markdownToHtml from '../../utils/markdown.js';
 
 const DAY_NAMES = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
 const FULL_DAY_NAMES = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
@@ -380,11 +403,39 @@ export default {
 			// 内部标记，放在 data 中以保证读写都被正确代理
 			_lastMinute: -1,
 			_featureChecked: false,
-			_pageVisible: false
+			_pageVisible: false,
+			showAiResult: false,
+			aiResult: '',
+			aiLoading: false,
+			aiCache: {},
+			windowHeight: 0,
+			sheetHeight: 0,
+			dragStartY: 0,
+			dragStartHeight: 0,
+			dragging: false
 		};
 	},
 
+	watch: {
+		showAiResult(val) {
+			if (val) {
+				this.initSheetHeight();
+			}
+		}
+	},
+
+	computed: {
+		aiResultHtml() {
+			return markdownToHtml(this.aiResult);
+		}
+	},
+
 	onLoad() {
+		try {
+			this.windowHeight = uni.getSystemInfoSync().windowHeight || 0;
+		} catch (e) {
+			this.windowHeight = 0;
+		}
 		if (!api.isLoggedIn()) {
 			uni.redirectTo({ url: '/pages/login/index' });
 			return;
@@ -741,6 +792,86 @@ export default {
 
 		goToFullSchedule() {
 			uni.navigateTo({ url: '/pages/academic-schedule/index' });
+		},
+
+		async aiAnalyze() {
+			if (this.aiLoading) return;
+			if (this.dayCourses.length === 0) {
+				uni.showToast({ title: '今日暂无课程', icon: 'none' });
+				return;
+			}
+			const key = 'k' + this.selectedDay;
+			if (this.aiCache[key]) {
+				this.aiResult = this.aiCache[key];
+				this.showAiResult = true;
+				return;
+			}
+			this.aiLoading = true;
+			this.aiResult = '### AI 正在分析…\n\n正在读取今日课程安排并生成分析报告，请稍候（通常需要十几秒）。';
+			this.showAiResult = true;
+			const courses = this.dayCourses.map(c => ({
+				name: c.courseName,
+				time: c.timeDisplay,
+				location: c.location,
+				teacher: c.teacher
+			}));
+			const dateInfo = (this.weekDates[this.selectedDay] && this.weekDates[this.selectedDay].full) || '';
+			try {
+				const res = await api.aiAnalyzeSchedule({
+					type: 'today',
+					dayName: this.fullDayNames[this.selectedDay],
+					date: dateInfo,
+					courses
+				});
+				const content = res.data && res.data.content ? String(res.data.content).trim() : '';
+				if (!content) {
+					this.aiResult = '### 暂无分析结果\n\nAI 未返回有效内容，请稍后重试。';
+					return;
+				}
+				this.aiCache[key] = content;
+				this.aiResult = content;
+			} catch (err) {
+				const msg = (err && err.msg) || '分析失败';
+				this.aiResult = '### 分析失败\n\n' + msg + '\n\n请稍后重试，或联系管理员检查「AI 配置」是否正确、额度是否充足。';
+			} finally {
+				this.aiLoading = false;
+			}
+		},
+
+		closeAiResult() {
+			this.showAiResult = false;
+		},
+
+		initSheetHeight() {
+			if (!this.windowHeight) {
+				try {
+					this.windowHeight = uni.getSystemInfoSync().windowHeight || 0;
+				} catch (e) {
+					this.windowHeight = 0;
+				}
+			}
+			this.sheetHeight = Math.round(this.windowHeight * 0.8);
+		},
+
+		onSheetDragStart(e) {
+			this.dragging = true;
+			this.dragStartY = e.touches[0].clientY;
+			this.dragStartHeight = this.sheetHeight;
+		},
+
+		onSheetDragMove(e) {
+			if (!this.dragging) return;
+			const deltaY = e.touches[0].clientY - this.dragStartY;
+			let newH = this.dragStartHeight - deltaY;
+			const maxH = this.windowHeight || 99999;
+			const minH = Math.round((this.windowHeight || 0) * 0.25);
+			if (newH > maxH) newH = maxH;
+			if (newH < minH) newH = minH;
+			this.sheetHeight = newH;
+		},
+
+		onSheetDragEnd() {
+			this.dragging = false;
 		}
 	}
 };
@@ -1261,5 +1392,118 @@ page {
 .empty-text {
 	font-size: 26rpx;
 	color: #948eb3;
+}
+
+.ai-action {
+	margin: 24rpx 0 8rpx;
+}
+
+.ai-btn {
+	width: 100%;
+	background: linear-gradient(135deg, #13c2c2 0%, #1890ff 100%);
+	color: white;
+	font-size: 28rpx;
+	height: 96rpx;
+	line-height: 96rpx;
+	padding: 0;
+	border-radius: 12rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	box-shadow: 0 10rpx 24rpx rgba(19, 194, 194, 0.25);
+}
+
+.ai-btn::after {
+	border: none;
+}
+
+.ai-mask {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(0, 0, 0, 0.55);
+	z-index: 999;
+	display: flex;
+	align-items: flex-end;
+	justify-content: center;
+	animation: aiMaskFade 0.25s ease;
+}
+
+@keyframes aiMaskFade {
+	from { opacity: 0; }
+	to { opacity: 1; }
+}
+
+.ai-modal {
+	width: 100%;
+	background: #fff;
+	border-radius: 32rpx 32rpx 0 0;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	box-shadow: 0 -8rpx 40rpx rgba(0, 0, 0, 0.18);
+	animation: aiModalUp 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes aiModalUp {
+	from { transform: translateY(100%); }
+	to { transform: translateY(0); }
+}
+
+.ai-modal-handle {
+	width: 72rpx;
+	height: 8rpx;
+	border-radius: 8rpx;
+	background: #d8d4e8;
+	margin: 18rpx auto 2rpx;
+	transition: background 0.2s ease;
+}
+
+.ai-modal-handle:active {
+	background: #b9b2d6;
+}
+
+.ai-modal-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 14rpx 44rpx 22rpx;
+	border-bottom: 1rpx solid #f0f0f4;
+}
+
+.ai-modal-title {
+	font-size: 32rpx;
+	font-weight: bold;
+	color: #322c54;
+}
+
+.ai-modal-close {
+	width: 56rpx;
+	height: 56rpx;
+	line-height: 56rpx;
+	text-align: center;
+	font-size: 30rpx;
+	color: #948eb3;
+	background: #f3f2f8;
+	border-radius: 50%;
+}
+
+.ai-modal-body {
+	flex: 1;
+	min-height: 0;
+}
+
+.ai-modal-body-inner {
+	padding: 30rpx 44rpx;
+}
+
+.ai-modal-content {
+	display: block;
+	font-size: 28rpx;
+	color: #48416f;
+	line-height: 1.75;
+	word-break: break-word;
 }
 </style>

@@ -91,7 +91,56 @@ function getUserDisplayName($nickname, $username) {
             border-style: none;
             border-width: 0;
         }
-        
+
+        /* AI 分析弹窗 Markdown 渲染：收紧 marked.js 默认段落/列表/标题边距 */
+        .markdown-body {
+            line-height: 1.6;
+            /* 覆盖外层 <pre> 继承的 white-space:pre-wrap，否则块级元素间的换行会变成可见空行 */
+            white-space: normal;
+        }
+        .markdown-body p {
+            margin-bottom: 0.4rem;
+        }
+        .markdown-body p:empty {
+            display: none;
+            margin: 0;
+        }
+        .markdown-body li > p:last-child,
+        .markdown-body li > p {
+            margin-bottom: 0.2rem;
+        }
+        .markdown-body ul,
+        .markdown-body ol {
+            margin-bottom: 0.6rem;
+            padding-left: 1.25rem;
+        }
+        .markdown-body h1,
+        .markdown-body h2,
+        .markdown-body h3,
+        .markdown-body h4,
+        .markdown-body h5,
+        .markdown-body h6 {
+            margin-top: 0.85rem;
+            margin-bottom: 0.4rem;
+        }
+        .markdown-body h1:first-child,
+        .markdown-body h2:first-child,
+        .markdown-body h3:first-child {
+            margin-top: 0;
+        }
+        .markdown-body pre {
+            background: #f8f9fa;
+            padding: 0.75rem;
+            border-radius: 0.25rem;
+            margin-bottom: 0.6rem;
+        }
+        .markdown-body code {
+            background: #f8f9fa;
+            padding: 0.125rem 0.35rem;
+            border-radius: 0.2rem;
+            font-size: 0.9em;
+        }
+
         @media (max-width: 991.98px) {
             #page-container {
                 padding-left: 0 !important;
@@ -176,6 +225,7 @@ function getUserDisplayName($nickname, $username) {
             
             function handleMobileSidebar() {
                 var pageContainer = document.getElementById('page-container');
+                if (!pageContainer) return;
                 if (window.innerWidth < 992) {
                     pageContainer.classList.remove('sidebar-o');
                     pageContainer.classList.remove('sidebar-o-xs');
@@ -197,6 +247,7 @@ function getUserDisplayName($nickname, $username) {
             
             document.addEventListener('click', function(e) {
                 var pageContainer = document.getElementById('page-container');
+                if (!pageContainer) return;
                 if (window.innerWidth >= 992) return;
                 
                 var toggleBtn = e.target.closest('[data-action="sidebar_toggle"]');

@@ -76,7 +76,7 @@
 <script>
 import api from '../../utils/api.js';
 
-const API_BASE = 'https://mc.xzwmc.com/csgocs';
+const API_BASE = 'http://127.0.0.12';
 
 export default {
 	data() {

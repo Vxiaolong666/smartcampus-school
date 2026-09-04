@@ -73,6 +73,9 @@ $dormitories = DormitorySystem::getUserDormitories($DB, $userId);
                 
                 <div id="powerFeeResult" style="display:none;">
                     <h4 class="mb-3">查询结果</h4>
+                    <button type="button" class="btn btn-sm btn-alt-primary mb-3" onclick="aiAnalyzePower()">
+                        <i class="fa fa-robot me-1"></i> AI 智能分析
+                    </button>
                     <div id="powerFeeContent"></div>
                 </div>
                 
@@ -211,6 +214,20 @@ function queryPowerFee() {
                 '</div>';
                 
                 $('#powerFeeContent').html(html);
+                
+                // 供 AI 智能分析使用
+                window.__powerData = {
+                    type: 'query',
+                    rooms: [{
+                        name: dormName,
+                        balance: data.balance,
+                        remainingKwh: data.remaining_kwh,
+                        pricePerKwh: data.price_per_kwh,
+                        estimatedDays: data.estimated_days,
+                        statusText: data.msg,
+                        timeRangeText: ''
+                    }]
+                };
             } else {
                 $('#powerFeeContent').html('<div class="alert alert-danger"><i class="fa fa-times-circle me-2"></i>' + res.msg + '</div>');
             }
@@ -316,8 +333,73 @@ function renderAllResults(results) {
     html += '<p class="text-muted mt-2"><small>查询时间：' + new Date().toLocaleString() + '</small></p>';
     
     $('#powerFeeContent').html(html);
+
+    // 供 AI 智能分析使用
+    window.__powerData = {
+        type: 'query',
+        rooms: results.filter(function(item) {
+            return item.result.code == 1;
+        }).map(function(item) {
+            var d = item.result.data;
+            return {
+                name: item.name,
+                balance: d.balance,
+                remainingKwh: d.remaining_kwh,
+                pricePerKwh: d.price_per_kwh,
+                estimatedDays: d.estimated_days,
+                statusText: d.msg,
+                timeRangeText: ''
+            };
+        })
+    };
+}
+
+function aiAnalyzePower() {
+    if (!window.__powerData || !window.__powerData.rooms || !window.__powerData.rooms.length) {
+        layer.msg('请先查询电费后再使用 AI 分析', {icon: 0});
+        return;
+    }
+    var modal = (window.bootstrap && bootstrap.Modal) ? new bootstrap.Modal(document.getElementById('aiPowerModal')) : null;
+    if (modal) { modal.show(); } else { $('#aiPowerModal').modal('show'); }
+    $('#aiPowerResult').html('<div class="text-center text-muted py-4"><i class="fa fa-spinner fa-spin me-2"></i>AI 正在分析，请稍候…</div>');
+    $.ajax({
+        url: 'ajax.php?act=ai_analyze_power',
+        type: 'POST',
+        data: { data: JSON.stringify(window.__powerData) },
+        dataType: 'json',
+        success: function(res) {
+            if (res.code == 0) {
+                if (window.marked) {
+                    $('#aiPowerResult').html('<div class="markdown-body">' + window.marked.parse(res.content) + '</div>');
+                } else {
+                    $('#aiPowerResult').text(res.content);
+                }
+            } else {
+                $('#aiPowerResult').html('<div class="alert alert-danger">' + (res.msg || '分析失败') + '</div>');
+            }
+        },
+        error: function() {
+            $('#aiPowerResult').html('<div class="alert alert-danger">请求失败，请稍后重试</div>');
+        }
+    });
 }
 </script>
+
+<!-- AI 智能电费分析 弹窗 -->
+<div class="modal fade" id="aiPowerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fa fa-robot me-1"></i>AI 智能电费分析</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </div>
+            <div class="modal-body">
+                <pre id="aiPowerResult" style="white-space: pre-wrap; word-break: break-word; font-family: inherit; font-size: 14px; margin: 0;"></pre>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
 <?php include 'foot.php'; ?>
 <style>

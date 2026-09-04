@@ -1108,6 +1108,259 @@ switch($act) {
         ]);
     break;
     
+    case 'ai_analyze_grades':
+        $user = authenticateUser($DB);
+        if (!$user) {
+            jsonResponse(-2, '请先登录');
+        }
+
+        $raw = isset($_POST['data']) ? $_POST['data'] : '';
+        $data = json_decode($raw, true);
+        if (!is_array($data) || empty($data['achievement'])) {
+            jsonResponse(-1, '暂无成绩数据');
+        }
+
+        // 建表（幂等）
+        $DB->exec("CREATE TABLE IF NOT EXISTS nteam_ai_grade_analysis (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            semester VARCHAR(255) NOT NULL DEFAULT '',
+            data_hash VARCHAR(64) NOT NULL DEFAULT '',
+            content MEDIUMTEXT NOT NULL,
+            created_at DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL,
+            UNIQUE KEY uniq_user_semester (user_id, semester)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        $userId = intval($user['user_id']);
+        $semester = isset($data['semester']) ? strval($data['semester']) : '';
+        $dataHash = md5($raw);
+
+        // 命中缓存且数据未变化则直接返回，避免重复生成
+        $cached = $DB->getRow("SELECT content, data_hash FROM nteam_ai_grade_analysis WHERE user_id=? AND semester=?", [$userId, $semester]);
+        $cacheValid = $cached && $cached['data_hash'] === $dataHash && trim($cached['content']) !== '' && $cached['content'] !== '暂无分析结果';
+        if ($cacheValid) {
+            jsonResponse(0, 'ok', ['content' => $cached['content'], 'cached' => 1]);
+        }
+
+        $lines = [];
+        foreach ($data['achievement'] as $c) {
+            $lines[] = sprintf(
+                "- %s：成绩 %s，学分 %s，绩点 %s，属性 %s",
+                $c['courseName'] ?? '',
+                $c['fraction'] ?? $c['score'] ?? '-',
+                $c['credit'] ?? '-',
+                $c['gpa'] ?? '-',
+                $c['curriculumAttributes'] ?? $c['courseType'] ?? '-'
+            );
+        }
+        $summary = implode("\n", $lines);
+        $gpa = $data['gpa'] ?? '-';
+        $credit = $data['credit'] ?? '-';
+        $semesterText = $semester ? "（学期：{$semester}）" : '';
+        $prompt = "你是一位大学学业指导顾问。以下是某学生" . $semesterText . "的成绩数据：\n"
+            . "平均成绩绩点(GPA)：{$gpa}，已修学分：{$credit}。\n课程明细：\n{$summary}\n\n"
+            . "请对以上成绩进行智能分析，包含：1）整体学业表现评价；2）优势科目与薄弱科目；"
+            . "3）针对薄弱科目的改进建议；4）下一阶段学习规划建议。请用简体中文、分点清晰作答，可使用 Markdown。\n"
+            . "重要说明：若同一课程出现多条成绩记录（如多次录入），它们通常为补考或重修数据，请据此正确理解并综合分析。";
+        $messages = [
+            ['role' => 'system', 'content' => '你是一位专业、耐心的大学生学习与学业规划顾问。'],
+            ['role' => 'user', 'content' => $prompt],
+        ];
+        $ai = new \lib\AiHelper();
+        $result = $ai->chat($messages);
+        if (!$result['success']) {
+            jsonResponse(-1, $result['msg']);
+        }
+        $content = isset($result['content']) ? trim($result['content']) : '';
+        if ($content === '') {
+            jsonResponse(-1, '分析结果为空，请重试');
+        }
+        $now = date('Y-m-d H:i:s');
+        if ($cached) {
+            $DB->exec("UPDATE nteam_ai_grade_analysis SET content=?, data_hash=?, updated_at=? WHERE user_id=? AND semester=?",
+                [$content, $dataHash, $now, $userId, $semester]);
+        } else {
+            $DB->exec("INSERT INTO nteam_ai_grade_analysis (user_id, semester, data_hash, content, created_at, updated_at) VALUES (?,?,?,?,?,?)",
+                [$userId, $semester, $dataHash, $content, $now, $now]);
+        }
+        jsonResponse(0, 'ok', ['content' => $content, 'cached' => 0]);
+    break;
+
+    case 'ai_analyze_power':
+        $user = authenticateUser($DB);
+        if (!$user) {
+            jsonResponse(-2, '请先登录');
+        }
+
+        $raw = isset($_POST['data']) ? $_POST['data'] : '';
+        $data = json_decode($raw, true);
+        if (!is_array($data) || empty($data['type'])) {
+            jsonResponse(-1, '暂无电费数据');
+        }
+
+        $type = $data['type'];
+        if ($type === 'query') {
+            $rooms = $data['rooms'] ?? [];
+            if (!is_array($rooms) || count($rooms) === 0) {
+                jsonResponse(-1, '暂无电费数据');
+            }
+            $lines = [];
+            foreach ($rooms as $i => $r) {
+                $lines[] = sprintf(
+                    "宿舍%d：%s，余额 %s 元，剩余电量 %s 度，电价 %s 元/度，预计可用 %s 天，状态：%s，统计时段：%s",
+                    ($i + 1),
+                    $r['name'] ?? '未知',
+                    $r['balance'] !== null && $r['balance'] !== '' ? $r['balance'] : '未知',
+                    $r['remainingKwh'] !== null && $r['remainingKwh'] !== '' ? $r['remainingKwh'] : '未知',
+                    $r['pricePerKwh'] ?? '未知',
+                    $r['estimatedDays'] !== null && $r['estimatedDays'] !== '' ? $r['estimatedDays'] : '未知',
+                    $r['statusText'] ?? '未知',
+                    $r['timeRangeText'] ?? '未知'
+                );
+            }
+            $summary = implode("\n", $lines);
+            $prompt = "你是一位校园生活用电管理顾问。以下是某学生宿舍的电费查询结果：\n"
+                . $summary . "\n\n"
+                . "请基于以上数据，给出：1）当前用电/余额状况评价；2）是否存在欠费或电量不足风险；"
+                . "3）节能与用电建议；4）是否需要尽快充值及建议充值金额。请用简体中文、分点清晰作答，可使用 Markdown。";
+        } elseif ($type === 'statistics') {
+            $dorm = $data['dormitory'] ?? '未知';
+            $stats = $data['stats'] ?? [];
+            $recent = $data['recentTrend'] ?? [];
+            $records = $data['records'] ?? [];
+            $recentLines = [];
+            foreach (array_slice($recent, -15) as $p) {
+                $recentLines[] = sprintf(
+                    "- %s：用电量 %s 度",
+                    $p['label'] ?? $p['time'] ?? '',
+                    $p['usage'] ?? ''
+                );
+            }
+            $recordLines = [];
+            foreach (array_slice($records, 0, 15) as $r) {
+                $recordLines[] = sprintf(
+                    "- %s：余额 %s 元，用电 %s 度，费用 %s 元",
+                    $r['time'] ?? '',
+                    $r['balance'] ?? '',
+                    $r['usage'] ?? '',
+                    $r['cost'] ?? ''
+                );
+            }
+            $prompt = "你是一位校园用电数据分析师。以下是某宿舍（{$dorm}）的用电统计数据：\n"
+                . "用电健康度：{$stats['healthText']}；昨日用电量：{$stats['yesterdayUsage']} 度（约 ¥{$stats['yesterdayCost']}）；"
+                . "日均用电量：{$stats['dailyAvgUsage']} 度（约 ¥{$stats['dailyAvgCost']}/天）；"
+                . "当前余额：{$stats['latestBalance']} 元；预计可用：{$stats['estimatedDays']} 天。\n";
+            if ($recentLines) {
+                $prompt .= "\n近期用电量趋势：\n" . implode("\n", $recentLines) . "\n";
+            }
+            if ($recordLines) {
+                $prompt .= "\n部分电费记录：\n" . implode("\n", $recordLines) . "\n";
+            }
+            $prompt .= "\n请基于以上数据，给出：1）用电规律与趋势分析；2）用电高峰/异常提示；"
+                . "3）节能降耗建议；4）充值与预算建议。请用简体中文、分点清晰作答，可使用 Markdown。";
+        } else {
+            jsonResponse(-1, '暂不支持的分析类型');
+        }
+
+        $messages = [
+            ['role' => 'system', 'content' => '你是一位专业、贴心的校园用电管理顾问，擅长从用电数据中给出实用建议。'],
+            ['role' => 'user', 'content' => $prompt],
+        ];
+        $ai = new \lib\AiHelper();
+        $result = $ai->chat($messages);
+        if (!$result['success']) {
+            jsonResponse(-1, $result['msg']);
+        }
+        $content = isset($result['content']) ? trim($result['content']) : '';
+        if ($content === '') {
+            jsonResponse(-1, '分析结果为空，请重试');
+        }
+        jsonResponse(0, 'ok', ['content' => $content, 'cached' => 0]);
+    break;
+
+    case 'ai_analyze_schedule':
+        $user = authenticateUser($DB);
+        if (!$user) {
+            jsonResponse(-2, '请先登录');
+        }
+
+        $raw = isset($_POST['data']) ? $_POST['data'] : '';
+        $data = json_decode($raw, true);
+        if (!is_array($data) || empty($data['type'])) {
+            jsonResponse(-1, '暂无课表数据');
+        }
+
+        $type = $data['type'];
+        if ($type === 'semester') {
+            $courses = isset($data['courses']) ? $data['courses'] : [];
+            if (!is_array($courses) || count($courses) === 0) {
+                jsonResponse(-1, '暂无课程数据');
+            }
+            $week = isset($data['week']) ? strval($data['week']) : '当前';
+            $lines = [];
+            foreach ($courses as $c) {
+                $lines[] = sprintf(
+                    "- %s：%s 第%s节，地点 %s，教师 %s，周次 %s，学分 %s，性质 %s",
+                    $c['name'] ?? '未知',
+                    $c['weekDay'] ?? '未知',
+                    $c['section'] ?? '-',
+                    $c['location'] ?? '待定',
+                    $c['teacher'] ?? '待定',
+                    $c['weeks'] ?? '-',
+                    $c['credit'] ?? '-',
+                    $c['nature'] ?? '-'
+                );
+            }
+            $prompt = "你是一位大学学业与时间管理顾问。以下是某学生第 {$week} 周的课程表：\n"
+                . implode("\n", $lines) . "\n\n"
+                . "请基于以上课程表，给出：1）本周课程负担与时间安排评价（含每天课程密度、是否有早课或晚课）；"
+                . "2）空闲时段盘点与合理利用建议（自习、休息、社团活动等）；"
+                . "3）学习节奏与作息建议；4）需要注意的时间冲突或过于紧凑的安排提醒。"
+                . "请用简体中文、分点清晰作答，可使用 Markdown。";
+        } elseif ($type === 'today') {
+            $courses = isset($data['courses']) ? $data['courses'] : [];
+            if (!is_array($courses) || count($courses) === 0) {
+                jsonResponse(-1, '今日暂无课程');
+            }
+            $dayName = $data['dayName'] ?? '当天';
+            $date = $data['date'] ?? '';
+            $dateText = $date ? "（{$date}）" : '';
+            $lines = [];
+            foreach ($courses as $c) {
+                $lines[] = sprintf(
+                    "- %s：%s，地点 %s，教师 %s",
+                    $c['name'] ?? '未知',
+                    $c['time'] ?? '待定',
+                    $c['location'] ?? '待定',
+                    $c['teacher'] ?? '待定'
+                );
+            }
+            $prompt = "你是一位大学时间管理顾问。以下是某学生{$dayName}{$dateText}的课程安排：\n"
+                . implode("\n", $lines) . "\n\n"
+                . "请基于以上安排，给出：1）今日课程负担评价；2）课间与空档时间的利用建议；"
+                . "3）作息与精力分配建议；4）预习与复习安排建议。"
+                . "请用简体中文、分点清晰作答，可使用 Markdown。";
+        } else {
+            jsonResponse(-1, '暂不支持的分析类型');
+        }
+
+        $messages = [
+            ['role' => 'system', 'content' => '你是一位专业、贴心的大学学业与时间管理顾问，擅长从课表数据给出实用建议。'],
+            ['role' => 'user', 'content' => $prompt],
+        ];
+        $ai = new \lib\AiHelper();
+        $result = $ai->chat($messages);
+        if (!$result['success']) {
+            jsonResponse(-1, $result['msg']);
+        }
+        $content = isset($result['content']) ? trim($result['content']) : '';
+        if ($content === '') {
+            jsonResponse(-1, '分析结果为空，请重试');
+        }
+        jsonResponse(0, 'ok', ['content' => $content, 'cached' => 0]);
+    break;
+
     case 'query_grade':
         $user = authenticateUser($DB);
         if (!$user) {
