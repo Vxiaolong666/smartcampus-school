@@ -1,5 +1,5 @@
 <template>
-	<view class="container">
+	<view class="container" :class="{ 'ai-open': showAiResult }">
 		<cb-nav-bar :show-back="true">
 			<view class="nav-title">课程表</view>
 		</cb-nav-bar>
@@ -117,7 +117,7 @@
 			</view>
 
 			<view v-if="courses.length > 0" class="ai-action">
-				<button class="ai-btn" @click="aiAnalyze" :loading="aiLoading">AI 智能分析课表</button>
+				<button class="ai-btn" @click="aiAnalyze">AI 智能分析课表</button>
 			</view>
 		</view>
 
@@ -511,7 +511,13 @@ export default {
 		},
 
 		async aiAnalyze() {
-			if (this.aiLoading) return;
+			if (this.aiLoading) {
+			// 正在分析中允许再次点击：重新聚焦分析弹窗并提示，不重复发起请求
+			this.aiResult = '### AI 正在分析…\n\n正在生成分析报告，请稍候（通常需要十几秒）。';
+			this.showAiResult = true;
+			uni.showToast({ title: 'AI 正在分析...', icon: 'none' });
+			return;
+		}
 			if (this.courses.length === 0) {
 				uni.showToast({ title: '暂无课程数据', icon: 'none' });
 				return;
@@ -618,6 +624,13 @@ export default {
 <style>
 page {
 	background: #eff1ff;
+}
+
+/* 弹窗打开时隐藏固定的 banner 背景（与用电统计页保持一致的行为，
+   避免 scroll-lock 锁定 body 后半透明遮罩下方整张透出 banner 图片；
+   弹窗打开时改为 absolute 让其随容器铺满、只露顶部装饰条，还原“含 banner 的原页面” */
+.ai-open .background-wrapper {
+	position: absolute;
 }
 </style>
 
@@ -1049,4 +1062,15 @@ page {
 	line-height: 1.75;
 	word-break: break-word;
 }
+
+/* AI 弹窗打开时隐藏固定在视口的 banner 背景。
+   原因：scroll-lock 把 body 设为 fixed 时，body 不会成为其内部 fixed 子元素的包含块，
+   导致 .background-wrapper 仍钉在视口顶部，而 .content-wrapper 随 body 上移，
+   课表内容较短时半透明遮罩下方会整张透出 banner 图片而非原课程表页面。
+   （正常态 banner 本就被不透明的 .content-wrapper 覆盖，弹窗打开时改为 absolute 使其随已固定的
+   容器一起铺满视口，只露出顶部 30rpx 装饰条，从而在下层还原出“含 banner 的原页面”效果） */
+.ai-open .background-wrapper {
+	position: absolute;
+}
+
 </style>

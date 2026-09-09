@@ -8,7 +8,9 @@
  * - 网络异常：reject 返回 { code: -1, msg: '网络请求失败' }
  */
 
-let API_BASE_URL = 'http://127.0.0.12/api.php';
+let API_BASE_URL = 'https://mc.xzwmc.com/csgocs/api.php';
+//https://mc.xzwmc.com/csgocs/api.php
+//http://127.0.0.12/api.php
 
 /**
  * 统一请求方法

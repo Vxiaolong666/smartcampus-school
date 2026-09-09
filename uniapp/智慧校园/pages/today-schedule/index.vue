@@ -332,7 +332,7 @@
 			</view>
 
 			<view v-if="dayCourses.length > 0" class="ai-action">
-				<button class="ai-btn" @click="aiAnalyze" :loading="aiLoading">AI 智能分析今日安排</button>
+				<button class="ai-btn" @click="aiAnalyze">AI 智能分析今日安排</button>
 			</view>
 		</view>
 
@@ -824,7 +824,13 @@ export default {
 		},
 
 		async aiAnalyze() {
-			if (this.aiLoading) return;
+			if (this.aiLoading) {
+			// 正在分析中允许再次点击：重新聚焦分析弹窗并提示，不重复发起请求
+			this.aiResult = '### AI 正在分析…\n\n正在生成分析报告，请稍候（通常需要十几秒）。';
+			this.showAiResult = true;
+			uni.showToast({ title: 'AI 正在分析...', icon: 'none' });
+			return;
+		}
 			if (this.dayCourses.length === 0) {
 				uni.showToast({ title: '今日暂无课程', icon: 'none' });
 				return;
