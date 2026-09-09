@@ -34,8 +34,13 @@ include './head.php';
     
     <div class="content animated fadeIn">
         <div class="row">
-            <div class="col-lg-3 mb-4">
-                <div class="block block-rounded block-bordered">
+            <div class="d-lg-none w-100 mb-3">
+                <button class="btn btn-outline-primary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#apiDocToc" aria-expanded="false" aria-controls="apiDocToc">
+                    <i class="fa fa-list"></i> 接口目录
+                </button>
+            </div>
+            <div class="col-lg-3 mb-4" id="api-doc-toc">
+                <div class="block block-rounded block-bordered collapse d-lg-block" id="apiDocToc">
                     <div class="block-header block-header-default">
                         <h3 class="block-title">
                             <i class="fa fa-list me-2"></i>目录
@@ -51,6 +56,7 @@ include './head.php';
                             <a class="nav-link" href="#power-api">电费查询API</a>
                             <a class="nav-link" href="#grade-api">成绩查询API</a>
                             <a class="nav-link" href="#schedule-api">课程表API</a>
+                            <a class="nav-link" href="#ai-api">AI分析API</a>
                             <a class="nav-link" href="#notice-api">通知中心API</a>
                             <a class="nav-link" href="#wx-api">微信订阅消息API</a>
                             <a class="nav-link" href="#push-api">推送设置API</a>
@@ -288,6 +294,28 @@ wx.request({
                                     <tr><td>password</td><td>string</td><td>是</td><td>新密码（至少6位）</td></tr>
                                 </tbody>
                             </table>
+                        </div>
+                        
+                        <hr>
+                        
+                        <div class="mb-4">
+                            <h5 class="text-primary">
+                                <span class="badge bg-success me-2">POST</span>
+                                发送邮箱验证邮件
+                            </h5>
+                            <p><strong>接口：</strong><code>?act=send_verify_email</code></p>
+                            <p><strong>参数：</strong></p>
+                            <table class="table table-bordered table-sm">
+                                <thead><tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr></thead>
+                                <tbody>
+                                    <tr><td>email</td><td>string</td><td>是</td><td>注册时使用的邮箱</td></tr>
+                                </tbody>
+                            </table>
+                            <p><strong>返回：</strong></p>
+                            <pre class="bg-light p-2 rounded"><code>{
+    "code": 0,
+    "msg": "验证邮件已发送，请查收"
+}</code></pre>
                         </div>
                         
                         <hr>
@@ -741,6 +769,136 @@ wx.request({
                     </div>
                 </div>
                 
+                <div class="block block-rounded block-bordered mb-4" id="ai-api">
+                    <div class="block-header block-header-default">
+                        <h3 class="block-title">
+                            <i class="fa fa-robot me-2"></i>AI分析API
+                        </h3>
+                    </div>
+                    <div class="block-content">
+                        <div class="mb-4">
+                            <h5 class="text-primary">
+                                <span class="badge bg-success me-2">POST</span>
+                                AI 成绩分析
+                            </h5>
+                            <p><strong>接口：</strong><code>?act=ai_analyze_grades</code></p>
+                            <p><strong>需要认证：</strong>是</p>
+                            <p><strong>参数：</strong></p>
+                            <table class="table table-bordered table-sm">
+                                <thead><tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr></thead>
+                                <tbody>
+                                    <tr><td>data</td><td>string(JSON)</td><td>是</td><td>JSON 字符串，结构见下</td></tr>
+                                </tbody>
+                            </table>
+                            <p><strong>data 结构：</strong></p>
+                            <pre class="bg-light p-2 rounded"><code>{
+    "semester": "2024-2025-1",
+    "gpa": "3.5",
+    "credit": "60",
+    "achievement": [
+        {"courseName":"高等数学","fraction":"90","credit":"4","gpa":"4.0","curriculumAttributes":"必修"},
+        {"courseName":"大学英语","fraction":"82","credit":"3","gpa":"3.3","curriculumAttributes":"必修"}
+    ]
+}</code></pre>
+                            <p><strong>返回：</strong></p>
+                            <pre class="bg-light p-2 rounded"><code>{
+    "code": 0,
+    "msg": "ok",
+    "data": {
+        "content": "（AI 生成的 Markdown 分析报告）",
+        "cached": 0
+    }
+}</code></pre>
+                        </div>
+                        
+                        <hr>
+                        
+                        <div class="mb-4">
+                            <h5 class="text-primary">
+                                <span class="badge bg-success me-2">POST</span>
+                                AI 用电分析
+                            </h5>
+                            <p><strong>接口：</strong><code>?act=ai_analyze_power</code></p>
+                            <p><strong>需要认证：</strong>是</p>
+                            <p><strong>参数：</strong></p>
+                            <table class="table table-bordered table-sm">
+                                <thead><tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr></thead>
+                                <tbody>
+                                    <tr><td>data</td><td>string(JSON)</td><td>是</td><td>JSON 字符串，type 为 statistics 或 query</td></tr>
+                                </tbody>
+                            </table>
+                            <p><strong>data 结构（type=statistics 宿舍统计）：</strong></p>
+                            <pre class="bg-light p-2 rounded"><code>{
+    "type": "statistics",
+    "dormitory": "1栋-101",
+    "stats": {"healthText":"良好","yesterdayUsage":5.2,"yesterdayCost":3,"dailyAvgUsage":4.8,"dailyAvgCost":2.8,"latestBalance":30,"estimatedDays":12},
+    "recentTrend": [{"label":"09-01","usage":5.1}],
+    "records": [{"time":"2024-09-01","balance":35,"usage":5.1,"cost":3}]
+}</code></pre>
+                            <p><strong>data 结构（type=query 电费查询）：</strong></p>
+                            <pre class="bg-light p-2 rounded"><code>{
+    "type": "query",
+    "rooms": [
+        {"name":"1栋-101","balance":"30","remainingKwh":"120","pricePerKwh":"0.6","estimatedDays":"60","statusText":"正常","timeRangeText":"本月"}
+    ]
+}</code></pre>
+                            <p><strong>返回：</strong></p>
+                            <pre class="bg-light p-2 rounded"><code>{
+    "code": 0,
+    "msg": "ok",
+    "data": {
+        "content": "（AI 生成的 Markdown 分析报告）",
+        "cached": 0
+    }
+}</code></pre>
+                        </div>
+                        
+                        <hr>
+                        
+                        <div class="mb-4">
+                            <h5 class="text-primary">
+                                <span class="badge bg-success me-2">POST</span>
+                                AI 课表分析
+                            </h5>
+                            <p><strong>接口：</strong><code>?act=ai_analyze_schedule</code></p>
+                            <p><strong>需要认证：</strong>是</p>
+                            <p><strong>参数：</strong></p>
+                            <table class="table table-bordered table-sm">
+                                <thead><tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr></thead>
+                                <tbody>
+                                    <tr><td>data</td><td>string(JSON)</td><td>是</td><td>JSON 字符串，type 为 semester 或 today</td></tr>
+                                </tbody>
+                            </table>
+                            <p><strong>data 结构（type=semester 整周课表）：</strong></p>
+                            <pre class="bg-light p-2 rounded"><code>{
+    "type": "semester",
+    "week": "10",
+    "courses": [
+        {"name":"高等数学","weekDay":"周一","section":"1-2","location":"A101","teacher":"张三","weeks":"1-16","credit":"4","nature":"必修"}
+    ]
+}</code></pre>
+                            <p><strong>data 结构（type=today 今日安排）：</strong></p>
+                            <pre class="bg-light p-2 rounded"><code>{
+    "type": "today",
+    "dayName": "周一",
+    "date": "2024-09-09",
+    "courses": [
+        {"name":"高等数学","time":"08:15-09:55","location":"A101","teacher":"张三"}
+    ]
+}</code></pre>
+                            <p><strong>返回：</strong></p>
+                            <pre class="bg-light p-2 rounded"><code>{
+    "code": 0,
+    "msg": "ok",
+    "data": {
+        "content": "（AI 生成的 Markdown 分析报告）",
+        "cached": 0
+    }
+}</code></pre>
+                        </div>
+                    </div>
+                </div>
+                
                 <div class="block block-rounded block-bordered mb-4" id="notice-api">
                     <div class="block-header block-header-default">
                         <h3 class="block-title">
@@ -851,6 +1009,56 @@ wx.request({
                                 获取微信模板列表
                             </h5>
                             <p><strong>接口：</strong><code>?act=get_wx_templates</code></p>
+                        </div>
+                        
+                        <hr>
+                        
+                        <div class="mb-4">
+                            <h5 class="text-primary">
+                                <span class="badge bg-success me-2">POST</span>
+                                添加/更新微信模板
+                            </h5>
+                            <p><strong>接口：</strong><code>?act=add_wx_template</code></p>
+                            <p><strong>需要认证：</strong>是</p>
+                            <p><strong>参数：</strong></p>
+                            <table class="table table-bordered table-sm">
+                                <thead><tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr></thead>
+                                <tbody>
+                                    <tr><td>template_id</td><td>string</td><td>是</td><td>微信模板ID</td></tr>
+                                    <tr><td>name</td><td>string</td><td>是</td><td>模板名称</td></tr>
+                                    <tr><td>description</td><td>string</td><td>否</td><td>模板描述</td></tr>
+                                    <tr><td>fields</td><td>string</td><td>否</td><td>模板字段（JSON 字符串）</td></tr>
+                                    <tr><td>default_data</td><td>string</td><td>否</td><td>默认数据（JSON 字符串）</td></tr>
+                                </tbody>
+                            </table>
+                            <p><strong>返回：</strong></p>
+                            <pre class="bg-light p-2 rounded"><code>{
+    "code": 0,
+    "msg": "添加成功"
+}</code></pre>
+                        </div>
+                        
+                        <hr>
+                        
+                        <div class="mb-4">
+                            <h5 class="text-primary">
+                                <span class="badge bg-success me-2">POST</span>
+                                删除微信模板
+                            </h5>
+                            <p><strong>接口：</strong><code>?act=delete_wx_template</code></p>
+                            <p><strong>需要认证：</strong>是</p>
+                            <p><strong>参数：</strong></p>
+                            <table class="table table-bordered table-sm">
+                                <thead><tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr></thead>
+                                <tbody>
+                                    <tr><td>id</td><td>int</td><td>是</td><td>模板记录ID</td></tr>
+                                </tbody>
+                            </table>
+                            <p><strong>返回：</strong></p>
+                            <pre class="bg-light p-2 rounded"><code>{
+    "code": 0,
+    "msg": "删除成功"
+}</code></pre>
                         </div>
                         
                         <hr>
@@ -1079,6 +1287,26 @@ wx.request({
     ]
 }</code></pre>
                         </div>
+                    <div class="mb-4">
+                        <h5 class="text-primary">
+                            <span class="badge bg-primary me-2">GET</span>
+                            获取首页速览数据
+                        </h5>
+                        <p><strong>接口：</strong><code>?act=get_glance_data</code></p>
+                        <p><strong>需要认证：</strong>是</p>
+                        <p><strong>返回：</strong></p>
+                        <pre class="bg-light p-2 rounded"><code>{
+    "code": 0,
+    "msg": "success",
+    "data": {
+        "next_course": {"name":"高等数学","location":"A101","time":"10:05-11:35"},
+        "all_courses_ended": false,
+        "course_load_error": false,
+        "power_info": {"balance":30,"estimatedDays":12},
+        "no_dormitory": false
+    }
+}</code></pre>
+                    </div>
                     </div>
                 </div>
                 
@@ -1161,6 +1389,49 @@ wx.request({
                         </table>
                     </div>
                 </div>
+
+                <!-- API文档专属：PC端左侧目录固定 + 返回顶部按钮 -->
+                <style id="apiDocExtraStyle">
+                @media (min-width: 992px) {
+                    #api-doc-toc .block { position: sticky; top: 80px; }
+                }
+                #backToTop {
+                    position: fixed; right: 24px; bottom: 24px; z-index: 1080;
+                    display: none; width: 44px; height: 44px; padding: 0;
+                    border-radius: 50%; box-shadow: 0 2px 8px rgba(0,0,0,.2);
+                }
+                @media (max-width: 991.98px) {
+                    .block-content table { display: block; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+                }
+                </style>
+                <button id="backToTop" type="button" class="btn btn-primary" title="返回顶部">
+                    <i class="fa fa-arrow-up"></i>
+                </button>
+                <script>
+                (function(){
+                    var btn = document.getElementById('backToTop');
+                    if (btn && !btn.dataset.bound) {
+                        btn.dataset.bound = '1';
+                        btn.addEventListener('click', function(){ window.scrollTo({ top: 0, behavior: 'smooth' }); });
+                    }
+                    var toc = document.getElementById('apiDocToc');
+                    if (toc && !toc.dataset.bound) {
+                        toc.dataset.bound = '1';
+                        toc.querySelectorAll('.nav-link').forEach(function(link){
+                            link.addEventListener('click', function(){
+                                if (window.innerWidth < 992) { toc.classList.remove('show'); }
+                            });
+                        });
+                    }
+                    if (!window.__apiDocScrollBound) {
+                        window.__apiDocScrollBound = true;
+                        var sync = function(){ if (btn) { btn.style.display = (window.scrollY > 300) ? 'block' : 'none'; } };
+                        window.addEventListener('scroll', sync, { passive: true });
+                        sync();
+                    }
+                })();
+                </script>
+
             </div>
         </div>
     </div>
