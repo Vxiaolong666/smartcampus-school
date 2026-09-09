@@ -49,6 +49,11 @@ export default {
 		topGap: {
 			type: Number,
 			default: null
+		},
+		// 紧凑模式：减小导航栏高度，适用于只有标题的一级页面（如「课程」「我的」）
+		compact: {
+			type: Boolean,
+			default: false
 		}
 	},
 	data() {
@@ -60,8 +65,14 @@ export default {
 	computed: {
 		topGapHeight() {
 			if (this.topGap !== null && this.topGap > 0) return this.topGap;
-			// H5 下没有原生状态栏，需要给所有页面一点顶部留白，避免导航栏贴着视口顶部
-			return 20;
+			// H5 下没有原生状态栏，需要给一点顶部留白，避免导航栏贴着视口顶部；
+			// App / 小程序已有状态栏占位，不再额外留白（compact 模式留白更小）
+			// #ifdef H5
+			return this.compact ? 12 : 20;
+			// #endif
+			// #ifndef H5
+			return 0;
+			// #endif
 		}
 	},
 	mounted() {
@@ -69,22 +80,22 @@ export default {
 	},
 	methods: {
 		calcBarHeight() {
-			if (cachedStatusBarHeight !== null) {
-				this.statusBarHeight = cachedStatusBarHeight;
-				return;
+			if (cachedStatusBarHeight === null) {
+				const windowInfo = uni.getWindowInfo ? uni.getWindowInfo() : uni.getSystemInfoSync();
+				cachedStatusBarHeight = windowInfo.statusBarHeight || 0;
 			}
-
-			const windowInfo = uni.getWindowInfo ? uni.getWindowInfo() : uni.getSystemInfoSync();
-			cachedStatusBarHeight = windowInfo.statusBarHeight || 0;
 			this.statusBarHeight = cachedStatusBarHeight;
+
 			// #ifdef MP-WEIXIN
 			const menuBounding = uni.getMenuButtonBoundingClientRect();
 			if (menuBounding) {
 				this.menuBarHeight = menuBounding.height + (menuBounding.top - this.statusBarHeight) * 2;
+			} else {
+				this.menuBarHeight = this.compact ? 36 : 44;
 			}
 			// #endif
 			// #ifndef MP-WEIXIN
-			this.menuBarHeight = 44;
+			this.menuBarHeight = this.compact ? 36 : 44;
 			// #endif
 		},
 		handleBack() {

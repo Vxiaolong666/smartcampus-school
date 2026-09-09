@@ -69,9 +69,13 @@
 			<view v-if="!hasMore && list.length > 0" class="no-more">
 				<view class="no-more-text">没有更多了</view>
 			</view>
-		</view>
-	</view>
-</template>
+
+			<view v-if="showBackTop" class="back-top" @click="onBackTop">
+				<image class="back-top-icon" src="/static/assets/wxmp-arrow-up.svg" mode="widthFix"></image>
+			</view>
+			</view>
+			</view>
+			</template>
 
 <script>
 /**
@@ -94,7 +98,8 @@ export default {
 			page: 1,
 			size: 10,
 			total: 0,
-			hasMore: true
+			hasMore: true,
+			showBackTop: false
 		};
 	},
 
@@ -113,6 +118,10 @@ export default {
 		if (this.hasMore && !this.loading) {
 			this.loadHistory(false);
 		}
+	},
+
+	onPageScroll(e) {
+		this.showBackTop = e.scrollTop > 200;
 	},
 
 	methods: {
@@ -136,6 +145,10 @@ export default {
 			if (value === this.activeTab) return;
 			this.activeTab = value;
 			this.loadHistory(true);
+		},
+
+		onBackTop() {
+			uni.pageScrollTo({ scrollTop: 0, duration: 300 });
 		},
 
 		async loadHistory(reset) {
@@ -445,5 +458,29 @@ page {
 .no-more-text {
 	color: #948eb3;
 	font-size: 26rpx;
+}
+
+.back-top {
+	position: fixed;
+	right: 30rpx;
+	bottom: 60rpx;
+	width: 88rpx;
+	height: 88rpx;
+	border-radius: 50%;
+	background: #13c2c2;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	box-shadow: 0 8rpx 24rpx rgba(19, 194, 194, 0.4);
+	z-index: 50;
+}
+
+.back-top:active {
+	opacity: 0.85;
+}
+
+.back-top-icon {
+	width: 40rpx;
+	height: 40rpx;
 }
 </style>

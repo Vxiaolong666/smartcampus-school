@@ -1,6 +1,6 @@
 <template>
 	<view class="container">
-		<cb-nav-bar :show-back="false">
+		<cb-nav-bar :show-back="false" compact>
 			<view class="nav-title">今日课程</view>
 			<view slot="right" class="nav-action" @click="goToFullSchedule">
 				<text class="action-text">完整课表</text>
@@ -55,10 +55,16 @@
 								<text class="status-ending">即将下课</text>
 							</block>
 							<block v-else-if="currentCourse">
-								<text class="status-current">上课中</text>
+								<text class="status-current">{{ currentPeriod }}上课中</text>
+							</block>
+							<block v-else-if="inBreak && isStartingSoon">
+								<text class="status-waiting">{{ nextPeriod }}课间休息</text>
+							</block>
+							<block v-else-if="notStarted && isStartingSoon">
+								<text class="status-waiting">{{ nextPeriod }}即将上课</text>
 							</block>
 							<block v-else-if="notStarted || inBreak">
-								<text class="status-waiting">即将上课</text>
+								<text class="status-free">{{ nextPeriod }}课程未开始</text>
 							</block>
 							<block v-else>
 								<text class="status-free">课余时间</text>
@@ -86,7 +92,7 @@
 				>
 					<view class="status-header" :style="'background-color: ' + nextCourse.color.text + ';'">
 						<image class="status-label-icon large" src="/static/assets/wxmp-alarm-white.svg" mode="widthFix"></image>
-						<text class="status-label">课程未开始</text>
+						<text class="status-label">{{ nextPeriod }}课程未开始</text>
 						<text class="status-time">还有{{ minutesToNext }}分钟上课</text>
 					</view>
 					<view class="status-body" :style="'background: linear-gradient(135deg, ' + nextCourse.color.bg + ' 0%, #ffffff 100%);'">
@@ -111,7 +117,7 @@
 				>
 					<view class="status-header" :style="'background-color: ' + currentCourse.color.text + ';'">
 						<image class="status-label-icon large" src="/static/assets/wxmp-play-white.svg" mode="widthFix"></image>
-						<text class="status-label">正在上课</text>
+						<text class="status-label">{{ currentPeriod }}正在上课</text>
 						<text class="status-time">还有{{ minutesToEnd }}分钟下课</text>
 					</view>
 					<view class="status-body" :style="'background: linear-gradient(135deg, ' + currentCourse.color.bg + ' 0%, #ffffff 100%);'">
@@ -136,7 +142,7 @@
 				>
 					<view class="status-header" :style="'background-color: ' + nextCourse.color.text + ';'">
 						<image class="status-label-icon large" src="/static/assets/wxmp-alarm-white.svg" mode="widthFix"></image>
-						<text class="status-label">课间休息</text>
+						<text class="status-label">{{ nextPeriod }}课间休息</text>
 						<text class="status-time">还有{{ minutesToNext }}分钟上课</text>
 					</view>
 					<view class="status-body" :style="'background: linear-gradient(135deg, ' + nextCourse.color.bg + ' 0%, #ffffff 100%);'">
@@ -330,7 +336,7 @@
 			</view>
 		</view>
 
-		<view v-if="showAiResult" class="ai-mask" @click="closeAiResult">
+		<view v-if="showAiResult" class="ai-mask" @click="closeAiResult" @touchmove.prevent>
 			<view class="ai-modal" :style="{ height: sheetHeight + 'px' }" @click.stop>
 				<view class="ai-modal-handle"
 					@touchstart="onSheetDragStart"
@@ -340,7 +346,7 @@
 					<text class="ai-modal-title">AI 智能日程分析</text>
 					<text class="ai-modal-close" @click="closeAiResult">✕</text>
 				</view>
-				<scroll-view scroll-y="true" class="ai-modal-body">
+				<scroll-view scroll-y="true" class="ai-modal-body" @touchstart="onAiBodyTouchStart" @touchmove.stop="onAiBodyTouchMove">
 					<view class="ai-modal-body-inner">
 						<rich-text :nodes="aiResultHtml" class="ai-modal-content"></rich-text>
 					</view>
@@ -359,6 +365,7 @@ import api from '../../utils/api.js';
 import feature from '../../utils/feature.js';
 import { getCourseColor, timeSlots, weekDays } from '../../utils/common.js';
 import markdownToHtml from '../../utils/markdown.js';
+import { aiScrollLockMixin } from '../../utils/scroll-lock.js';
 
 const DAY_NAMES = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
 const FULL_DAY_NAMES = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
@@ -373,6 +380,9 @@ const sameCourse = (a, b) => {
 };
 
 export default {
+	// AI 结果浮层弹出时锁定背景页面滚动，避免页面与浮层同时滚动
+	mixins: [aiScrollLockMixin],
+
 	data() {
 		return {
 			loading: true,
@@ -425,6 +435,25 @@ export default {
 	},
 
 	computed: {
+		// 当前正在上的课属于哪个时段（上午 / 下午 / 晚上）
+		currentPeriod() {
+			const c = this.currentCourse;
+			if (!c || !c.slots || c.slots.length === 0) return '';
+			const s = Math.min(...c.slots);
+			return s <= 4 ? '上午' : s <= 7 ? '下午' : '晚上';
+		},
+		// 下一节课属于哪个时段
+		nextPeriod() {
+			const c = this.nextCourse;
+			if (!c || !c.slots || c.slots.length === 0) return '';
+			const s = Math.min(...c.slots);
+			return s <= 4 ? '上午' : s <= 7 ? '下午' : '晚上';
+		},
+		// 距下节课是否足够近（≤30 分钟），用于区分「即将上课」与「课程未开始」，
+		// 避免下节课还差很久（如 200 分钟）却显示「即将上课」
+		isStartingSoon() {
+			return (this.notStarted || this.inBreak) && this.minutesToNext > 0 && this.minutesToNext <= 30;
+		},
 		aiResultHtml() {
 			return markdownToHtml(this.aiResult);
 		}

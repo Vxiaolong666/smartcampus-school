@@ -336,7 +336,7 @@ page {
 .refresh-btn {
 	width: 100%;
 	height: 88rpx;
-	line-height: 66rpx;
+	line-height: 88rpx;
 	background: #13c2c2;
 	color: #fff;
 	font-size: 28rpx;

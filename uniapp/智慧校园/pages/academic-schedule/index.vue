@@ -121,7 +121,7 @@
 			</view>
 		</view>
 
-		<view v-if="showAiResult" class="ai-mask" @click="closeAiResult">
+		<view v-if="showAiResult" class="ai-mask" @click="closeAiResult" @touchmove.prevent>
 			<view class="ai-modal" :style="{ height: sheetHeight + 'px' }" @click.stop>
 				<view class="ai-modal-handle"
 					@touchstart="onSheetDragStart"
@@ -131,7 +131,7 @@
 					<text class="ai-modal-title">AI 智能课表分析</text>
 					<text class="ai-modal-close" @click="closeAiResult">✕</text>
 				</view>
-				<scroll-view scroll-y="true" class="ai-modal-body">
+				<scroll-view scroll-y="true" class="ai-modal-body" @touchstart="onAiBodyTouchStart" @touchmove.stop="onAiBodyTouchMove">
 					<view class="ai-modal-body-inner">
 						<rich-text :nodes="aiResultHtml" class="ai-modal-content"></rich-text>
 					</view>
@@ -150,8 +150,12 @@ import api from '../../utils/api.js';
 import feature from '../../utils/feature.js';
 import { getCourseColor, weekDays, timeSlots } from '../../utils/common.js';
 import markdownToHtml from '../../utils/markdown.js';
+import { aiScrollLockMixin } from '../../utils/scroll-lock.js';
 
 export default {
+	// AI 结果浮层弹出时锁定背景页面滚动，避免页面与浮层同时滚动
+	mixins: [aiScrollLockMixin],
+
 	data() {
 		return {
 			featureEnabled: true,

@@ -1,6 +1,6 @@
 <template>
 	<view class="page-container">
-		<cb-nav-bar>
+		<cb-nav-bar compact>
 			<view class="nav-title">我的</view>
 		</cb-nav-bar>
 
