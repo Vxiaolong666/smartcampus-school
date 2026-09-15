@@ -13,6 +13,8 @@
 				plus.navigator.setStatusBarStyle('light');
 			} catch (e) {}
 			// #endif
+			// 启动时检查是否处于维护状态，是则跳转系统维护页
+			this.checkMaintenance();
 		},
 		onShow: function() {
 			console.log('App Show')
@@ -22,9 +24,72 @@
 				plus.navigator.setStatusBarStyle('light');
 			} catch (e) {}
 			// #endif
+			// 从后台回到前台时再次检查维护状态
+			this.checkMaintenance();
 		},
 		onHide: function() {
 			console.log('App Hide')
+		},
+		/**
+		 * 检查是否处于维护状态并跳转系统维护页
+		 * 条件1：当前时间在维护时间段（23:00 - 次日 6:00，受学校教务系统每晚关闭维护影响）
+		 * 条件2：维护页面功能开关启用（weihu_open 的 is_enabled = 1，即管理员手动关闭服务）
+		 * 满足任一条件则跳转到 pages/maintenance/index
+		 * 逻辑与小程序端 app.js 的 checkMaintenanceTime 保持一致
+		 */
+		async checkMaintenance() {
+			try {
+				// 条件1：检查时间
+				const now = new Date();
+				const hour = now.getHours();
+				const isMaintenanceTime = hour >= 23 || hour < 6;
+
+				// 条件2：检查功能开关（管理员手动关闭服务）
+				const featureStatus = await feature.checkFeature('weihu_open');
+				const isFeatureEnabled = featureStatus && featureStatus.enabled === true;
+
+				// 满足任一条件则跳转
+				if (isMaintenanceTime || isFeatureEnabled) {
+					const pages = getCurrentPages();
+					const currentPage = pages[pages.length - 1];
+					const currentRoute = currentPage ? currentPage.route : '';
+
+					// 当前已在维护页则不再跳转
+					if (currentRoute !== 'pages/maintenance/index') {
+						uni.redirectTo({
+							url: '/pages/maintenance/index',
+							fail: () => {
+								// redirectTo 失败（如当前为 tabBar 页）时改用 reLaunch
+								uni.reLaunch({
+									url: '/pages/maintenance/index'
+								});
+							}
+						});
+					}
+				}
+			} catch (error) {
+				// 检查失败时只按时间判断，保证夜间维护仍可正常提示
+				const now = new Date();
+				const hour = now.getHours();
+				const isMaintenanceTime = hour >= 23 || hour < 6;
+
+				if (isMaintenanceTime) {
+					const pages = getCurrentPages();
+					const currentPage = pages[pages.length - 1];
+					const currentRoute = currentPage ? currentPage.route : '';
+
+					if (currentRoute !== 'pages/maintenance/index') {
+						uni.redirectTo({
+							url: '/pages/maintenance/index',
+							fail: () => {
+								uni.reLaunch({
+									url: '/pages/maintenance/index'
+								});
+							}
+						});
+					}
+				}
+			}
 		}
 	}
 </script>
