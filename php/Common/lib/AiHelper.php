@@ -108,4 +108,96 @@ class AiHelper
 
         return ['success' => false, 'msg' => 'AI 请求失败（已重试，仍无有效结果）'];
     }
+
+    /**
+     * 流式调用（SSE），逐块通过 $onChunk(string) 回调返回增量内容
+     * @param array $messages
+     * @param array $opts
+     * @param callable $onChunk
+     * @return array{success:bool,msg?:string}
+     */
+    public static function chatStream(array $messages, array $opts = [], $onChunk = null)
+    {
+        if (!is_callable($onChunk)) {
+            return ['success' => false, 'msg' => '缺少流式回调'];
+        }
+        $cfg = self::getConfig();
+        if ($cfg['token'] === '' || $cfg['base_url'] === '' || $cfg['model'] === '') {
+            return ['success' => false, 'msg' => 'AI 未配置：请在后台「AI 配置」中填写 Token、Base URL 与模型'];
+        }
+
+        $url = rtrim($cfg['base_url'], '/') . '/chat/completions';
+        $payload = [
+            'model'       => $cfg['model'],
+            'messages'    => $messages,
+            'temperature' => isset($opts['temperature']) ? floatval($opts['temperature']) : 0.7,
+            'max_tokens'  => isset($opts['max_tokens']) ? intval($opts['max_tokens']) : 2000,
+            'stream'      => true,
+        ];
+        $headers = [
+            'Content-Type: application/json',
+            'Authorization: Bearer ' . $cfg['token'],
+            'Accept: text/event-stream',
+        ];
+
+        $maxRetries = 2;
+        $retryDelay = 3;
+
+        for ($attempt = 0; $attempt <= $maxRetries; $attempt++) {
+            $fullBuf = '';
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_POST           => true,
+                CURLOPT_HTTPHEADER     => $headers,
+                CURLOPT_POSTFIELDS     => json_encode($payload, JSON_UNESCAPED_UNICODE),
+                CURLOPT_TIMEOUT        => 180,
+                CURLOPT_CONNECTTIMEOUT => 15,
+                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_SSL_VERIFYHOST => false,
+                CURLOPT_RETURNTRANSFER => false,
+                CURLOPT_WRITEFUNCTION  => function ($ch, $data) use ($onChunk, &$fullBuf) {
+                    $fullBuf .= $data;
+                    while (($pos = strpos($fullBuf, "\n")) !== false) {
+                        $line = trim(substr($fullBuf, 0, $pos));
+                        $fullBuf = substr($fullBuf, $pos + 1);
+                        if ($line === '') continue;
+                        if (strpos($line, 'data:') === 0) {
+                            $json = trim(substr($line, 5));
+                            if ($json === '[DONE]') continue;
+                            $obj = json_decode($json, true);
+                            if ($obj && isset($obj['choices'][0]['delta']['content'])) {
+                                $onChunk($obj['choices'][0]['delta']['content']);
+                            }
+                        } elseif (isset($line[0]) && $line[0] === '{') {
+                            // 兼容非流式完整 JSON 兜底
+                            $obj = json_decode($line, true);
+                            if ($obj && isset($obj['choices'][0]['message']['content'])) {
+                                $onChunk($obj['choices'][0]['message']['content']);
+                            }
+                        }
+                    }
+                    return strlen($data);
+                },
+            ]);
+            curl_exec($ch);
+            $curlErr = curl_error($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($curlErr !== '') {
+                return ['success' => false, 'msg' => '请求 AI 接口失败：' . $curlErr];
+            }
+            if ($httpCode === 200) {
+                return ['success' => true];
+            }
+            // 额度/限流类错误可重试
+            if ($httpCode == 429 && $attempt < $maxRetries) {
+                sleep($retryDelay);
+                continue;
+            }
+            return ['success' => false, 'msg' => 'AI 接口返回 HTTP ' . $httpCode];
+        }
+
+        return ['success' => false, 'msg' => 'AI 请求失败（已重试，仍无有效结果）'];
+    }
 }

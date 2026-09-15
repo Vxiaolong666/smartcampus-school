@@ -33,8 +33,14 @@
           </view>
         </view>
         <view class="filter-actions">
-          <button class="query-btn" bindtap="onQuery" loading="{{queryLoading}}">查询</button>
-          <button class="query-all-btn" bindtap="onQueryAll" loading="{{queryLoading}}">查询全部</button>
+          <button class="query-btn" bindtap="onQuery" loading="{{queryLoading}}">
+            <image class="btn-icon" src="/assets/wxmp-search-white.svg" mode="aspectFit"></image>
+            <text>查询</text>
+          </button>
+          <button class="query-all-btn" bindtap="onQueryAll" loading="{{queryLoading}}">
+            <image class="btn-icon" src="/assets/wxmp-list-cyan.svg" mode="aspectFit"></image>
+            <text>查询全部</text>
+          </button>
         </view>
       </view>
 

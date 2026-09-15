@@ -40,8 +40,14 @@
 						</view>
 					</view>
 					<view class="filter-actions">
-						<button class="query-btn" @click="onQuery" :loading="queryLoading">查询</button>
-						<button class="query-all-btn" @click="onQueryAll" :loading="queryLoading">查询全部</button>
+						<button class="query-btn" @click="onQuery" :loading="queryLoading">
+							<image class="btn-icon" src="/static/assets/wxmp-search-white.svg" mode="aspectFit"></image>
+							<text>查询</text>
+						</button>
+						<button class="query-all-btn" @click="onQueryAll" :loading="queryLoading">
+							<image class="btn-icon" src="/static/assets/wxmp-list-cyan.svg" mode="aspectFit"></image>
+							<text>查询全部</text>
+						</button>
 					</view>
 				</view>
 
@@ -592,6 +598,12 @@ page {
 	display: flex;
 	align-items: center;
 	justify-content: center;
+}
+
+.btn-icon {
+	width: 32rpx;
+	height: 32rpx;
+	margin-right: 10rpx;
 }
 
 .results-wrapper {

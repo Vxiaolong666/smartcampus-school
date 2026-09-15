@@ -377,6 +377,12 @@ function getUserDisplayName($nickname, $username) {
                                             </a>
                                         </li>
                                         <li class="nav-main-item">
+                                            <a class="nav-main-link" href="chat.php">
+                                                <i class="nav-main-link-icon fa fa-robot"></i>
+                                                <span class="nav-main-link-name"><b>AI 对话</b></span>
+                                            </a>
+                                        </li>
+                                        <li class="nav-main-item">
                                             <a class="nav-main-link" href="announcements.php">
                                                 <i class="nav-main-link-icon fa fa-bullhorn"></i>
                                                 <span class="nav-main-link-name"><b>公告列表</b></span>
