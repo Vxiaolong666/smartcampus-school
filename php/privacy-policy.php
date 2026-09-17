@@ -1,14 +1,19 @@
-<!DOCTYPE html>
+<?php
+$notLogin = true;
+include('Common/Core_brain.php');
+$siteName = htmlspecialchars(conf('Name') ?: '智校通', ENT_QUOTES);
+$siteTitle = htmlspecialchars(conf('SiteName') ?: conf('Name') ?: '智校通', ENT_QUOTES);
+?><!DOCTYPE html>
 <html lang="zh-CN">
     <head>
-        <title>隐私政策 - 智校通</title>
+        <title>隐私政策 - <?php echo $siteName; ?></title>
         <!-- Required Meta Tags -->
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <!-- Primary Meta Tags -->
-        <meta name="title" content="隐私政策 - 智校通">
-        <meta name="description" content="了解智校通智慧校园平台如何收集、使用与保护师生数据。我们重视你的隐私，并以行业合规措施保障信息安全。">
+        <meta name="title" content="隐私政策 - <?php echo $siteName; ?>">
+        <meta name="description" content="了解<?php echo $siteName; ?>智慧校园平台如何收集、使用与保护师生数据。我们重视你的隐私，并以行业合规措施保障信息安全。">
         <!-- favicon icon -->
         <link rel="shortcut icon" href="./images/favicon.png">
         <link rel="apple-touch-icon" href="./images/apple-icon-57x57.png">
@@ -25,7 +30,7 @@
         <link rel="stylesheet" href="./css/swiper-bundle.min.css" type="text/css">
         <link rel="stylesheet" href="./css/uicons.min.css" type="text/css">
         <link rel="stylesheet" href="./css/fancybox.min.css" type="text/css">
-        <link rel="stylesheet" href="./css/style.css?v=11" type="text/css">
+        <link rel="stylesheet" href="./css/style.css?v=15" type="text/css">
         <!-- custom css -->
         <link rel="stylesheet" href="./css/custom.css" type="text/css">
 </head>
@@ -59,7 +64,7 @@
                 <div class="container">
                     <h1 class="page-title">隐私政策</h1>
                     <ul class="breadcrumbs">
-                        <li><a href="index.html#home">首页</a></li>
+                        <li><a href="index.php#home">首页</a></li>
                         <li class="active">隐私政策</li>
                     </ul>
                 </div>
@@ -71,9 +76,9 @@
                     <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-5">
                         <div>
                             <p class="text-muted mb-1">最近更新：2026 年 8 月 21 日 · 生效日期：2026 年 8 月 21 日</p>
-                            <p class="mb-0">本政策适用于智校通智慧校园平台及其关联服务。当你注册账号、使用校园服务或接入网页端时，即视为你已阅读并同意本政策所述做法。</p>
+                            <p class="mb-0">本政策适用于<?php echo $siteName; ?>智慧校园平台及其关联服务。当你注册账号、使用校园服务或接入网页端时，即视为你已阅读并同意本政策所述做法。</p>
                         </div>
-                        <a href="contact-us.html" class="btn btn-primary text-nowrap">如有疑问，联系我们</a>
+                        <a href="contact-us.php" class="btn btn-primary text-nowrap">如有疑问，联系我们</a>
                     </div>
                     <div class="row gy-5">
                         <div class="col-lg-4 col-xl-3">
@@ -95,7 +100,7 @@
                         <div class="col-lg-8 col-xl-9 ps-lg-5">
                             <div id="privacyPolicy1">
                                 <h4 class="mb-2">我们收集的信息</h4>
-                                <p class="mb-0">在使用智校通的过程中，我们依据《个人信息保护法》等法律法规，遵循合法、正当、必要原则，仅在提供服务所必需的范围内收集以下类型的信息：</p>
+                                <p class="mb-0">在使用<?php echo $siteName; ?>的过程中，我们依据《个人信息保护法》等法律法规，遵循合法、正当、必要原则，仅在提供服务所必需的范围内收集以下类型的信息：</p>
                                 <ul class="mb-4">
                                     <li><strong>账号信息</strong>：学校分配的学工号 / 工号、姓名、手机号与登录凭证，用于身份核验与账号安全。</li>
                                     <li><strong>校园数据</strong>：院系、班级、宿舍等组织信息，以及课表、成绩、报修、充值等经学校授权同步的业务数据。</li>
@@ -173,11 +178,11 @@
                             </div>
                             <div id="privacyPolicy9">
                                 <h4 class="mb-2">数据存储与传输</h4>
-                                <p class="mb-4">智校通数据部署于国内合规云节点，默认不出境。对于选择私有化部署的院校，数据可完全存储于学校自有服务器。我们确保数据传输符合适用法律要求，并采取等效的加密与安全保护措施，以保障你的数据安全。</p>
+                                <p class="mb-4"><?php echo $siteName; ?>数据部署于国内合规云节点，默认不出境。对于选择私有化部署的院校，数据可完全存储于学校自有服务器。我们确保数据传输符合适用法律要求，并采取等效的加密与安全保护措施，以保障你的数据安全。</p>
                             </div>
                             <div id="privacyPolicy10">
                                 <h4 class="mb-2">未成年人信息</h4>
-                                <p class="mb-4">智校通面向学校与教育机构提供服务，可能涉及未成年学生信息。我们在收集与使用此类信息时严格遵循《个人信息保护法》《未成年人保护法》等相关规定，并仅在获得学校合法授权的前提下处理，采取更严格的保护措施。</p>
+                                <p class="mb-4"><?php echo $siteName; ?>面向学校与教育机构提供服务，可能涉及未成年学生信息。我们在收集与使用此类信息时严格遵循《个人信息保护法》《未成年人保护法》等相关规定，并仅在获得学校合法授权的前提下处理，采取更严格的保护措施。</p>
                             </div>
                             <div id="privacyPolicy11">
                                 <h4 class="mb-2">如何联系我们</h4>
@@ -207,7 +212,8 @@
         <script src="./js/swiper-bundle.min.js"></script>
         <script src="./js/count-up.min.js"></script>
         <script src="./js/fancybox.umd.js"></script>
-        <script src="./js/component-loader.js"></script>
+        <script>window.SITE_NAME = <?php echo json_encode($siteName); ?>;</script>
+        <script src="./js/component-loader.js?v=2"></script>
         <script src="./js/form-validation.js"></script>
         <script src="./js/main.js?v=6"></script>
         <script src="./js/custom.js"></script>

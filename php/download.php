@@ -1,14 +1,19 @@
-<!DOCTYPE html>
+<?php
+$notLogin = true;
+include('Common/Core_brain.php');
+$siteName = htmlspecialchars(conf('Name') ?: '智校通', ENT_QUOTES);
+$siteTitle = htmlspecialchars(conf('SiteName') ?: conf('Name') ?: '智校通', ENT_QUOTES);
+?><!DOCTYPE html>
 <html lang="zh-CN">
     <head>
-        <title>下载 - 智校通</title>
+        <title>下载 - <?php echo $siteName; ?></title>
         <!-- Required Meta Tags -->
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <!-- Primary Meta Tags -->
-        <meta name="title" content="下载 - 智校通">
-        <meta name="description" content="下载智校通智慧校园平台：支持微信小程序、Android App 与网页端，师生、辅导员与后勤随时随地享便捷校园服务。">
+        <meta name="title" content="下载 - <?php echo $siteName; ?>">
+        <meta name="description" content="下载<?php echo $siteName; ?>智慧校园平台：支持微信小程序、Android App 与网页端，师生、辅导员与后勤随时随地享便捷校园服务。">
         <!-- favicon icon -->
         <link rel="shortcut icon" href="./images/favicon.png">
         <link rel="apple-touch-icon" href="./images/apple-icon-57x57.png">
@@ -25,7 +30,7 @@
         <link rel="stylesheet" href="./css/swiper-bundle.min.css" type="text/css">
         <link rel="stylesheet" href="./css/uicons.min.css" type="text/css">
         <link rel="stylesheet" href="./css/fancybox.min.css" type="text/css">
-        <link rel="stylesheet" href="./css/style.css?v=23" type="text/css">
+        <link rel="stylesheet" href="./css/style.css?v=27" type="text/css">
         <!-- custom css -->
         <link rel="stylesheet" href="./css/custom.css" type="text/css">
 </head>
@@ -59,7 +64,7 @@
                 <div class="container">
                     <h1 class="page-title">下载</h1>
                     <ul class="breadcrumbs">
-                        <li><a href="index.html#home">首页</a></li>
+                        <li><a href="index.php#home">首页</a></li>
                         <li class="active">下载</li>
                     </ul>
                 </div>
@@ -117,7 +122,7 @@
                                     <img src="./images/app/wechat_qr.png" alt="网页端地址" class="img-fluid" style="max-width:140px;">
                                     <span class="d-block mt-2 fw-semibold text-dark">admin.zhixiaoyun.com</span>
                                 </div>
-                                <a href="contact-us.html" class="btn btn-primary mt-auto">申请开通</a>
+                                <a href="contact-us.php" class="btn btn-primary mt-auto">申请开通</a>
                             </div>
                         </div>
                     </div>
@@ -131,8 +136,8 @@
                         <div class="col-lg-6">
                             <div class="app_content">
                                 <span class="fs-5 fw-semibold text-primary d-block mb-3" data-aos="fade-right">下载中心</span>
-                                <h2 data-aos="fade-right">下载智校通<br />开启智慧校园生活</h2>
-                                <p class="fs-5 text-dark mb-4" data-aos="fade-right" data-aos-delay="100">智校通支持微信小程序、Android App 与网页端，覆盖课表查询、电费充值、宿舍报修、校园资讯与 AI 助手等全场景服务。师生扫码即用，辅导员与后勤随时办公。</p>
+                                <h2 data-aos="fade-right">下载<?php echo $siteName; ?><br />开启智慧校园生活</h2>
+                                <p class="fs-5 text-dark mb-4" data-aos="fade-right" data-aos-delay="100"><?php echo $siteName; ?>支持微信小程序、Android App 与网页端，覆盖课表查询、电费充值、宿舍报修、校园资讯与 AI 助手等全场景服务。师生扫码即用，辅导员与后勤随时办公。</p>
                                 <ul class="app_btn" data-aos="fade-right" data-aos-delay="100">
                                     <li>
                                         <a href="#platform-wechat"><img src="./images/app/app_btn.png" alt="微信小程序"></a>
@@ -148,7 +153,7 @@
                         </div>
                         <div class="col-lg-6">
                             <div class="app_thumb" data-aos="fade-left" data-aos-delay="150">
-                                <img src="./images/app/app_img.png" alt="智校通客户端">
+                                <img src="./images/app/app_img.png" alt="<?php echo $siteName; ?>客户端">
                                 <img class="app_rotate bounce-animate" src="./images/app/app_shape.png" alt="">
                             </div>
                         </div>
@@ -200,10 +205,10 @@
                     <div class="row">
                         <div class="col-lg-8 pb-4 pb-lg-0">
                             <h2 class="fs-1 text-dark mb-3" data-aos="fade-right">还没有学校账号？</h2>
-                            <p class="text-dark fs-5" data-aos="fade-right" data-aos-delay="100">联系我们，为你的院校开通智校通服务，让师生即刻享受智慧校园便利。</p>
+                            <p class="text-dark fs-5" data-aos="fade-right" data-aos-delay="100">联系我们，为你的院校开通<?php echo $siteName; ?>服务，让师生即刻享受智慧校园便利。</p>
                         </div>
                         <div class="col-lg-4 d-flex align-items-center justify-content-lg-end">
-                            <a class="btn btn-lg btn-light" href="contact-us.html" data-aos="fade-left">联系我们</a>
+                            <a class="btn btn-lg btn-light" href="contact-us.php" data-aos="fade-left">联系我们</a>
                         </div>
                     </div>
                 </div>
@@ -217,7 +222,8 @@
         <script src="./js/swiper-bundle.min.js"></script>
         <script src="./js/count-up.min.js"></script>
         <script src="./js/fancybox.umd.js"></script>
-        <script src="./js/component-loader.js"></script>
+        <script>window.SITE_NAME = <?php echo json_encode($siteName); ?>;</script>
+        <script src="./js/component-loader.js?v=2"></script>
         <script src="./js/form-validation.js"></script>
         <script src="./js/main.js?v=7"></script>
         <script src="./js/custom.js"></script>

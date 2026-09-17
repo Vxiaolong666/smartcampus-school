@@ -1,14 +1,19 @@
-<!DOCTYPE html>
+<?php
+$notLogin = true;
+include('Common/Core_brain.php');
+$siteName = htmlspecialchars(conf('Name') ?: '智校通', ENT_QUOTES);
+$siteTitle = htmlspecialchars(conf('SiteName') ?: conf('Name') ?: '智校通', ENT_QUOTES);
+?><!DOCTYPE html>
 <html lang="zh-CN">
     <head>
-        <title>联系我们 - 智校通</title>
+        <title>联系我们 - <?php echo $siteName; ?></title>
         <!-- Required Meta Tags -->
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <!-- Primary Meta Tags -->
-        <meta name="title" content="联系我们 - 智校通">
-        <meta name="description" content="有任何关于功能、部署、演示或其他问题？欢迎联系智校通智慧校园平台团队，我们随时为你服务。">
+        <meta name="title" content="联系我们 - <?php echo $siteName; ?>">
+        <meta name="description" content="有任何关于功能、部署、演示或其他问题？欢迎联系<?php echo $siteName; ?>智慧校园平台团队，我们随时为你服务。">
         <!-- favicon icon -->
         <link rel="shortcut icon" href="./images/favicon.png">
         <link rel="apple-touch-icon" href="./images/apple-icon-57x57.png">
@@ -25,7 +30,7 @@
         <link rel="stylesheet" href="./css/swiper-bundle.min.css" type="text/css">
         <link rel="stylesheet" href="./css/uicons.min.css" type="text/css">
         <link rel="stylesheet" href="./css/fancybox.min.css" type="text/css">
-        <link rel="stylesheet" href="./css/style.css?v=11" type="text/css">
+        <link rel="stylesheet" href="./css/style.css?v=15" type="text/css">
         <!-- custom css -->
         <link rel="stylesheet" href="./css/custom.css" type="text/css">
 </head>
@@ -59,7 +64,7 @@
                 <div class="container">
                     <h1 class="page-title">联系我们</h1>
                     <ul class="breadcrumbs">
-                        <li><a href="index.html#home">首页</a></li>
+                        <li><a href="index.php#home">首页</a></li>
                         <li class="active">联系我们</li>
                     </ul>
                 </div>
@@ -111,7 +116,7 @@
                                     </div>
                                     <div class="d-block">
                                         <h6 class="mb-0">公司地址</h6>
-                                        <span>智校通智慧校园平台，服务全国高校，赋能数字化校园建设。</span>
+                                        <span><?php echo $siteName; ?>智慧校园平台，服务全国高校，赋能数字化校园建设。</span>
                                     </div>
                                 </li>
                             </ul>
@@ -171,7 +176,8 @@
         <script src="./js/swiper-bundle.min.js"></script>
         <script src="./js/count-up.min.js"></script>
         <script src="./js/fancybox.umd.js"></script>
-        <script src="./js/component-loader.js"></script>
+        <script>window.SITE_NAME = <?php echo json_encode($siteName); ?>;</script>
+        <script src="./js/component-loader.js?v=2"></script>
         <script src="./js/form-validation.js"></script>
         <script src="./js/main.js?v=6"></script>
         <script src="./js/custom.js"></script>

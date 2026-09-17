@@ -1187,6 +1187,23 @@ switch($act) {
         jsonResponse(0, 'ok', ['content' => $content, 'cached' => 0]);
     break;
 
+    case 'ai_models':
+        // 返回当前 AI 提供方实际支持的模型列表（来自 /v1/models），供前端下拉选择
+        $user = authenticateUser($DB);
+        if (!$user) {
+            jsonResponse(-2, '请先登录');
+        }
+        $list = \lib\AiHelper::listModels();
+        if (!$list['success']) {
+            $cfg = \lib\AiHelper::getConfig();
+            if ($cfg['model'] !== '') {
+                jsonResponse(0, 'ok', ['models' => [$cfg['model']], 'default' => $cfg['model'], 'fallback' => true]);
+            }
+            jsonResponse(-1, $list['msg']);
+        }
+        jsonResponse(0, 'ok', ['models' => $list['models'], 'default' => isset($list['default']) ? $list['default'] : '']);
+    break;
+
     case 'ai_chat':
         // AI 对话：用 AiHelper::chatStream 流式获取增量内容，以 NDJSON 行协议返回（content / error / done），并注入当前学生的真实系统数据
         while (ob_get_level()) ob_end_clean();
@@ -1443,6 +1460,10 @@ switch($act) {
             $history
         );
 
+        $reqModel = isset($_POST['model']) ? trim((string)$_POST['model']) : '';
+        if ($reqModel !== '' && !preg_match('/^[A-Za-z0-9._-]{1,80}$/', $reqModel)) {
+            $reqModel = '';
+        }
         $cfg = \lib\AiHelper::getConfig();
         if ($cfg['token'] === '' || $cfg['base_url'] === '' || $cfg['model'] === '') {
             echo json_encode(['error' => 'AI 未配置：请在后台「AI 配置」中填写 Token、Base URL 与模型'], JSON_UNESCAPED_UNICODE) . "\n";
@@ -1456,7 +1477,7 @@ switch($act) {
 
         if ($streamMode == 0) {
             // 非流式：一次性返回完整内容，前端普通请求即可解析，避免“一直正在思考”
-            $result = \lib\AiHelper::chat($messages, ['temperature' => 0.7, 'max_tokens' => 2000]);
+            $result = \lib\AiHelper::chat($messages, ['temperature' => 0.7, 'max_tokens' => 2000], $reqModel);
             if (!$result['success']) {
                 echo json_encode(['error' => $result['msg']], JSON_UNESCAPED_UNICODE) . "\n";
                 flush();
@@ -1473,7 +1494,7 @@ switch($act) {
                 flush();
                 if (function_exists('ob_flush')) { @ob_flush(); }
             }
-        });
+        }, $reqModel);
         if (!$streamResult['success']) {
             echo json_encode(['error' => $streamResult['msg']], JSON_UNESCAPED_UNICODE) . "\n";
             flush();

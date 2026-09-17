@@ -868,10 +868,51 @@ footer {
 .footer_title.footer-logo {
   font-size: 35px;
   font-weight: 800;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
 }
 .footer_title.footer-logo:before {
   display: none;
+}
+/* 页脚 HTML 已带 <img> 时，使用该图片（样式加 !important 防止被覆盖） */
+.footer-logo-img {
+  width: 1em !important;
+  height: 1em !important;
+  min-width: 24px !important;
+  min-height: 24px !important;
+  object-fit: contain !important;
+  flex: 0 0 auto !important;
+  display: block !important;
+}
+/* 兜底：若页脚 HTML 里没有 <img>（脚本未更新），用伪元素渲染 logo；
+   伪元素是 flex 项，由 .footer_title.footer-logo 的 align-items:center 自动垂直居中，
+   不会受 padding-bottom 影响，避免文字/图标错位 */
+.footer_title.footer-logo:not(:has(img))::before {
+  content: "";
+  position: static;
+  display: block;
+  width: 35px;
+  height: 35px;
+  border-radius: 0;
+  background: url('../logo.png') no-repeat center center;
+  background-size: contain;
+  flex: 0 0 auto;
+}
+@media only screen and (max-width: 991px) {
+  .footer_title.footer-logo:not(:has(img))::before {
+    width: 30px;
+    height: 30px;
+  }
+}
+/* 底部版权行网站名称前的 logo 图标 */
+.footer-copy-logo {
+  width: 1.15em;
+  height: 1.15em;
+  object-fit: contain;
+  display: inline-block;
+  vertical-align: -0.22em;
+  margin-right: 6px;
 }
 .footer_title {
   font-size: 25px;

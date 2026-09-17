@@ -1,14 +1,19 @@
-<!DOCTYPE html>
+<?php
+$notLogin = true;
+include('Common/Core_brain.php');
+$siteName = htmlspecialchars(conf('Name') ?: '智校通', ENT_QUOTES);
+$siteTitle = htmlspecialchars(conf('SiteName') ?: conf('Name') ?: '智校通', ENT_QUOTES);
+?><!DOCTYPE html>
 <html lang="zh-CN">
     <head>
-        <title>常见问题 - 智校通</title>
+        <title>常见问题 - <?php echo $siteName; ?></title>
         <!-- Required Meta Tags -->
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <!-- Primary Meta Tags -->
-        <meta name="title" content="常见问题 - 智校通">
-        <meta name="description" content="关于智校通智慧校园平台的常见问题解答：账号登录、校园服务、安全隐私、部署运维等。">
+        <meta name="title" content="常见问题 - <?php echo $siteName; ?>">
+        <meta name="description" content="关于<?php echo $siteName; ?>智慧校园平台的常见问题解答：账号登录、校园服务、安全隐私、部署运维等。">
         <!-- favicon icon -->
         <link rel="shortcut icon" href="./images/favicon.png">
         <link rel="apple-touch-icon" href="./images/apple-icon-57x57.png">
@@ -25,7 +30,7 @@
         <link rel="stylesheet" href="./css/swiper-bundle.min.css" type="text/css">
         <link rel="stylesheet" href="./css/uicons.min.css" type="text/css">
         <link rel="stylesheet" href="./css/fancybox.min.css" type="text/css">
-        <link rel="stylesheet" href="./css/style.css?v=11" type="text/css">
+        <link rel="stylesheet" href="./css/style.css?v=15" type="text/css">
         <!-- custom css -->
         <link rel="stylesheet" href="./css/custom.css" type="text/css">
 </head>
@@ -59,7 +64,7 @@
                 <div class="container">
                     <h1 class="page-title">常见问题</h1>
                     <ul class="breadcrumbs">
-                        <li><a href="index.html#home">首页</a></li>
+                        <li><a href="index.php#home">首页</a></li>
                         <li class="active">常见问题</li>
                     </ul>
                 </div>
@@ -85,7 +90,7 @@
                                 <div class="card">
                                     <div class="card-header" id="headingFaqOne">
                                         <div class="faqs_header" data-bs-toggle="collapse" data-bs-target="#collapseFaqOne" aria-expanded="true" aria-controls="collapseFaqOne">
-                                            智校通支持哪些登录方式？
+                                            <?php echo $siteName; ?>支持哪些登录方式？
                                             <i class="fal fa-long-arrow-up"></i>
                                         </div>
                                     </div>
@@ -156,7 +161,7 @@
                                 <div class="card">
                                     <div class="card-header" id="headingFaqFour">
                                         <div class="faqs_header" data-bs-toggle="collapse" data-bs-target="#collapseFaqFour" aria-expanded="true" aria-controls="collapseFaqFour">
-                                            智校通能为师生提供哪些服务？
+                                            <?php echo $siteName; ?>能为师生提供哪些服务？
                                             <i class="fal fa-long-arrow-up"></i>
                                         </div>
                                     </div>
@@ -214,7 +219,7 @@
                                     </div>
                                     <div id="collapseFaqThirteen" class="collapse" aria-labelledby="headingFaqThirteen" data-bs-parent="#accordionCat2">
                                         <div class="card-body">
-                                            智校通内置基于大模型的校园 AI 助手，可解答校规校纪、办事流程、校园导航等问题，还能结合你的课表、成绩、电费等个人数据提供个性化提醒与建议，7×24 小时在线，帮助师生快速获取所需信息。
+                                            <?php echo $siteName; ?>内置基于大模型的校园 AI 助手，可解答校规校纪、办事流程、校园导航等问题，还能结合你的课表、成绩、电费等个人数据提供个性化提醒与建议，7×24 小时在线，帮助师生快速获取所需信息。
                                         </div>
                                     </div>
                                 </div>
@@ -240,7 +245,7 @@
                                 <div class="card">
                                     <div class="card-header" id="headingFaqFifteen">
                                         <div class="faqs_header" data-bs-toggle="collapse" data-bs-target="#collapseFaqFifteen" aria-expanded="false" aria-controls="collapseFaqFifteen">
-                                            智校通如何保护我的隐私？
+                                            <?php echo $siteName; ?>如何保护我的隐私？
                                             <i class="fal fa-long-arrow-up"></i>
                                         </div>
                                     </div>
@@ -439,7 +444,8 @@
         <script src="./js/swiper-bundle.min.js"></script>
         <script src="./js/count-up.min.js"></script>
         <script src="./js/fancybox.umd.js"></script>
-        <script src="./js/component-loader.js"></script>
+        <script>window.SITE_NAME = <?php echo json_encode($siteName); ?>;</script>
+        <script src="./js/component-loader.js?v=2"></script>
         <script src="./js/form-validation.js"></script>
         <script src="./js/main.js?v=6"></script>
         <script src="./js/custom.js"></script>

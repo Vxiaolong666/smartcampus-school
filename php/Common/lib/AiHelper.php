@@ -27,17 +27,18 @@ class AiHelper
      * @param array $opts     ['temperature'=>float,'max_tokens'=>int]
      * @return array{success:bool,content?:string,msg?:string}
      */
-    public static function chat(array $messages, array $opts = [])
+    public static function chat(array $messages, array $opts = [], $model = null)
     {
         $cfg = self::getConfig();
 
-        if ($cfg['token'] === '' || $cfg['base_url'] === '' || $cfg['model'] === '') {
+        $useModel = $model ? $model : $cfg['model'];
+        if ($cfg['token'] === '' || $cfg['base_url'] === '' || $useModel === '') {
             return ['success' => false, 'msg' => 'AI 未配置：请在后台「AI 配置」中填写 Token、Base URL 与模型'];
         }
 
         $url = rtrim($cfg['base_url'], '/') . '/chat/completions';
         $payload = [
-            'model'       => $cfg['model'],
+            'model'       => $useModel,
             'messages'    => $messages,
             'temperature' => isset($opts['temperature']) ? floatval($opts['temperature']) : 0.7,
             'max_tokens'  => isset($opts['max_tokens']) ? intval($opts['max_tokens']) : 1500,
@@ -116,19 +117,21 @@ class AiHelper
      * @param callable $onChunk
      * @return array{success:bool,msg?:string}
      */
-    public static function chatStream(array $messages, array $opts = [], $onChunk = null)
+    public static function chatStream(array $messages, array $opts = [], $onChunk = null, $model = null)
     {
         if (!is_callable($onChunk)) {
             return ['success' => false, 'msg' => '缺少流式回调'];
         }
         $cfg = self::getConfig();
-        if ($cfg['token'] === '' || $cfg['base_url'] === '' || $cfg['model'] === '') {
+
+        $useModel = $model ? $model : $cfg['model'];
+        if ($cfg['token'] === '' || $cfg['base_url'] === '' || $useModel === '') {
             return ['success' => false, 'msg' => 'AI 未配置：请在后台「AI 配置」中填写 Token、Base URL 与模型'];
         }
 
         $url = rtrim($cfg['base_url'], '/') . '/chat/completions';
         $payload = [
-            'model'       => $cfg['model'],
+            'model'       => $useModel,
             'messages'    => $messages,
             'temperature' => isset($opts['temperature']) ? floatval($opts['temperature']) : 0.7,
             'max_tokens'  => isset($opts['max_tokens']) ? intval($opts['max_tokens']) : 2000,
@@ -199,5 +202,58 @@ class AiHelper
         }
 
         return ['success' => false, 'msg' => 'AI 请求失败（已重试，仍无有效结果）'];
+    }
+
+    /**
+     * 获取提供方实际支持的模型列表（OpenAI 兼容 /v1/models）
+     * @return array{success:bool,models?:array,msg?:string}
+     */
+    public static function listModels()
+    {
+        $cfg = self::getConfig();
+        if ($cfg['token'] === '' || $cfg['base_url'] === '') {
+            return ['success' => false, 'msg' => 'AI 未配置：请在后台「AI 配置」中填写 Token 与 Base URL'];
+        }
+        $url = rtrim($cfg['base_url'], '/') . '/models';
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_HTTPGET         => true,
+            CURLOPT_HTTPHEADER      => [
+                'Authorization: Bearer ' . $cfg['token'],
+                'Accept: application/json',
+            ],
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 20,
+            CURLOPT_CONNECTTIMEOUT => 15,
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_SSL_VERIFYHOST => false,
+        ]);
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlErr  = curl_error($ch);
+        curl_close($ch);
+        if ($response === false) {
+            return ['success' => false, 'msg' => '获取模型列表失败：' . $curlErr];
+        }
+        $data = json_decode($response, true);
+        if (!is_array($data) || !isset($data['data']) || !is_array($data['data'])) {
+            if (isset($data['models']) && is_array($data['models'])) {
+                $data['data'] = $data['models'];
+            } else {
+                return ['success' => false, 'msg' => '该接口不支持 /models 列表'];
+            }
+        }
+        $models = [];
+        foreach ($data['data'] as $m) {
+            $id = is_string($m) ? $m : (isset($m['id']) ? $m['id'] : (isset($m['name']) ? $m['name'] : ''));
+            $id = trim((string)$id);
+            if ($id !== '' && !in_array($id, $models, true)) {
+                $models[] = $id;
+            }
+        }
+        if (empty($models)) {
+            return ['success' => false, 'msg' => '模型列表为空'];
+        }
+        return ['success' => true, 'models' => $models, 'default' => $cfg['model']];
     }
 }
