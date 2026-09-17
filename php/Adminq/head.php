@@ -95,6 +95,29 @@ include('../Common/Core_brain.php');
                 padding-left: 0 !important;
             }
         }
+
+        /* 侧边栏当前菜单高亮（OneUI 默认仅改文字色，深色侧栏下辨识度低） */
+        #sidebar .nav-main-link.active {
+            background-color: rgba(0, 0, 0, .08);
+            border-radius: .375rem;
+            font-weight: 600;
+        }
+        #sidebar .nav-main-link.active::before {
+            content: "";
+            position: absolute;
+            left: -.625rem;
+            top: 50%;
+            transform: translateY(-50%);
+            width: .25rem;
+            height: 1.25rem;
+            border-radius: .25rem;
+            background-color: #4c78dd;
+        }
+        .sidebar-dark #sidebar .nav-main-link.active {
+            background-color: rgba(255, 255, 255, .14);
+            color: #fff;
+        }
+        .sidebar-dark #sidebar .nav-main-link.active > .nav-main-link-icon { color: #fff; }
     </style>
     <script>
         (function() {
@@ -183,6 +206,169 @@ include('../Common/Core_brain.php');
                     updateCustomOverlay();
                 }
             }, true);
+        })();
+    </script>
+    <script>
+        /* ===== 主题色 / 暗黑模式持久化（Cookie） =====
+           OneUI 仅在 #page-container 带 remember-theme 时才读写 localStorage，
+           页面默认没有该 class，导致主题刷新或跳转后丢失。
+           这里改用 Cookie 保存，有效期 365 天，全站 path=/ 共享。 */
+        (function () {
+            var EXPIRE_DAYS = 365;
+
+            function setCookie(name, value) {
+                var d = new Date();
+                d.setTime(d.getTime() + EXPIRE_DAYS * 24 * 60 * 60 * 1000);
+                document.cookie = name + '=' + encodeURIComponent(value)
+                    + ';expires=' + d.toUTCString() + ';path=/;SameSite=Lax';
+            }
+            function getCookie(name) {
+                var m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+                return m ? decodeURIComponent(m[1]) : '';
+            }
+
+            // 应用主题：与 OneUI 的 _uiUpdateTheme 保持同样做法（维护 #css-theme 链接）
+            function applyTheme(name) {
+                if (!name) return;
+                var link = document.getElementById('css-theme');
+                if (name === 'default') {
+                    if (link && link.parentNode) link.parentNode.removeChild(link);
+                    return;
+                }
+                if (link) {
+                    link.setAttribute('href', name);
+                    return;
+                }
+                var main = document.getElementById('css-main');
+                if (!main) return;
+                link = document.createElement('link');
+                link.id = 'css-theme';
+                link.setAttribute('rel', 'stylesheet');
+                link.setAttribute('href', name);
+                main.insertAdjacentElement('afterend', link);
+            }
+
+            function syncThemeActive(name) {
+                var items = document.querySelectorAll('[data-toggle="theme"]');
+                Array.prototype.forEach.call(items, function (a) {
+                    var t = a.getAttribute('data-theme');
+                    var target = (!t || t === 'default') ? 'default' : t;
+                    a.classList.toggle('active', target === name);
+                });
+            }
+
+            function applyDark(on) {
+                var pc = document.getElementById('page-container');
+                if (!pc) return;
+                if (on) {
+                    pc.classList.add('sidebar-dark');
+                    pc.classList.add('page-header-dark');
+                    pc.classList.add('dark-mode');
+                } else {
+                    pc.classList.remove('dark-mode');
+                }
+            }
+
+            // 主题 CSS 立即恢复（#css-main 已存在），避免闪烁
+            var savedTheme = getCookie('oneui_theme');
+            if (savedTheme) applyTheme(savedTheme);
+
+            document.addEventListener('DOMContentLoaded', function () {
+                var dark = getCookie('oneui_dark');
+                if (dark !== '') applyDark(dark === '1');
+                if (savedTheme) syncThemeActive(savedTheme);
+
+                // 主题切换 → 写入 Cookie
+                Array.prototype.forEach.call(document.querySelectorAll('[data-toggle="theme"]'), function (a) {
+                    a.addEventListener('click', function () {
+                        setCookie('oneui_theme', a.getAttribute('data-theme') || 'default');
+                    });
+                });
+
+                // 暗黑模式切换 → 等 OneUI 改完 class 后读取真实状态再写入
+                document.addEventListener('click', function (e) {
+                    var btn = e.target && e.target.closest ? e.target.closest('[data-action="dark_mode_toggle"]') : null;
+                    if (!btn) return;
+                    setTimeout(function () {
+                        var pc = document.getElementById('page-container');
+                        if (!pc) return;
+                        setCookie('oneui_dark', pc.classList.contains('dark-mode') ? '1' : '0');
+                    }, 0);
+                });
+            });
+        })();
+    </script>
+    <script>
+        /* ===== 侧边栏当前菜单高亮 ===== */
+        (function () {
+            // 子页面归入其父菜单，避免编辑页等二级页面侧栏无高亮
+            var ALIAS = {
+                'announcement_edit.php': 'announcements.php',
+                'uset_add.php':          'uset.php',
+                'ulist-table.php':       'ulist.php',
+                'edit_pwd.php':          'index.php'
+            };
+
+            function currentPage() {
+                var path = window.location.pathname || '';
+                var file = path.substring(path.lastIndexOf('/') + 1);
+                if (!file) file = 'index.php';
+                if (ALIAS[file]) file = ALIAS[file];
+                return file.split('#')[0].split('?')[0];
+            }
+
+            // 让当前菜单项落在侧栏可视区内（已可见则不动）
+            function scrollActiveIntoView(el) {
+                var wrap = document.querySelector('#sidebar .simplebar-content-wrapper')
+                        || document.querySelector('#sidebar .simplebar-offset')
+                        || document.querySelector('#sidebar .js-sidebar-scroll');
+                if (!wrap) return;
+                var wr = wrap.getBoundingClientRect();
+                var er = el.getBoundingClientRect();
+                if (er.top >= wr.top && er.bottom <= wr.bottom) return; // 已完全可见
+                if (wrap.scrollHeight <= wrap.clientHeight) return;     // 无需滚动
+                var delta = (er.top - wr.top) - (wr.height - er.height) / 2;
+                try {
+                    wrap.scrollTo({ top: wrap.scrollTop + delta, behavior: 'smooth' });
+                } catch (err) {
+                    wrap.scrollTop += delta;
+                }
+            }
+
+            function highlight() {
+                var cur = currentPage();
+                var matched = null;
+                Array.prototype.forEach.call(document.querySelectorAll('.nav-main .nav-main-link'), function (a) {
+                    var href = (a.getAttribute('href') || '').split('#')[0].split('?')[0];
+                    if (!href || href === 'javascript:void(0)' || href.charAt(0) === '#') return;
+                    if (href === cur) {
+                        a.classList.add('active');
+                        if (!matched) matched = a;
+                    } else {
+                        a.classList.remove('active');
+                    }
+                });
+                if (!matched) return;
+                // 存在子菜单时展开父级
+                var parentItem = matched.closest('.nav-main-submenu');
+                if (parentItem) {
+                    parentItem.style.display = 'block';
+                    var pi = parentItem.closest('.nav-main-item');
+                    if (pi) pi.classList.add('open');
+                }
+                // 等布局稳定后再滚动，保证当前项可见
+                setTimeout(function () { scrollActiveIntoView(matched); }, 80);
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', highlight);
+            } else {
+                highlight();
+            }
+            // pjax 局部刷新后重新高亮
+            if (window.jQuery) {
+                window.jQuery(document).on('pjax:end pjax:complete', highlight);
+            }
         })();
     </script>
 </head>
