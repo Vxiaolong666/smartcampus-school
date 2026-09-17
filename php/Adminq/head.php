@@ -17,6 +17,7 @@ include('../Common/Core_brain.php');
     <meta name="description" content="<?php echo $conf['Description']?>">
     <link rel="shortcut icon" href="/assets/media/favicon.png" type="image/x-icon">
     <link rel="stylesheet" id="css-main" href="./assets/css/oneui.min-5.6.css">
+    <link rel="stylesheet" href="./assets/css/scrollbar.css">
     <link rel="stylesheet" href="./assets/js/plugins/magnific-popup/magnific-popup.css">
     <link href="./assets/js/plugins/nprogress/nprogress.min.css" rel="stylesheet">
     <script src="./assets/js/lib/jquery.min.js"></script>
@@ -319,6 +320,12 @@ include('../Common/Core_brain.php');
                                                 <a class="nav-main-link" href="feature_settings.php">
                                                     <i class="nav-main-link-icon fa fa-toggle-on"></i>
                                                     <span class="nav-main-link-name"><b>功能设置</b></span>
+                                                </a>
+                                            </li>
+                                            <li class="nav-main-item">
+                                                <a class="nav-main-link" href="oauth_config.php">
+                                                    <i class="nav-main-link-icon fa fa-link"></i>
+                                                    <span class="nav-main-link-name"><b>聚合登录配置</b></span>
                                                 </a>
                                             </li>
                                             <li class="nav-main-heading">Build</li>

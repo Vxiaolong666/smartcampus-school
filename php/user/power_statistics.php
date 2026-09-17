@@ -234,9 +234,7 @@ function renderStatistics(data) {
                         <div style="position: relative; height: 250px;">
                             <canvas id="recentChart"></canvas>
                         </div>
-                        <div class="text-muted small mt-2">
-                            <i class="fa fa-info-circle me-1"></i>共 ${data.recent_trend.length} 个数据点，电价: ${data.price_per_kwh} 元/度
-                        </div>
+                        ${data.recent_trend.length > 0 ? `<div class="text-muted small mt-2"><i class="fa fa-info-circle me-1"></i>共 ${data.recent_trend.length} 个数据点，电价: ${data.price_per_kwh} 元/度</div>` : ''}
                     </div>
                 </div>
             </div>
@@ -252,9 +250,7 @@ function renderStatistics(data) {
                         <div style="position: relative; height: 250px;">
                             <canvas id="dailyChart"></canvas>
                         </div>
-                        <div class="text-muted small mt-2">
-                            <i class="fa fa-info-circle me-1"></i>共 ${data.daily_trend.length} 天数据
-                        </div>
+                        ${data.daily_trend.length > 0 ? `<div class="text-muted small mt-2"><i class="fa fa-info-circle me-1"></i>共 ${data.daily_trend.length} 天数据</div>` : ''}
                     </div>
                 </div>
             </div>
@@ -267,6 +263,38 @@ function renderStatistics(data) {
                         <h3 class="block-title"><i class="fa fa-list me-2"></i>历史电费记录</h3>
                     </div>
                     <div class="block-content">
+                        ${data.record_count > 0 ? `
+                        <div class="row g-2 mb-3">
+                            <div class="col-auto">
+                                <select id="rec-type-filter" class="form-select form-select-sm">
+                                    <option value="">全部记录</option>
+                                    <option value="usage">用电记录</option>
+                                    <option value="recharge">充值记录</option>
+                                </select>
+                            </div>
+                            <div class="col-auto">
+                                <select id="rec-sort" class="form-select form-select-sm">
+                                    <option value="record_time">按时间</option>
+                                    <option value="balance">按余额</option>
+                                    <option value="usage_kwh">按用电量</option>
+                                    <option value="usage_cost">按电费</option>
+                                </select>
+                            </div>
+                            <div class="col-auto">
+                                <select id="rec-sort-dir" class="form-select form-select-sm">
+                                    <option value="desc">倒序</option>
+                                    <option value="asc">正序</option>
+                                </select>
+                            </div>
+                            <div class="col-auto">
+                                <select id="rec-pagesize" class="form-select form-select-sm">
+                                    <option value="10">每页 10 条</option>
+                                    <option value="20">每页 20 条</option>
+                                    <option value="50">每页 50 条</option>
+                                </select>
+                            </div>
+                        </div>
+                        ` : ''}
                         <div class="table-responsive">
                             <table class="table table-bordered table-striped table-vcenter">
                                 <thead>
@@ -277,21 +305,11 @@ function renderStatistics(data) {
                                         <th class="text-center">电费(元)</th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    ${data.records.length > 0 ? data.records.map(r => `
-                                        <tr>
-                                            <td>${r.record_time || r.created_at}</td>
-                                            <td class="text-center">¥${r.balance}</td>
-                                            <td class="text-center">${formatUsage(r.usage_kwh, false)}</td>
-                                            <td class="text-center">${formatUsage(r.usage_cost, true)}</td>
-                                        </tr>
-                                    `).join('') : '<tr><td colspan="4" class="text-center text-muted">暂无记录</td></tr>'}
-                                </tbody>
+                                <tbody id="power-records-body"></tbody>
                             </table>
                         </div>
-                        <div class="text-muted small">
-                            <i class="fa fa-info-circle me-1"></i>共 ${data.record_count} 条记录，用电量根据余额变化和电价(${data.price_per_kwh}元/度)自动计算
-                        </div>
+                        <div id="power-records-pager" class="mt-3 d-flex justify-content-between align-items-center flex-wrap gap-2"></div>
+                       
                     </div>
                 </div>
             </div>
@@ -299,22 +317,144 @@ function renderStatistics(data) {
     `;
     
     $('#statsContent').html(html);
-    
+
+    // 历史电费记录：筛选 / 排序 / 分页（客户端处理）
+    window.__powerAllRecords = data.records || [];
+    powerRecordsState.page = 1;
+    bindRecordControls();
+    renderRecordsTable();
+
     setTimeout(function() {
         renderRecentChart(data.recent_trend);
         renderDailyChart(data.daily_trend);
     }, 100);
 }
 
+var powerRecordsState = { sortKey: 'record_time', sortDir: 'desc', typeFilter: '', page: 1, pageSize: 10 };
+
+function bindRecordControls() {
+    $('#rec-type-filter').off('change').on('change', function() {
+        powerRecordsState.typeFilter = $(this).val();
+        powerRecordsState.page = 1;
+        renderRecordsTable();
+    });
+    $('#rec-sort').off('change').on('change', function() {
+        powerRecordsState.sortKey = $(this).val();
+        renderRecordsTable();
+    });
+    $('#rec-sort-dir').off('change').on('change', function() {
+        powerRecordsState.sortDir = $(this).val();
+        renderRecordsTable();
+    });
+    $('#rec-pagesize').off('change').on('change', function() {
+        powerRecordsState.pageSize = intVal($(this).val());
+        powerRecordsState.page = 1;
+        renderRecordsTable();
+    });
+}
+
+function renderRecordsTable() {
+    if (!window.__powerAllRecords) {
+        return;
+    }
+    var rows = window.__powerAllRecords.slice();
+
+    if (powerRecordsState.typeFilter === 'usage') {
+        rows = rows.filter(r => parseFloat(r.usage_cost) > 0);
+    } else if (powerRecordsState.typeFilter === 'recharge') {
+        rows = rows.filter(r => parseFloat(r.usage_cost) < 0);
+    }
+
+    var k = powerRecordsState.sortKey;
+    var dir = powerRecordsState.sortDir === 'asc' ? 1 : -1;
+    rows.sort(function(a, b) {
+        var va, vb;
+        if (k === 'record_time') {
+            va = a.record_time || '';
+            vb = b.record_time || '';
+            return va < vb ? -1 * dir : (va > vb ? 1 * dir : 0);
+        }
+        va = parseFloat(a[k]) || 0;
+        vb = parseFloat(b[k]) || 0;
+        return va < vb ? -1 * dir : (va > vb ? 1 * dir : 0);
+    });
+
+    var total = rows.length;
+    var pageSize = powerRecordsState.pageSize;
+    var totalPages = Math.ceil(total / pageSize) || 1;
+    if (powerRecordsState.page > totalPages) {
+        powerRecordsState.page = totalPages;
+    }
+    var page = powerRecordsState.page;
+    var startIdx = (page - 1) * pageSize;
+    var pageRows = rows.slice(startIdx, startIdx + pageSize);
+
+    if (pageRows.length === 0) {
+        $('#power-records-body').html('<tr><td colspan="4" class="text-center text-muted">暂无记录</td></tr>');
+    } else {
+        var html = pageRows.map(function(r) {
+            return '<tr>' +
+                '<td>' + escapeHtml(r.record_time || '') + '</td>' +
+                '<td class="text-center">¥' + parseFloat(r.balance).toFixed(2) + '</td>' +
+                '<td class="text-center">' + formatUsage(r.usage_kwh, false) + '</td>' +
+                '<td class="text-center">' + formatUsage(r.usage_cost, true) + '</td>' +
+                '</tr>';
+        }).join('');
+        $('#power-records-body').html(html);
+    }
+
+    renderRecordsPager(total, page, totalPages);
+}
+
+function renderRecordsPager(total, page, totalPages) {
+    var info = '共 ' + total + ' 条，第 ' + page + ' / ' + totalPages + ' 页';
+    var prevDisabled = page <= 1 ? 'disabled' : '';
+    var nextDisabled = page >= totalPages ? 'disabled' : '';
+    var html = '<div class="text-muted small">' + info + '</div>' +
+        '<div class="btn-group btn-group-sm">' +
+        '<button type="button" class="btn btn-outline-secondary" data-rec-prev ' + prevDisabled + '><i class="fa fa-chevron-left"></i> 上一页</button>' +
+        '<button type="button" class="btn btn-outline-secondary" data-rec-next ' + nextDisabled + '>下一页 <i class="fa fa-chevron-right"></i></button>' +
+        '</div>';
+    $('#power-records-pager').html(html);
+
+    if (page > 1) {
+        $('#power-records-pager [data-rec-prev]').off('click').on('click', function() {
+            powerRecordsState.page--;
+            renderRecordsTable();
+        });
+    }
+    if (page < totalPages) {
+        $('#power-records-pager [data-rec-next]').off('click').on('click', function() {
+            powerRecordsState.page++;
+            renderRecordsTable();
+        });
+    }
+}
+
+function intVal(v) {
+    var n = parseInt(v, 10);
+    return isNaN(n) ? 0 : n;
+}
+
+function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, function(c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+}
+
 function renderRecentChart(data) {
     var ctx = document.getElementById('recentChart');
     if (!ctx) return;
-    
+    var wrap = ctx.parentNode;
+
     if (recentChart) {
         recentChart.destroy();
+        recentChart = null;
     }
-    
+    $(wrap).find('.chart-empty-mask').remove();
+
     if (!data || data.length === 0) {
+        $(wrap).append('<div class="chart-empty-mask" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;"><div class="text-center text-muted"><i class="fa fa-chart-line fa-2x mb-2"></i><div>暂无用电量数据</div></div></div>');
         return;
     }
     
@@ -394,12 +534,16 @@ function renderRecentChart(data) {
 function renderDailyChart(data) {
     var ctx = document.getElementById('dailyChart');
     if (!ctx) return;
-    
+    var wrap = ctx.parentNode;
+
     if (dailyChart) {
         dailyChart.destroy();
+        dailyChart = null;
     }
-    
+    $(wrap).find('.chart-empty-mask').remove();
+
     if (!data || data.length === 0) {
+        $(wrap).append('<div class="chart-empty-mask" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;"><div class="text-center text-muted"><i class="fa fa-calendar fa-2x mb-2"></i><div>暂无每日用电数据</div></div></div>');
         return;
     }
     

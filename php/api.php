@@ -2575,18 +2575,64 @@ switch($act) {
         if (!$user) {
             jsonResponse(-2, '请先登录');
         }
-        
+
         $userId = $user['user_id'];
-        
-        $logs = $DB->getAll("SELECT s.*, t.name as template_name FROM nteam_subscription_logs s 
-            LEFT JOIN nteam_wx_templates t ON s.template_id = t.template_id 
-            WHERE s.user_id='$userId' 
-            ORDER BY s.created_at DESC 
-            LIMIT 50");
-        
-        jsonResponse(0, 'success', $logs ?: []);
+        $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+        $pageSize = isset($_GET['pageSize']) ? intval($_GET['pageSize']) : 10;
+        if ($pageSize <= 0 || $pageSize > 50) {
+            $pageSize = 10;
+        }
+        $action = isset($_GET['action']) ? daddslashes(trim($_GET['action'])) : '';
+        $sort = isset($_GET['sort']) ? trim($_GET['sort']) : 'time_desc';
+
+        $where = "WHERE s.user_id='$userId'";
+        if ($action) {
+            $where .= " AND s.action='$action'";
+        }
+        $orderBy = ($sort === 'time_asc') ? 's.created_at ASC' : 's.created_at DESC';
+        $totalRow = $DB->getRow("SELECT COUNT(*) as cnt FROM nteam_subscription_logs s $where");
+        $total = intval($totalRow['cnt']);
+        $offset = ($page - 1) * $pageSize;
+        $list = $DB->getAll("SELECT s.*, t.name as template_name FROM nteam_subscription_logs s
+            LEFT JOIN nteam_wx_templates t ON s.template_id = t.template_id
+            $where ORDER BY $orderBy LIMIT $offset, $pageSize");
+
+        jsonResponse(0, 'success', ['total' => $total, 'page' => $page, 'pageSize' => $pageSize, 'list' => $list ?: []]);
     break;
-    
+
+    case 'get_user_push_logs':
+        $user = authenticateUser($DB);
+        if (!$user) {
+            jsonResponse(-2, '请先登录');
+        }
+
+        $userId = $user['user_id'];
+        $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+        $pageSize = isset($_GET['pageSize']) ? intval($_GET['pageSize']) : 10;
+        if ($pageSize <= 0 || $pageSize > 50) {
+            $pageSize = 10;
+        }
+        $pushType = isset($_GET['push_type']) ? daddslashes(trim($_GET['push_type'])) : '';
+        $status = isset($_GET['status']) ? trim($_GET['status']) : '';
+        $sort = isset($_GET['sort']) ? trim($_GET['sort']) : 'time_desc';
+
+        $where = "WHERE user_id='$userId'";
+        if ($pushType) {
+            $where .= " AND push_type='$pushType'";
+        }
+        if ($status !== '' && in_array($status, ['0', '1', '2'], true)) {
+            $where .= " AND status='" . intval($status) . "'";
+        }
+        $orderBy = ($sort === 'time_asc') ? 'created_at ASC' : 'created_at DESC';
+        $totalRow = $DB->getRow("SELECT COUNT(*) as cnt FROM nteam_push_logs $where");
+        $total = intval($totalRow['cnt']);
+        $offset = ($page - 1) * $pageSize;
+        $list = $DB->getAll("SELECT id, push_type, notify_type, balance, title, content, status, error_msg, sent_at, created_at
+            FROM nteam_push_logs $where ORDER BY $orderBy LIMIT $offset, $pageSize");
+
+        jsonResponse(0, 'success', ['total' => $total, 'page' => $page, 'pageSize' => $pageSize, 'list' => $list ?: []]);
+    break;
+
     case 'get_subscription_history':
         $user = authenticateUser($DB);
         if (!$user) {

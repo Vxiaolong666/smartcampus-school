@@ -62,9 +62,7 @@ include './head.php';
                                 </label>
                                 <input type="file" id="avatarInput" name="avatar" accept="image/*" style="display:none;">
                                 <div class="text-muted mt-2" style="font-size:12px;">支持JPG、PNG、GIF，不超过2MB</div>
-                                <div class="alert alert-info mt-3 mb-0" style="font-size:12px; padding:8px 12px;">
-                                    <i class="fa fa-info-circle me-1"></i> 如需使用微信头像，请在小程序中设置
-                                </div>
+                               
                             </div>
                         </div>
                         <div class="col-md-9">
@@ -73,7 +71,7 @@ include './head.php';
                                     <div class="mb-4">
                                         <label class="form-label">昵称</label>
                                         <input type="text" class="form-control form-control-lg" name="nickname" value="<?php echo htmlspecialchars($userData['nickname'] ?: ''); ?>" placeholder="请输入昵称" maxlength="20">
-                                        <div class="form-text">昵称长度不超过20个字符，如需使用微信昵称请在小程序中设置</div>
+                                        <div class="form-text">昵称长度不超过20个字符</div>
                                     </div>
                                 </div>
                                 <div class="col-md-6">

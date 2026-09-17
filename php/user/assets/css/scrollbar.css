@@ -1,0 +1,27 @@
+/* 自定义滚动条（浅灰），全局应用于任意可滚动元素的横/纵向滚动条 */
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd0d8 transparent;
+}
+
+/* WebKit（Chrome / Edge / Safari / Opera） */
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd0d8;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #aeb4bf;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}

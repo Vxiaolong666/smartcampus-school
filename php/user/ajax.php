@@ -1281,6 +1281,72 @@ switch($act){
         exit(json_encode(['code' => 0, 'msg' => 'ok', 'content' => $content, 'cached' => 0]));
     break;
 
+    case 'get_oauth_channels':
+        require_once '../funsion/OAuthHelper.php';
+        $enabled = OAuthHelper::isEnabled($DB);
+        $channels = $enabled ? OAuthHelper::getEnabledChannels($DB) : [];
+        exit(json_encode([
+            'code' => 0,
+            'enabled' => $enabled ? 1 : 0,
+            'channels' => $channels
+        ]));
+    break;
+
+    case 'get_oauth_url':
+        require_once '../funsion/OAuthHelper.php';
+        $type = isset($_POST['type']) ? daddslashes($_POST['type']) : '';
+        $state = isset($_POST['state']) ? daddslashes($_POST['state']) : 'login';
+
+        if (!OAuthHelper::isChannelEnabled($DB, $type)) {
+            exit('{"code":-1,"msg":"该登录渠道不可用"}');
+        }
+
+        $callback = OAuthHelper::buildCallbackUrl();
+        $redirectUri = $callback . '?type=' . $type . '&state=' . $state;
+        $res = OAuthHelper::getLoginUrl($DB, $type, $redirectUri);
+        exit(json_encode($res));
+    break;
+
+    case 'get_oauth_binds':
+        if(!isset($_SESSION['userId'])){
+            exit('{"code":-1,"msg":"请先登录"}');
+        }
+        require_once '../funsion/OAuthHelper.php';
+        $userId = intval($_SESSION['userId']);
+        $rows = $DB->getAll("SELECT oauth_type, nickname, avatar, create_time FROM nteam_user_oauth WHERE user_id='$userId'");
+        $binds = [];
+        foreach ($rows as $r) {
+            $meta = OAuthHelper::CHANNELS[$r['oauth_type']] ?? ['name' => $r['oauth_type']];
+            $binds[] = [
+                'type' => $r['oauth_type'],
+                'name' => $meta['name'],
+                'nickname' => $r['nickname'],
+                'avatar' => $r['avatar'],
+                'create_time' => $r['create_time']
+            ];
+        }
+        exit(json_encode([
+            'code' => 0,
+            'binds' => $binds,
+            'enabled' => OAuthHelper::isEnabled($DB) ? 1 : 0,
+            'channels' => OAuthHelper::isEnabled($DB) ? OAuthHelper::getEnabledChannels($DB) : []
+        ]));
+    break;
+
+    case 'unbind_oauth':
+        if(!isset($_SESSION['userId'])){
+            exit('{"code":-1,"msg":"请先登录"}');
+        }
+        require_once '../funsion/OAuthHelper.php';
+        $userId = intval($_SESSION['userId']);
+        $type = isset($_POST['type']) ? daddslashes($_POST['type']) : '';
+        if (!isset(OAuthHelper::CHANNELS[$type])) {
+            exit('{"code":-1,"msg":"参数错误"}');
+        }
+        $DB->exec("DELETE FROM nteam_user_oauth WHERE user_id='$userId' AND oauth_type='$type'");
+        exit('{"code":0,"msg":"解绑成功"}');
+    break;
+
     case 'ai_analyze_schedule':
         if (!isset($_SESSION['userId'])) {
             exit(json_encode(['code' => -1, 'msg' => '请先登录']));

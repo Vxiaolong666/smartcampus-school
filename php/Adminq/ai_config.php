@@ -32,6 +32,27 @@ if (isset($_POST['submit'])) {
 function aiVal($k) { return htmlspecialchars((string)@\conf($k)); }
 ?>
 <div id="pjax-container">
+    <div class="bg-body-light">
+        <div class="content content-full">
+            <div class="d-flex flex-column flex-sm-row justify-content-sm-between align-items-sm-center py-2">
+                <div class="flex-grow-1">
+                    <h1 class="h3 fw-bold mb-2">
+                        <?php echo $title ?>
+                    </h1>
+                </div>
+                <nav class="flex-shrink-0 mt-3 mt-sm-0 ms-sm-3" aria-label="breadcrumb">
+                    <ol class="breadcrumb breadcrumb-alt">
+                        <li class="breadcrumb-item">
+                            <a class="link-fx" href="index.php">后台首页</a>
+                        </li>
+                        <li class="breadcrumb-item" aria-current="page">
+                            <?php echo $title ?>
+                        </li>
+                    </ol>
+                </nav>
+            </div>
+        </div>
+    </div>
     <div class="content animated fadeIn">
         <?php if ($saveMsg): ?>
         <div class="alert alert-success">
@@ -39,10 +60,6 @@ function aiVal($k) { return htmlspecialchars((string)@\conf($k)); }
         </div>
         <?php endif; ?>
 
-        <div class="alert alert-info">
-            <i class="fa fa-info-circle me-2"></i>
-            系统使用同一套 AI 配置，供成绩智能分析等功能调用。Base URL 填写到 <b>/v1</b> 即可，系统会自动拼接 <b>/chat/completions</b>。
-        </div>
 
         <form method="POST" action="">
             <div class="block block-rounded block-bordered">
@@ -74,14 +91,13 @@ function aiVal($k) { return htmlspecialchars((string)@\conf($k)); }
                             </div>
                         </div>
                     </div>
+                    <div class="mb-4">
+                        <button type="submit" name="submit" value="1" class="btn btn-primary me-2">
+                            <i class="fa fa-check opacity-50 me-1"></i><b>保存配置</b>
+                        </button>
+                        <a href="index.php" class="btn btn-alt-secondary">返回首页</a>
+                    </div>
                 </div>
-            </div>
-
-            <div class="d-flex">
-                <button type="submit" name="submit" value="1" class="btn btn-alt-primary me-2">
-                    <i class="fa fa-save me-1"></i>保存配置
-                </button>
-                <a href="index.php" class="btn btn-alt-secondary">返回首页</a>
             </div>
         </form>
     </div>

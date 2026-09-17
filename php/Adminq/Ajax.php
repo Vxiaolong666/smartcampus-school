@@ -6,6 +6,8 @@ include('../Common/Core_brain.php');
 $act=isset($_REQUEST['act'])?daddslashes($_REQUEST['act']):null;
 $ip = $Gets->ip();
 
+require_once '../funsion/OAuthHelper.php';
+
 @header('Content-Type: application/json; charset=UTF-8');
 
 switch($act){
@@ -1008,6 +1010,43 @@ switch($act){
         $DB->query("insert into `nteam_log` (`adminUser`,`type`,`data`,`ip`,`city`) values ('" . $_SESSION['adminUser'] . "','清空电费推送日志', NOW(), '".$ip."', '')");
         
         exit('{"code":0,"msg":"电费推送日志已清空"}');
+    break;
+    
+    case 'save_oauth_config':
+        if(!$isLogin) exit('{"code":-1,"msg":"未登录"}');
+        if($adminData['adminRank']!=1){exit('{"code":-1,"msg":"您的账号没有权限使用此功能！"}');}
+        
+        $enable = intval($_POST['enable']);
+        $appid = addslashes(trim($_POST['appid']));
+        $appkey = addslashes(trim($_POST['appkey']));
+        
+        $rawChannels = isset($_POST['channels']) && is_array($_POST['channels']) ? $_POST['channels'] : [];
+        $validChannels = [];
+        foreach ($rawChannels as $c) {
+            $c = daddslashes($c);
+            if (isset(OAuthHelper::CHANNELS[$c])) {
+                $validChannels[] = $c;
+            }
+        }
+        $channelsJson = addslashes(json_encode(array_values($validChannels)));
+        
+        if ($enable == 1 && (empty($appid) || empty($appkey))) {
+            exit('{"code":-1,"msg":"开启聚合登录需填写 AppID 和 AppKey"}');
+        }
+        
+        $existing = $DB->getRow("SELECT * FROM nteam_oauth_config ORDER BY id DESC LIMIT 1");
+        if ($existing) {
+            $sql = "UPDATE nteam_oauth_config SET enable='$enable', appid='$appid', appkey='$appkey', channels='$channelsJson', updated_at=NOW() WHERE id='{$existing['id']}'";
+        } else {
+            $sql = "INSERT INTO nteam_oauth_config (enable, appid, appkey, channels, created_at, updated_at) VALUES ('$enable', '$appid', '$appkey', '$channelsJson', NOW(), NOW())";
+        }
+        
+        if ($DB->exec($sql) !== false) {
+            $DB->query("insert into `nteam_log` (`adminUser`,`type`,`data`,`ip`,`city`) values ('" . $_SESSION['adminUser'] . "','修改了聚合登录配置', NOW(), '".$ip."', '')");
+            exit('{"code":0,"msg":"保存成功"}');
+        } else {
+            exit('{"code":-1,"msg":"保存失败['.$DB->errorInfo()[2].'"}');
+        }
     break;
     
     default:

@@ -47,6 +47,7 @@ function getUserDisplayName($nickname, $username) {
     <meta name="description" content="<?php echo conf('Description');?>">
     <link rel="shortcut icon" href="/assets/media/favicon.png" type="image/x-icon">
     <link rel="stylesheet" id="css-main" href="./assets/css/oneui.min-5.6.css">
+    <link rel="stylesheet" href="./assets/css/scrollbar.css">
     <link rel="stylesheet" href="./assets/js/plugins/magnific-popup/magnific-popup.css">
     <link href="./assets/js/plugins/nprogress/nprogress.min.css" rel="stylesheet">
     <script src="./assets/js/lib/jquery.min.js"></script>
@@ -455,6 +456,12 @@ function getUserDisplayName($nickname, $username) {
                                             <a class="nav-main-link" href="profile.php">
                                                 <i class="nav-main-link-icon fa fa-user"></i>
                                                 <span class="nav-main-link-name"><b>个人资料</b></span>
+                                            </a>
+                                        </li>
+                                        <li class="nav-main-item">
+                                            <a class="nav-main-link" href="oauth_bind.php">
+                                                <i class="nav-main-link-icon fa fa-link"></i>
+                                                <span class="nav-main-link-name"><b>第三方账号绑定</b></span>
                                             </a>
                                         </li>
                                         <li class="nav-main-item">

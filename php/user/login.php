@@ -59,6 +59,24 @@ if(isset($_SESSION['userId']))header('Location:./');
         .fs-sm {
             color: #ffffff !important;
         }
+        .oauth-btn {
+            transition: background-color .18s ease, border-color .18s ease, color .18s ease, transform .18s ease, box-shadow .18s ease;
+            font-weight: 600;
+            border-width: 1px;
+        }
+        .oauth-btn:hover {
+            background-color: var(--oc) !important;
+            border-color: var(--oc) !important;
+            color: #fff !important;
+            transform: translateY(-2px);
+            box-shadow: 0 .35rem .9rem rgba(0, 0, 0, .15);
+        }
+        .oauth-btn:active {
+            transform: translateY(0);
+        }
+        .oauth-btn i {
+            font-size: 1.05rem;
+        }
     </style>
 </head>
 <body>
@@ -73,7 +91,7 @@ if(isset($_SESSION['userId']))header('Location:./');
                                 <div class="block-content">
                                     <div class="p-sm-3 px-lg-4 px-xxl-5 py-lg-5">
                                         <div class="text-center mb-4">
-                                            <h1 class="h2 mb-1"><?php echo conf('Name');?></h1>
+                                            <img src="./assets/img/logo-header.png" alt="<?php echo conf('Name');?>" style="height:42px;max-width:100%;margin-bottom:12px;" class="img-fluid">
                                             <p class="fw-medium text-muted">欢迎登录，今天是个不错的日子</p>
                                         </div>
                                         <form class="px-4" id="loginForm" method="post" action="javascript:void(0)">
@@ -122,6 +140,14 @@ if(isset($_SESSION['userId']))header('Location:./');
                                                 </a>
                                             </div>
                                         </form>
+                                        <div id="oauthArea" class="text-center my-3" style="display:none;">
+                                            <div class="d-flex align-items-center mb-3">
+                                                <hr class="flex-grow-1">
+                                                <span class="px-2 fs-sm" style="color:#6c757d !important;">第三方登录</span>
+                                                <hr class="flex-grow-1">
+                                            </div>
+                                            <div id="oauthButtons" class="d-flex flex-wrap justify-content-center gap-2"></div>
+                                        </div>
                                         <div class="text-center mt-4 mb-4">
                                             <a href="./send_verify.php" class="btn btn-sm btn-alt-secondary">
                                                 <i class="fa fa-envelope me-1"></i> 未收到验证邮件？重新发送
@@ -219,6 +245,15 @@ if(isset($_SESSION['userId']))header('Location:./');
             initBackgroundSlider();
             setInterval(switchBackground, 3000);
 
+            // 显示聚合登录错误提示
+            const oauthError = new URLSearchParams(window.location.search).get('oauth_error');
+            if (oauthError) {
+                layer.alert(decodeURIComponent(oauthError), {icon: 2});
+            }
+
+            // 加载已启用的第三方登录渠道
+            loadOauthChannels();
+
             $("#loginForm").submit(function(){
                 var username = $("#username").val() || '';
                 var password = $("#password").val() || '';
@@ -271,6 +306,51 @@ if(isset($_SESSION['userId']))header('Location:./');
                 
                 return false;
             });
+
+            function loadOauthChannels() {
+                $.ajax({
+                    type: 'POST',
+                    url: 'ajax.php?act=get_oauth_channels',
+                    dataType: 'json',
+                    success: function(data) {
+                        if (data.code == 0 && data.enabled == 1 && data.channels && Object.keys(data.channels).length > 0) {
+                            var html = '';
+                            $.each(data.channels, function(type, meta) {
+                                html += '<button type="button" class="btn oauth-btn rounded-pill d-inline-flex align-items-center justify-content-center px-3 py-2" data-type="' + type + '" '
+                                    + 'style="--oc:' + meta.color + ';background-color:' + meta.color + '1a;border-color:' + meta.color + '59;color:' + meta.color + ';">'
+                                    + '<i class="' + meta.icon + ' me-1"></i>' + meta.name + '</button>';
+                            });
+                            $('#oauthButtons').html(html);
+                            $('#oauthArea').show();
+
+                            $('.oauth-btn').on('click', function() {
+                                var type = $(this).data('type');
+                                var btn = $(this);
+                                btn.attr('disabled', 'true');
+                                layer.msg('正在跳转授权...');
+                                $.ajax({
+                                    type: 'POST',
+                                    url: 'ajax.php?act=get_oauth_url',
+                                    data: {type: type, state: 'login'},
+                                    dataType: 'json',
+                                    success: function(res) {
+                                        if (res.code == 0 && res.url) {
+                                            window.location.href = res.url;
+                                        } else {
+                                            btn.removeAttr('disabled');
+                                            layer.alert(res.msg || '获取登录地址失败', {icon: 2});
+                                        }
+                                    },
+                                    error: function() {
+                                        btn.removeAttr('disabled');
+                                        layer.alert('网络错误，请稍后重试', {icon: 2});
+                                    }
+                                });
+                            });
+                        }
+                    }
+                });
+            }
         });
     </script>
 </body>
