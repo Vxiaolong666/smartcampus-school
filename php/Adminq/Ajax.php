@@ -1049,6 +1049,133 @@ switch($act){
         }
     break;
     
+    // ===== 首页配置（官网：网站地址 / 联系方式 / 下载方式 / 常见问题 / 联系我们留言） =====
+    case 'home_config_save':
+        if(!$isLogin) exit('{"code":-1,"msg":"未登录"}');
+        if($adminData['adminRank']!=1){exit('{"code":-1,"msg":"您的账号没有权限使用此功能！"}');}
+        {
+            $fields = array('site_url','contact_email','contact_phone','contact_qq','contact_address',
+                            'contact_worktime','contact_desc','download_intro','faq_intro');
+            $sets = array();
+            foreach ($fields as $f) {
+                $v = isset($_POST[$f]) ? addslashes(trim($_POST[$f])) : '';
+                $sets[] = "`{$f}`='{$v}'";
+            }
+            $sets[] = "`contact_form_open`='"    . (isset($_POST['contact_form_open'])    ? intval($_POST['contact_form_open'])    : 0) . "'";
+            $sets[] = "`contact_form_captcha`='" . (isset($_POST['contact_form_captcha']) ? intval($_POST['contact_form_captcha']) : 0) . "'";
+
+            $row = $DB->getRow("SELECT id FROM nteam_home_config WHERE id=1");
+            if (!$row) { $DB->exec("INSERT INTO nteam_home_config (`id`) VALUES (1)"); }
+
+            if ($DB->exec("UPDATE nteam_home_config SET " . implode(',', $sets) . " WHERE `id`=1") !== false) {
+                exit('{"code":0,"msg":"首页配置保存成功！"}');
+            }
+            exit('{"code":-1,"msg":"保存失败['.$DB->error().']"}');
+        }
+    break;
+
+    case 'home_download_save':
+        if(!$isLogin) exit('{"code":-1,"msg":"未登录"}');
+        if($adminData['adminRank']!=1){exit('{"code":-1,"msg":"您的账号没有权限使用此功能！"}');}
+        {
+            $id    = intval(isset($_POST['id']) ? $_POST['id'] : 0);
+            $title = addslashes(trim(isset($_POST['title']) ? $_POST['title'] : ''));
+            $url   = addslashes(trim(isset($_POST['url']) ? $_POST['url'] : ''));
+            $icon  = addslashes(trim(isset($_POST['icon']) ? $_POST['icon'] : ''));
+            $desc  = addslashes(trim(isset($_POST['description']) ? $_POST['description'] : ''));
+            $sort  = intval(isset($_POST['sort']) ? $_POST['sort'] : 0);
+            $st    = intval(isset($_POST['status']) ? $_POST['status'] : 0);
+            if ($title === '' || $url === '') exit('{"code":-1,"msg":"名称与下载地址不能为空"}');
+
+            if ($id > 0) {
+                $ok = $DB->exec("UPDATE nteam_home_download SET `title`='$title',`url`='$url',`icon`='$icon',`description`='$desc',`sort`='$sort',`status`='$st' WHERE `id`='$id'");
+            } else {
+                $ok = $DB->exec("INSERT INTO nteam_home_download (`title`,`url`,`icon`,`description`,`sort`,`status`) VALUES ('$title','$url','$icon','$desc','$sort','$st')");
+            }
+            if ($ok !== false) exit('{"code":0,"msg":"保存成功！"}');
+            exit('{"code":-1,"msg":"保存失败['.$DB->error().']"}');
+        }
+    break;
+
+    case 'home_download_del':
+        if(!$isLogin) exit('{"code":-1,"msg":"未登录"}');
+        if($adminData['adminRank']!=1){exit('{"code":-1,"msg":"您的账号没有权限使用此功能！"}');}
+        {
+            $id = intval(isset($_POST['id']) ? $_POST['id'] : 0);
+            if ($id <= 0) exit('{"code":-1,"msg":"参数错误"}');
+            if ($DB->exec("DELETE FROM nteam_home_download WHERE `id`='$id'") !== false) exit('{"code":0,"msg":"删除成功！"}');
+            exit('{"code":-1,"msg":"删除失败['.$DB->error().']"}');
+        }
+    break;
+
+    case 'home_faq_save':
+        if(!$isLogin) exit('{"code":-1,"msg":"未登录"}');
+        if($adminData['adminRank']!=1){exit('{"code":-1,"msg":"您的账号没有权限使用此功能！"}');}
+        {
+            $id   = intval(isset($_POST['id']) ? $_POST['id'] : 0);
+            $cat  = addslashes(trim(isset($_POST['category']) ? $_POST['category'] : '常见问题'));
+            $q    = addslashes(trim(isset($_POST['question']) ? $_POST['question'] : ''));
+            $a    = addslashes(isset($_POST['answer']) ? $_POST['answer'] : '');
+            $sort = intval(isset($_POST['sort']) ? $_POST['sort'] : 0);
+            $st   = intval(isset($_POST['status']) ? $_POST['status'] : 0);
+            if ($q === '') exit('{"code":-1,"msg":"问题不能为空"}');
+            if ($cat === '') $cat = '常见问题';
+
+            if ($id > 0) {
+                $ok = $DB->exec("UPDATE nteam_home_faq SET `category`='$cat',`question`='$q',`answer`='$a',`sort`='$sort',`status`='$st' WHERE `id`='$id'");
+            } else {
+                $ok = $DB->exec("INSERT INTO nteam_home_faq (`category`,`question`,`answer`,`sort`,`status`) VALUES ('$cat','$q','$a','$sort','$st')");
+            }
+            if ($ok !== false) exit('{"code":0,"msg":"保存成功！"}');
+            exit('{"code":-1,"msg":"保存失败['.$DB->error().']"}');
+        }
+    break;
+
+    case 'home_faq_del':
+        if(!$isLogin) exit('{"code":-1,"msg":"未登录"}');
+        if($adminData['adminRank']!=1){exit('{"code":-1,"msg":"您的账号没有权限使用此功能！"}');}
+        {
+            $id = intval(isset($_POST['id']) ? $_POST['id'] : 0);
+            if ($id <= 0) exit('{"code":-1,"msg":"参数错误"}');
+            if ($DB->exec("DELETE FROM nteam_home_faq WHERE `id`='$id'") !== false) exit('{"code":0,"msg":"删除成功！"}');
+            exit('{"code":-1,"msg":"删除失败['.$DB->error().']"}');
+        }
+    break;
+
+    case 'contact_msg_read':
+        if(!$isLogin) exit('{"code":-1,"msg":"未登录"}');
+        if($adminData['adminRank']!=1){exit('{"code":-1,"msg":"您的账号没有权限使用此功能！"}');}
+        {
+            $id = intval(isset($_POST['id']) ? $_POST['id'] : 0);
+            if ($id <= 0) exit('{"code":-1,"msg":"参数错误"}');
+            if ($DB->exec("UPDATE nteam_contact_msgs SET `status`=1 WHERE `id`='$id'") !== false) exit('{"code":0,"msg":"已标记为已读！"}');
+            exit('{"code":-1,"msg":"操作失败['.$DB->error().']"}');
+        }
+    break;
+
+    case 'contact_msg_del':
+        if(!$isLogin) exit('{"code":-1,"msg":"未登录"}');
+        if($adminData['adminRank']!=1){exit('{"code":-1,"msg":"您的账号没有权限使用此功能！"}');}
+        {
+            $id = intval(isset($_POST['id']) ? $_POST['id'] : 0);
+            if ($id <= 0) exit('{"code":-1,"msg":"参数错误"}');
+            if ($DB->exec("DELETE FROM nteam_contact_msgs WHERE `id`='$id'") !== false) exit('{"code":0,"msg":"删除成功！"}');
+            exit('{"code":-1,"msg":"删除失败['.$DB->error().']"}');
+        }
+    break;
+
+    case 'ai_config_save':
+        if(!$isLogin) exit('{"code":-1,"msg":"未登录"}');
+        if($adminData['adminRank']!=1){exit('{"code":-1,"msg":"您的账号没有权限使用此功能！"}');}
+        {
+            $fields = array('AI_Token', 'AI_BaseURL', 'AI_Model');
+            foreach ($fields as $f) {
+                saveSetting($f, isset($_POST[$f]) ? trim($_POST[$f]) : '');
+            }
+            exit('{"code":0,"msg":"AI 配置保存成功！"}');
+        }
+    break;
+
     default:
         exit('{"code":-4,"msg":"No Act"}');
     break;

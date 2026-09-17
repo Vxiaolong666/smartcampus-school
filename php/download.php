@@ -1,8 +1,16 @@
 <?php
 $notLogin = true;
 include('Common/Core_brain.php');
+include('Common/home_config.php');
 $siteName = htmlspecialchars(conf('Name') ?: '智校通', ENT_QUOTES);
 $siteTitle = htmlspecialchars(conf('SiteName') ?: conf('Name') ?: '智校通', ENT_QUOTES);
+
+// 后台「首页配置 → 下载方式」；为空时页面回退到原有静态卡片
+$downloads    = homeDownloadList();
+$dlIntro      = homeCfg('download_intro');
+$hasDlConfig  = !empty($downloads);
+// 页脚等公共组件使用的站点配置
+$siteConfig = homeSiteConfig();
 ?><!DOCTYPE html>
 <html lang="zh-CN">
     <head>
@@ -32,7 +40,7 @@ $siteTitle = htmlspecialchars(conf('SiteName') ?: conf('Name') ?: '智校通', E
         <link rel="stylesheet" href="./css/fancybox.min.css" type="text/css">
         <link rel="stylesheet" href="./css/style.css?v=27" type="text/css">
         <!-- custom css -->
-        <link rel="stylesheet" href="./css/custom.css" type="text/css">
+        <link rel="stylesheet" href="./css/custom.css?v=2" type="text/css">
 </head>
     <body class="inner-page">
         <!-- Preloader Start -->
@@ -82,7 +90,30 @@ $siteTitle = htmlspecialchars(conf('SiteName') ?: conf('Name') ?: '智校通', E
                             <p class="fs-5 mb-3 pb-3" data-aos="fade-left" data-aos-delay="200">无论你是学生、老师还是后勤管理员，总有一款客户端适合你。</p>
                         </div>
                     </div>
-                    <div class="row g-4 justify-content-center">
+                    <?php if ($dlIntro !== ''): ?>
+                    <div class="row mb-3 justify-content-center">
+                        <div class="col-md-12 text-center"><p class="text-muted mb-0"><?php echo htmlspecialchars($dlIntro, ENT_QUOTES); ?></p></div>
+                    </div>
+                    <?php endif; ?>
+                    <?php if ($hasDlConfig): ?>
+                    <div class="row g-4 justify-content-center mb-4">
+                        <?php $di = 0; foreach ($downloads as $d): $di++; ?>
+                        <div class="col-md-6 col-xl-3" data-aos="fade-up" data-aos-delay="<?php echo ($di - 1) * 100; ?>">
+                            <div class="card-feature d-flex flex-column gap-3 bg-white h-100 text-center align-items-center">
+                                <div class="icon mb-2 bg-primary position-relative">
+                                    <i class="<?php echo htmlspecialchars($d['icon'] !== '' ? $d['icon'] : 'fi fi-rr-download', ENT_QUOTES); ?> fs-3 position-relative"></i>
+                                </div>
+                                <h4 class="mb-0 position-relative"><?php echo htmlspecialchars($d['title'], ENT_QUOTES); ?></h4>
+                                <?php if ($d['description'] !== ''): ?>
+                                <p class="mb-0 position-relative"><?php echo htmlspecialchars($d['description'], ENT_QUOTES); ?></p>
+                                <?php endif; ?>
+                                <a href="<?php echo htmlspecialchars($d['url'], ENT_QUOTES); ?>" class="btn btn-primary mt-auto" target="_blank" rel="noopener">立即获取</a>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                    <?php endif; ?>
+                    <div class="row g-4 justify-content-center"<?php echo $hasDlConfig ? ' style="display:none"' : ''; ?>>
                         <div class="col-md-6 col-xl-3" id="platform-wechat" data-aos="fade-up">
                             <div class="card-feature d-flex flex-column gap-3 bg-white h-100 text-center align-items-center">
                                 <div class="icon mb-2 bg-primary position-relative">
@@ -222,7 +253,7 @@ $siteTitle = htmlspecialchars(conf('SiteName') ?: conf('Name') ?: '智校通', E
         <script src="./js/swiper-bundle.min.js"></script>
         <script src="./js/count-up.min.js"></script>
         <script src="./js/fancybox.umd.js"></script>
-        <script>window.SITE_NAME = <?php echo json_encode($siteName); ?>;</script>
+        <script>window.SITE_NAME = <?php echo json_encode($siteName); ?>; window.SITE_CONFIG = <?php echo json_encode($siteConfig, JSON_UNESCAPED_UNICODE); ?>;</script>
         <script src="./js/component-loader.js?v=2"></script>
         <script src="./js/form-validation.js"></script>
         <script src="./js/main.js?v=7"></script>

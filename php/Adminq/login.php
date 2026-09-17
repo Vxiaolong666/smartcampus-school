@@ -52,7 +52,8 @@ if($isLogin)header('Location:./');
     <style>
         body {
             background-color: #1a1a2e;
-            overflow: hidden;
+            overflow-y: auto;
+            overflow-x: hidden;
         }
         .bg-slider {
             position: fixed;
@@ -73,7 +74,7 @@ if($isLogin)header('Location:./');
             background-repeat: no-repeat;
             opacity: 0;
             transition: opacity 1s ease-in-out;
-            filter: blur(8px);
+            filter: blur(3px);
         }
         .bg-slide.active {
             opacity: 1;
@@ -156,14 +157,10 @@ if($isLogin)header('Location:./');
     <!-- layer -->
     <script src="./assets/js/lib/layer.min.js"></script>
     <script>
+        // 背景轮播图（与 user/login.php 使用同一组可访问壁纸）
         const bgImages = [
-            '../assets/media/various/nn.png',
-            '../assets/media/various/cc.png',
-            '../png/xs.jpg',
-            '../png/qq.png',
-            '../png/aaqq.jpg',
-            '../png/dd.jpg',
-            '../png/jj.jpg'
+            'https://cdn.mcblock.top/uploads/wallpapers/wp_1772944263284_zauo0gb5/compressed.webp',
+            'https://cdn.mcblock.top/uploads/wallpapers/wp_1777078526111_rsdnocss/compressed.webp'
         ];
         let currentIndex = 0;
         let shuffledImages = [];
@@ -180,8 +177,8 @@ if($isLogin)header('Location:./');
         function initBackgroundSlider() {
             const slider = document.getElementById('bgSlider');
             shuffledImages = shuffleArray(bgImages);
-            
-            bgImages.forEach((img, index) => {
+
+            shuffledImages.forEach((img, index) => {
                 const slide = document.createElement('div');
                 slide.className = 'bg-slide' + (index === 0 ? ' active' : '');
                 slide.style.backgroundImage = `url('${img}')`;

@@ -1,8 +1,16 @@
 <?php
 $notLogin = true;
 include('Common/Core_brain.php');
+include('Common/home_config.php');
 $siteName = htmlspecialchars(conf('Name') ?: '智校通', ENT_QUOTES);
 $siteTitle = htmlspecialchars(conf('SiteName') ?: conf('Name') ?: '智校通', ENT_QUOTES);
+
+// 后台「首页配置 → 常见问题配置」；为空时页面回退到原有静态内容
+$faqGroups    = homeFaqGrouped();
+$faqIntro     = homeCfg('faq_intro');
+$hasFaqConfig = !empty($faqGroups);
+// 页脚等公共组件使用的站点配置
+$siteConfig = homeSiteConfig();
 ?><!DOCTYPE html>
 <html lang="zh-CN">
     <head>
@@ -32,7 +40,7 @@ $siteTitle = htmlspecialchars(conf('SiteName') ?: conf('Name') ?: '智校通', E
         <link rel="stylesheet" href="./css/fancybox.min.css" type="text/css">
         <link rel="stylesheet" href="./css/style.css?v=15" type="text/css">
         <!-- custom css -->
-        <link rel="stylesheet" href="./css/custom.css" type="text/css">
+        <link rel="stylesheet" href="./css/custom.css?v=2" type="text/css">
 </head>
     <body class="inner-page">
         <!-- Preloader Start -->
@@ -82,7 +90,36 @@ $siteTitle = htmlspecialchars(conf('SiteName') ?: conf('Name') ?: '智校通', E
                             </div>
                         </div>
                     </div>
-                    <div class="row align-items-start justify-content-center">
+                    <?php if ($hasFaqConfig): ?>
+                    <?php if ($faqIntro !== ''): ?>
+                    <div class="row mb-3">
+                        <div class="col-md-12"><p class="text-muted"><?php echo htmlspecialchars($faqIntro, ENT_QUOTES); ?></p></div>
+                    </div>
+                    <?php endif; ?>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <?php $gi = 0; foreach ($faqGroups as $cat => $items): $gi++; $pid = 'faqDyn' . $gi; ?>
+                            <h3 class="faq-cat-title"><?php echo htmlspecialchars($cat, ENT_QUOTES); ?></h3>
+                            <div class="accordion_faq" id="<?php echo $pid; ?>">
+                                <?php $ii = 0; foreach ($items as $it): $ii++; $cid = $pid . '_' . $ii; ?>
+                                <div class="card">
+                                    <div class="card-header" id="h_<?php echo $cid; ?>">
+                                        <div class="faqs_header" data-bs-toggle="collapse" data-bs-target="#c_<?php echo $cid; ?>" aria-expanded="<?php echo ($ii === 1) ? 'true' : 'false'; ?>" aria-controls="c_<?php echo $cid; ?>">
+                                            <?php echo htmlspecialchars($it['question'], ENT_QUOTES); ?>
+                                            <i class="fal fa-long-arrow-up"></i>
+                                        </div>
+                                    </div>
+                                    <div id="c_<?php echo $cid; ?>" class="collapse<?php echo ($ii === 1) ? ' show' : ''; ?>" aria-labelledby="h_<?php echo $cid; ?>" data-bs-parent="#<?php echo $pid; ?>">
+                                        <div class="card-body"><?php echo $it['answer']; ?></div>
+                                    </div>
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+                    <div class="row align-items-start justify-content-center"<?php echo $hasFaqConfig ? ' style="display:none"' : ''; ?>>
                         <div class="col-xl-5 col-lg-6">
                             <!-- Faq category 1 start -->
                             <h3 class="faq-cat-title">账号与登录</h3>
@@ -444,7 +481,7 @@ $siteTitle = htmlspecialchars(conf('SiteName') ?: conf('Name') ?: '智校通', E
         <script src="./js/swiper-bundle.min.js"></script>
         <script src="./js/count-up.min.js"></script>
         <script src="./js/fancybox.umd.js"></script>
-        <script>window.SITE_NAME = <?php echo json_encode($siteName); ?>;</script>
+        <script>window.SITE_NAME = <?php echo json_encode($siteName); ?>; window.SITE_CONFIG = <?php echo json_encode($siteConfig, JSON_UNESCAPED_UNICODE); ?>;</script>
         <script src="./js/component-loader.js?v=2"></script>
         <script src="./js/form-validation.js"></script>
         <script src="./js/main.js?v=6"></script>

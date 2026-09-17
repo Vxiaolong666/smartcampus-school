@@ -80,6 +80,14 @@
 </div>
 <!-- Offcanvas Header End -->`;
 
+    // 站点联系信息：由各页面注入的 window.SITE_CONFIG 提供（后台「首页配置」维护）
+    var SC = window.SITE_CONFIG || {};
+    var scEmail   = SC.email || 'service@zhixiaoyun.com';
+    var scAddr    = SC.address || '服务全国高校，赋能智慧校园';
+    var scUrl     = SC.site_url || 'www.zhixiaoyun.com';
+    var scUrlHref = /^https?:\/\//i.test(scUrl) ? scUrl : ('//' + scUrl);
+    var scUrlText = scUrl.replace(/^https?:\/\//i, '');
+
     const FOOTER_HTML = `<!-- Footer Section Start Here -->
 <footer>
     <div class="footer_before">
@@ -89,9 +97,9 @@
                     <a href="index.php" class="footer_title footer-logo"><img src="./logo.png" class="footer-logo-img" alt="${window.SITE_NAME || '智校通'} 网站 logo">${window.SITE_NAME || '智校通'}</a>
                     <p class="footer_desc">一站式智慧校园服务平台，连接师生、辅导员与后勤，让校园生活更智能、更便捷。</p>
                     <ul class="footer_url">
-                        <li><i class="fad fa-map-marker-alt"></i><a href="javascript:void(0)">服务全国高校，赋能智慧校园</a></li>
-                        <li><i class="fal fa-envelope-open-text"></i><a href="mailto:service@zhixiaoyun.com">service@zhixiaoyun.com</a></li>
-                        <li><i class="far fa-globe"></i><a href="javascript:void(0)"> www.zhixiaoyun.com</a></li>
+                        <li><i class="fad fa-map-marker-alt"></i><a href="javascript:void(0)">${scAddr}</a></li>
+                        <li><i class="fal fa-envelope-open-text"></i><a href="mailto:${scEmail}">${scEmail}</a></li>
+                        <li><i class="far fa-globe"></i><a href="${scUrlHref}" target="_blank" rel="noopener"> ${scUrlText}</a></li>
                     </ul>
                </div>
                <div class="col-lg-2 col-md-3 col-sm-6">

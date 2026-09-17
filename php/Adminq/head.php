@@ -336,6 +336,12 @@ include('../Common/Core_brain.php');
                                                 </a>
                                             </li>
                                             <li class="nav-main-item">
+                                                <a class="nav-main-link" href="home_config.php">
+                                                    <i class="nav-main-link-icon fa fa-house-chimney"></i>
+                                                    <span class="nav-main-link-name"><b>首页配置</b></span>
+                                                </a>
+                                            </li>
+                                            <li class="nav-main-item">
                                                 <a class="nav-main-link" href="smtp.php">
                                                     <i class="nav-main-link-icon fa fa-envelope-open"></i>
                                                     <span class="nav-main-link-name"><b>邮箱配置</b></span>

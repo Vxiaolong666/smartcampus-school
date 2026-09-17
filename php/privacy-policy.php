@@ -1,6 +1,8 @@
 <?php
 $notLogin = true;
 include('Common/Core_brain.php');
+include('Common/home_config.php');
+$siteConfig = homeSiteConfig();
 $siteName = htmlspecialchars(conf('Name') ?: '智校通', ENT_QUOTES);
 $siteTitle = htmlspecialchars(conf('SiteName') ?: conf('Name') ?: '智校通', ENT_QUOTES);
 ?><!DOCTYPE html>
@@ -32,7 +34,7 @@ $siteTitle = htmlspecialchars(conf('SiteName') ?: conf('Name') ?: '智校通', E
         <link rel="stylesheet" href="./css/fancybox.min.css" type="text/css">
         <link rel="stylesheet" href="./css/style.css?v=15" type="text/css">
         <!-- custom css -->
-        <link rel="stylesheet" href="./css/custom.css" type="text/css">
+        <link rel="stylesheet" href="./css/custom.css?v=2" type="text/css">
 </head>
     <body class="inner-page">
         <!-- Preloader Start -->
@@ -212,7 +214,7 @@ $siteTitle = htmlspecialchars(conf('SiteName') ?: conf('Name') ?: '智校通', E
         <script src="./js/swiper-bundle.min.js"></script>
         <script src="./js/count-up.min.js"></script>
         <script src="./js/fancybox.umd.js"></script>
-        <script>window.SITE_NAME = <?php echo json_encode($siteName); ?>;</script>
+        <script>window.SITE_NAME = <?php echo json_encode($siteName); ?>; window.SITE_CONFIG = <?php echo json_encode($siteConfig, JSON_UNESCAPED_UNICODE); ?>;</script>
         <script src="./js/component-loader.js?v=2"></script>
         <script src="./js/form-validation.js"></script>
         <script src="./js/main.js?v=6"></script>
