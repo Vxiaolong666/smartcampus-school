@@ -288,7 +288,7 @@ const getScheduleTimes = (modeId = '') => {
   if (modeId) data.mode_id = modeId;
   return request({
     act: 'get_schedule_times',
-    method: 'POST',
+    method: 'GET',
     data
   });
 };

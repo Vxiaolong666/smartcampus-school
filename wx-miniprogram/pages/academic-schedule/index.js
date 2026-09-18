@@ -7,6 +7,28 @@ const feature = require('../../utils/feature.js');
 const { getCourseColor, weekDays, timeSlots } = require('../../utils/common.js');
 const { loadScheduleTimes } = require('../../utils/schedule-time.js');
 
+// 课程详情弹窗图标 path 数据（与 assets 下 SVG 图标一致，fill 颜色按课程色动态生成）
+const ICON_CLOCK_PATHS = [
+    'M512 96C282.2 96 96 282.2 96 512s186.2 416 416 416 416-186.2 416-416S741.8 96 512 96z m0 752c-185.6 0-336-150.4-336-336S326.4 176 512 176s336 150.4 336 336-150.4 336-336 336z',
+    'M512 248c-4.4 0-8 3.6-8 8v256c0 4.4 3.6 8 8 8h200c4.4 0 8-3.6 8-8v-48c0-4.4-3.6-8-8-8H568V256c0-4.4-3.6-8-8-8h-48z'
+];
+const ICON_LOCATION_PATHS = [
+    'M512 64C323.5 64 168 219.5 168 408c0 193.5 184.5 412.5 302.5 540.5 23 25 62 25 85 0C673.5 820.5 858 601.5 858 408 858 219.5 700.5 64 512 64z m0 448c-70.7 0-128-57.3-128-128s57.3-128 128-128 128 57.3 128 128-57.3 128-128 128z'
+];
+const ICON_USER_PATHS = [
+    'M512 512c123.8 0 224-100.2 224-224S635.8 64 512 64 288 164.2 288 288s100.2 224 224 224z m0-352c70.7 0 128 57.3 128 128s-57.3 128-128 128-128-57.3-128-128 57.3-128 128-128z',
+    'M858.5 764.4C781.8 656.9 654.5 592 512 592s-269.8 64.9-346.5 172.4c-10.3 14.8-6.1 35.2 8.7 45.5 14.8 10.3 35.2 6.1 45.5-8.7C281.6 714.3 389.8 664 512 664s230.4 50.3 292.3 137.2c6.3 9.1 16.4 14 26.6 14 6.4 0 12.9-1.9 18.6-5.9 14.8-10.3 18.9-30.7 8.6-45.5z'
+];
+const ICON_CALENDAR_PATHS = [
+    'M880 184H712v-64c0-4.4-3.6-8-8-8h-56c-4.4 0-8 3.6-8 8v64H384v-64c0-4.4-3.6-8-8-8h-56c-4.4 0-8 3.6-8 8v64H144c-17.7 0-32 14.3-32 32v664c0 17.7 14.3 32 32 32h736c17.7 0 32-14.3 32-32V216c0-17.7-14.3-32-32-32z m-40 600H184V272h128v48c0 4.4 3.6 8 8 8h56c4.4 0 8-3.6 8-8v-48h256v48c0 4.4 3.6 8 8 8h56c4.4 0 8-3.6 8-8v-48h128v512z',
+    'M424 432h-80c-4.4 0-8 3.6-8 8v48c0 4.4 3.6 8 8 8h80c4.4 0 8-3.6 8-8v-48c0-4.4-3.6-8-8-8z',
+    'M552 432h-80c-4.4 0-8 3.6-8 8v48c0 4.4 3.6 8 8 8h80c4.4 0 8-3.6 8-8v-48c0-4.4-3.6-8-8-8z',
+    'M680 432h-80c-4.4 0-8 3.6-8 8v48c0 4.4 3.6 8 8 8h80c4.4 0 8-3.6 8-8v-48c0-4.4-3.6-8-8-8z',
+    'M424 560h-80c-4.4 0-8 3.6-8 8v48c0 4.4 3.6 8 8 8h80c4.4 0 8-3.6 8-8v-48c0-4.4-3.6-8-8-8z',
+    'M552 560h-80c-4.4 0-8 3.6-8 8v48c0 4.4 3.6 8 8 8h80c4.4 0 8-3.6 8-8v-48c0-4.4-3.6-8-8-8z',
+    'M680 560h-80c-4.4 0-8 3.6-8 8v48c0 4.4 3.6 8 8 8h80c4.4 0 8-3.6 8-8v-48c0-4.4-3.6-8-8-8z'
+];
+
 Page({
     data: {
         featureEnabled: true,       // 功能是否启用
@@ -21,7 +43,12 @@ Page({
         courses: [],            // 课程列表（去重后）
         currentWeek: 1,         // 当前周次
         courseColors: {},        // 课程颜色映射（课程名→颜色值）
-        sectionTimes: [],        // 节次时间（后台「课程时间配置」，索引即节次：1=第1节）
+        showDetail: false,       // 课程详情弹窗显示状态
+        detailCourse: null,       // 当前查看详情的课程对象
+        detailIcons: null,        // 弹窗图标 data URI（按课程色生成）
+        detailBtnBgLight: '#36cfc9',  // 弹窗按钮渐变终点色
+        detailBtnShadow: 'rgba(19, 194, 194, 0.35)',  // 弹窗按钮投影色
+        sectionTimes: [],        // 节次时间（后台「课程时间配置」，下标 0 = 第1节）
         weekDates: [],            // 本周各星期对应的日期（如 "09-18"）
         weekHeaders: weekDays.slice(1)  // 表头星期（周一~周日）
     },
@@ -360,12 +387,13 @@ Page({
     },
 
     // 把作息同步到响应式数据，供模板渲染（后台配置到达后会自动刷新）
+    // 注意：WXML 不支持调用 Page 方法，需预先算好下标 0 = 第1节 的数组
     syncSectionTimes() {
         const total = Math.max(12, this.sectionTotalCount());
         const list = [];
         for (let i = 1; i <= total; i++) {
             const t = timeSlots[i];
-            list[i] = t && t.time ? t.time : '';
+            list[i - 1] = t && t.time ? t.time : '';
         }
         this.setData({ sectionTimes: list });
     },
@@ -375,11 +403,6 @@ Page({
         return loadScheduleTimes(modeId).then(() => {
             this.syncSectionTimes();
         });
-    },
-
-    // 取某行（节次）对应的作息时间文本
-    sectionTime(rowIndex) {
-        return this.data.sectionTimes[rowIndex + 1] || '';
     },
 
     //点击课程表单元格
@@ -398,26 +421,61 @@ Page({
         if (e.currentTarget.dataset.course) this.showCourseDetail(e.currentTarget.dataset.course);
     },
 
-    //显示课程详情
+    //显示课程详情（自定义弹窗，与页面风格一致）
     showCourseDetail(course) {
-        // 构建详情弹窗的文本行，过滤掉空值行
-        const lines = [
-            `课程：${course.courseName || '未知'}`,                              // 课程名称
-            `时间：${course.weekDay || ''} 第${course.section || '-'}节`,        // 星期和节次
-            course.startTime ? `时段：${course.startTime} - ${course.endTIme || ''}` : '',  // 具体时段（有开始时间才显示）
-            `地点：${course.location || '待定'}`,                                // 上课地点
-            `教师：${course.teacher || '待定'}`,                                 // 授课教师
-            `周次：${course.weeks || '-'}`,                                      // 上课周次
-            course.credit ? `学分：${course.credit}` : '',                       // 学分（有值才显示）
-            course.courseNature ? `性质：${course.courseNature}` : ''            // 课程性质（有值才显示）
-        ].filter(Boolean);  // 过滤掉空字符串行
-
-        // 使用模态弹窗展示课程详情
-        wx.showModal({
-            title: '课程详情',
-            content: lines.join('\n'),  // 每行用换行符连接
-            showCancel: false,          // 不显示取消按钮
-            confirmText: '关闭'         // 确认按钮文本
+        if (!course) return;
+        // 课程主色（文字色），无则回退主题青色
+        const color = (course.color && course.color.text) ? course.color.text : '#13c2c2';
+        // 图标与按钮均使用当前课程的颜色配置
+        this.setData({
+            showDetail: true,
+            detailCourse: course,
+            detailIcons: {
+                time: this.buildIconDataUri(ICON_CLOCK_PATHS, color),
+                location: this.buildIconDataUri(ICON_LOCATION_PATHS, color),
+                user: this.buildIconDataUri(ICON_USER_PATHS, color),
+                calendar: this.buildIconDataUri(ICON_CALENDAR_PATHS, color)
+            },
+            // 按钮渐变终点色：课程色向白色混合 40%，避免纯色过深
+            detailBtnBgLight: this.mixWithWhite(color, 0.4),
+            detailBtnShadow: this.hexToRgba(color, 0.35)
         });
-    }
+    },
+
+    //生成指定颜色的 SVG 图标 data URI（供 <image> 渲染）
+    buildIconDataUri(paths, color) {
+        const body = paths.map(d => `<path d="${d}" fill="${color}"/>`).join('');
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">${body}</svg>`;
+        return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+    },
+
+    //十六进制颜色转 rgba 字符串
+    hexToRgba(hex, alpha) {
+        let h = String(hex || '#13c2c2').replace('#', '');
+        if (h.length === 3) h = h.split('').map(c => c + c).join('');
+        const r = parseInt(h.slice(0, 2), 16) || 0;
+        const g = parseInt(h.slice(2, 4), 16) || 0;
+        const b = parseInt(h.slice(4, 6), 16) || 0;
+        return 'rgba(' + r + ', ' + g + ', ' + b + ', ' + alpha + ')';
+    },
+
+    //颜色向白色混合（ratio 为白色的占比 0~1）
+    mixWithWhite(hex, ratio) {
+        let h = String(hex || '#13c2c2').replace('#', '');
+        if (h.length === 3) h = h.split('').map(c => c + c).join('');
+        const mix = v => Math.round(v + (255 - v) * ratio);
+        const r = mix(parseInt(h.slice(0, 2), 16) || 0);
+        const g = mix(parseInt(h.slice(2, 4), 16) || 0);
+        const b = mix(parseInt(h.slice(4, 6), 16) || 0);
+        const toHex = v => ('0' + v.toString(16)).slice(-2);
+        return '#' + toHex(r) + toHex(g) + toHex(b);
+    },
+
+    //关闭课程详情弹窗
+    closeDetail() {
+        this.setData({ showDetail: false, detailCourse: null });
+    },
+
+    //阻止冒泡占位
+    noop() {}
 });
