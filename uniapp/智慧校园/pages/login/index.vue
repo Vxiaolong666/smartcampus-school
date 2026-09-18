@@ -61,6 +61,20 @@
 					<view class="divider-line"></view>
 				</view>
 
+				<!-- 第三方账号登录（聚合登录） -->
+				<view v-if="oauthChannels.length > 0" class="oauth-area">
+					<view
+						v-for="(c, i) in oauthChannels"
+						:key="i"
+						class="oauth-btn"
+						:style="{ backgroundColor: c.bgColor, borderColor: c.borderColor }"
+						@click="onOauthLogin(c)"
+					>
+						<view class="oauth-badge" :style="{ backgroundColor: c.color }">{{ c.short }}</view>
+						<text class="oauth-name" :style="{ color: c.color }">{{ c.name }}</text>
+					</view>
+				</view>
+
 				<!-- #ifdef MP-WEIXIN -->
 				<button class="wx-login-btn" @click="onWxLogin" :loading="wxLoading">
 					<image class="wx-icon" src="/static/assets/wxmp-wechat.svg" mode="widthFix"></image>
@@ -85,9 +99,31 @@
 <script>
 /**
  * 登录页面
- * 处理账号密码登录和微信登录
+ * 处理账号密码登录、微信一键登录与第三方账号（聚合登录）登录
  */
 import api from '../../utils/api.js';
+
+// 渠道短标识（无图标字体环境下用文字徽标区分渠道）
+const SHORT_NAMES = {
+	qq: 'QQ',
+	wx: '微信',
+	alipay: '支',
+	sina: '博',
+	baidu: '百',
+	douyin: '抖',
+	huawei: '华',
+	xiaomi: '米',
+	google: 'G',
+	microsoft: 'MS',
+	facebook: 'f',
+	twitter: 'T',
+	feishu: '飞',
+	wework: '企',
+	dingtalk: '钉',
+	gitee: 'Gt',
+	github: 'GH',
+	telegram: 'Tg'
+};
 
 export default {
 	data() {
@@ -95,7 +131,13 @@ export default {
 			username: '',
 			password: '',
 			loading: false,
-			wxLoading: false
+			wxLoading: false,
+
+			// 第三方登录
+			oauthChannels: [],
+			oauthLoading: false,
+			oauthTicket: '',
+			oauthPolling: false
 		};
 	},
 
@@ -103,10 +145,177 @@ export default {
 		// 如果已登录，直接跳转到首页
 		if (api.isLoggedIn()) {
 			uni.switchTab({ url: '/pages/white-home/index' });
+			return;
+		}
+		this.loadOauthChannels();
+		// 恢复未完成的第三方登录票据（如授权途中页面被重建；超过 10 分钟视为失效）
+		const ticket = uni.getStorageSync('oauth_login_ticket') || '';
+		const ticketTime = parseInt(uni.getStorageSync('oauth_login_ticket_time') || 0, 10);
+		if (ticket && (Date.now() - ticketTime) < 10 * 60 * 1000) {
+			this.oauthTicket = ticket;
+		} else if (ticket) {
+			this.clearOauthTicket();
+		}
+	},
+
+	onShow() {
+		// 从授权页 / 授权窗口返回后，轮询领取登录结果
+		if (!api.isLoggedIn() && this.oauthTicket) {
+			this.pollOauthLogin();
 		}
 	},
 
 	methods: {
+		//统一登录成功处理（密码 / 微信 / 第三方）
+		handleLoginSuccess(data) {
+			api.setToken(data.token);
+			api.setUserInfoCache(data);
+
+			// 冷静期内登录已自动撤销注销，给出提示
+			if (data && parseInt(data.cancel_revoked) === 1) {
+				uni.showModal({
+					title: '提示',
+					content: '您此前提交的账号注销申请已自动撤销，账号已恢复正常。',
+					showCancel: false,
+					success: () => {
+						uni.switchTab({ url: '/pages/white-home/index' });
+					}
+				});
+				return;
+			}
+
+			uni.showToast({ title: '登录成功', icon: 'success' });
+			setTimeout(() => {
+				uni.switchTab({ url: '/pages/white-home/index' });
+			}, 1000);
+		},
+
+		//加载已启用的第三方登录渠道
+		loadOauthChannels() {
+			api.getOauthChannels()
+				.then(res => {
+					const d = res.data || {};
+					if (parseInt(d.enabled) !== 1) return;
+					const channelMap = d.channels || {};
+					this.oauthChannels = Object.keys(channelMap).map(type => {
+						const meta = channelMap[type] || {};
+						const color = meta.color || '#6c757d';
+						const name = meta.name || type;
+						return {
+							type: type,
+							name: name,
+							color: color,
+							bgColor: color + '1a',
+							borderColor: color + '59',
+							short: SHORT_NAMES[type] || String(name).substring(0, 1)
+						};
+					});
+				})
+				.catch(() => {
+					// 第三方登录不可用时静默降级，不影响账号密码登录
+					this.oauthChannels = [];
+				});
+		},
+
+		//发起第三方登录：取授权地址 → 打开授权页 → 轮询领取令牌
+		onOauthLogin(channel) {
+			if (this.oauthLoading) return;
+			this.oauthLoading = true;
+			uni.showLoading({ title: '正在跳转授权...' });
+
+			api.getOauthLoginUrl(channel.type)
+				.then(res => {
+					uni.hideLoading();
+					this.oauthLoading = false;
+
+					const d = res.data || {};
+					const url = d.url || '';
+					const ticket = d.ticket || '';
+					if (!url || !ticket) {
+						uni.showToast({ title: '获取授权地址失败', icon: 'none' });
+						return;
+					}
+
+					this.oauthTicket = ticket;
+					uni.setStorageSync('oauth_login_ticket', ticket);
+					uni.setStorageSync('oauth_login_ticket_time', Date.now());
+
+					// #ifdef H5
+					// H5 端授权页通常禁止 iframe 嵌套，改用新窗口打开，本页后台轮询
+					const win = window.open(url, '_blank');
+					if (!win) {
+						// 弹窗被拦截时当前窗口跳转，返回后本页 onShow 会继续轮询
+						window.location.href = url;
+						return;
+					}
+					this.pollOauthLogin();
+					// #endif
+					// #ifndef H5
+					uni.navigateTo({
+						url: '/pages/oauth-bind-webview/index?url=' + encodeURIComponent(url)
+					});
+					// #endif
+				})
+				.catch(err => {
+					uni.hideLoading();
+					this.oauthLoading = false;
+					uni.showToast({ title: (err && err.msg) || '获取授权地址失败', icon: 'none' });
+				});
+		},
+
+		//轮询登录结果（授权完成后由服务端签发正式令牌）
+		pollOauthLogin() {
+			if (this.oauthPolling || !this.oauthTicket) return;
+			this.oauthPolling = true;
+
+			let attempts = 0;
+			const maxAttempts = 40; // 1.5s × 40 ≈ 60s
+			const interval = 1500;
+
+			const tick = () => {
+				if (!this.oauthTicket) {
+					this.oauthPolling = false;
+					return;
+				}
+
+				attempts++;
+
+				api.oauthLoginPoll(this.oauthTicket)
+					.then(res => {
+						const d = res.data || {};
+
+						// 授权完成：拿到正式登录令牌
+						if (d.status === 'ok' && d.token) {
+							this.oauthPolling = false;
+							this.clearOauthTicket();
+							this.handleLoginSuccess(d);
+							return;
+						}
+
+						// 尚未授权完成：静默继续等待，避免遮挡页面
+						if (attempts >= maxAttempts) {
+							this.oauthPolling = false;
+							uni.showToast({ title: '尚未完成授权，可重新点击渠道重试', icon: 'none' });
+							return;
+						}
+						setTimeout(tick, interval);
+					})
+					.catch(err => {
+						this.oauthPolling = false;
+						this.clearOauthTicket();
+						uni.showToast({ title: (err && err.msg) || '第三方登录失败', icon: 'none' });
+					});
+			};
+
+			tick();
+		},
+
+		clearOauthTicket() {
+			this.oauthTicket = '';
+			uni.removeStorageSync('oauth_login_ticket');
+			uni.removeStorageSync('oauth_login_ticket_time');
+		},
+
 		onUsernameInput(e) {
 			this.username = e.detail.value;
 		},
@@ -137,28 +346,7 @@ export default {
 				.then(res => {
 					uni.hideLoading();
 					this.loading = false;
-
-					api.setToken(res.data.token);
-					api.setUserInfoCache(res.data);
-
-					// 冷静期内登录已自动撤销注销，给出提示
-					if (res.data && parseInt(res.data.cancel_revoked) === 1) {
-						uni.showModal({
-							title: '提示',
-							content: '您此前提交的账号注销申请已自动撤销，账号已恢复正常。',
-							showCancel: false,
-							success: () => {
-								uni.switchTab({ url: '/pages/white-home/index' });
-							}
-						});
-						return;
-					}
-
-					uni.showToast({ title: '登录成功', icon: 'success' });
-
-					setTimeout(() => {
-						uni.switchTab({ url: '/pages/white-home/index' });
-					}, 1000);
+					this.handleLoginSuccess(res.data);
 				})
 				.catch(err => {
 					uni.hideLoading();
@@ -185,28 +373,7 @@ export default {
 
 				uni.hideLoading();
 				this.wxLoading = false;
-
-				api.setToken(res.data.token);
-				api.setUserInfoCache(res.data);
-
-				// 冷静期内登录已自动撤销注销，给出提示
-				if (res.data && parseInt(res.data.cancel_revoked) === 1) {
-					uni.showModal({
-						title: '提示',
-						content: '您此前提交的账号注销申请已自动撤销，账号已恢复正常。',
-						showCancel: false,
-						success: () => {
-							uni.switchTab({ url: '/pages/white-home/index' });
-						}
-					});
-					return;
-				}
-
-				uni.showToast({ title: '登录成功', icon: 'success' });
-
-				setTimeout(() => {
-					uni.switchTab({ url: '/pages/white-home/index' });
-				}, 1000);
+				this.handleLoginSuccess(res.data);
 			} catch (err) {
 				uni.hideLoading();
 				this.wxLoading = false;
@@ -484,5 +651,52 @@ page {
 
 .agreement-link .link {
 	color: #13c2c2;
+}
+
+/* 第三方账号登录 */
+.oauth-area {
+	display: flex;
+	flex-wrap: wrap;
+	padding: 0 30rpx;
+	margin-bottom: 30rpx;
+}
+
+.oauth-btn {
+	width: calc(50% - 10rpx);
+	height: 84rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 16rpx;
+	border: 2rpx solid transparent;
+	box-sizing: border-box;
+	margin-bottom: 20rpx;
+}
+
+.oauth-btn:nth-child(odd) {
+	margin-right: 20rpx;
+}
+
+.oauth-btn:active {
+	opacity: 0.85;
+}
+
+.oauth-badge {
+	width: 40rpx;
+	height: 40rpx;
+	border-radius: 10rpx;
+	color: #fff;
+	font-size: 20rpx;
+	font-weight: bold;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-right: 12rpx;
+	flex-shrink: 0;
+}
+
+.oauth-name {
+	font-size: 26rpx;
+	font-weight: bold;
 }
 </style>

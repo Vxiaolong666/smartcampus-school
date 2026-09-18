@@ -486,6 +486,22 @@ const getAcademicPushLogs = () => {
   });
 };
 
+/* ==================== 订阅历史相关接口 ==================== */
+
+/**
+ * 获取订阅历史记录（订阅授权 + 消息推送）
+ * @param {number} [page=1] - 页码
+ * @param {number} [size=10] - 每页数量
+ * @param {string} [type='all'] - 类型：all（全部）/ subscribe（订阅记录）/ push（推送记录）
+ * @returns {Promise} 返回 { list, total, page, size }
+ */
+const getSubscriptionHistory = (page = 1, size = 10, type = 'all') => {
+  return request({
+    act: 'get_subscription_history&page=' + page + '&size=' + size + '&type=' + type,
+    method: 'GET'
+  });
+};
+
 /* ==================== 速览相关接口 ==================== */
 
 /**
@@ -661,6 +677,7 @@ module.exports = {
   getAcademicPushLogs,
   getFeatureSettings,
   getGlanceData,
+  getSubscriptionHistory,
   getCancelConfig,
   sendCancelCode,
   verifyCancelIdentity,

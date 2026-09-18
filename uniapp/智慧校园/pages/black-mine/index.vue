@@ -121,6 +121,12 @@
 								<image class="item-right" src="/static/assets/wxmp-right.svg" mode="widthFix"></image>
 							</view>
 
+							<view class="item-item" @click="handleOauthBind">
+								<image class="item-logo" src="/static/assets/icon_cvoieudado/a-199_gongkai.svg" mode="widthFix"></image>
+								<view class="item-text">第三方账号绑定</view>
+								<image class="item-right" src="/static/assets/wxmp-right.svg" mode="widthFix"></image>
+							</view>
+
 							<view class="item-item" @click="handleCancelAccount">
 								<image class="item-logo" src="/static/assets/icon_cvoieudado/a-199_zhuye.svg" mode="widthFix"></image>
 								<view class="item-text">账号注销</view>
@@ -406,6 +412,12 @@ export default {
 		handleCancelAccount() {
 			uni.navigateTo({
 				url: '/pages/cancel-account/index'
+			});
+		},
+
+		handleOauthBind() {
+			uni.navigateTo({
+				url: '/pages/oauth-bind/index'
 			});
 		},
 

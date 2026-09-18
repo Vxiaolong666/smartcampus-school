@@ -1,0 +1,7 @@
+{
+  "navigationStyle": "custom",
+  "navigationBarTitleText": "订阅历史记录",
+  "usingComponents": {
+    "top-menu": "/components/cb-nav-bar/index"
+  }
+}

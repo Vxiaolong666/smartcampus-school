@@ -566,6 +566,152 @@ switch($act) {
         jsonResponse(0, 'success', $userData);
     break;
 
+    /* ==================== 第三方账号绑定（聚合登录） ==================== */
+
+    case 'get_oauth_binds':
+        $user = authenticateUser($DB);
+        if (!$user) {
+            jsonResponse(-2, '请先登录');
+        }
+        require_once __DIR__ . '/funsion/OAuthHelper.php';
+        $userId = intval($user['user_id']);
+        $rows = $DB->getAll("SELECT oauth_type, nickname, avatar, create_time FROM nteam_user_oauth WHERE user_id='$userId'");
+        $binds = [];
+        if (is_array($rows)) {
+            foreach ($rows as $r) {
+                $meta = isset(OAuthHelper::CHANNELS[$r['oauth_type']]) ? OAuthHelper::CHANNELS[$r['oauth_type']] : ['name' => $r['oauth_type'], 'color' => '#6c757d'];
+                $binds[] = [
+                    'type'        => $r['oauth_type'],
+                    'name'        => $meta['name'],
+                    'color'       => isset($meta['color']) ? $meta['color'] : '#6c757d',
+                    'nickname'    => (string) $r['nickname'],
+                    'avatar'      => (string) $r['avatar'],
+                    'create_time' => $r['create_time']
+                ];
+            }
+        }
+        $enabled = OAuthHelper::isEnabled($DB);
+        jsonResponse(0, 'success', [
+            'enabled'  => $enabled ? 1 : 0,
+            'channels' => $enabled ? OAuthHelper::getEnabledChannels($DB) : [],
+            'binds'    => $binds
+        ]);
+    break;
+
+    case 'get_oauth_url':
+        $user = authenticateUser($DB);
+        if (!$user) {
+            jsonResponse(-2, '请先登录');
+        }
+        require_once __DIR__ . '/funsion/OAuthHelper.php';
+        $type = isset($_POST['type']) ? addslashes($_POST['type']) : '';
+        if (!OAuthHelper::isChannelEnabled($DB, $type)) {
+            jsonResponse(-1, '该登录渠道不可用');
+        }
+        $userId = intval($user['user_id']);
+        // App / WebView 中无登录会话，改用一次性绑定票据（10 分钟）识别用户
+        $ticket = OAuthHelper::issueBindTicket($DB, $userId, $type);
+        $callback = OAuthHelper::buildCallbackUrl();
+        $redirectUri = $callback . '?type=' . $type . '&state=bindapp_' . $ticket;
+        $res = OAuthHelper::getLoginUrl($DB, $type, $redirectUri);
+        if (!is_array($res) || $res['code'] != 0) {
+            jsonResponse(-1, isset($res['msg']) ? $res['msg'] : '获取授权地址失败');
+        }
+        jsonResponse(0, 'success', [
+            'url'    => $res['url'],
+            'qrcode' => isset($res['qrcode']) ? $res['qrcode'] : ''
+        ]);
+    break;
+
+    case 'unbind_oauth':
+        $user = authenticateUser($DB);
+        if (!$user) {
+            jsonResponse(-2, '请先登录');
+        }
+        require_once __DIR__ . '/funsion/OAuthHelper.php';
+        $userId = intval($user['user_id']);
+        $type = isset($_POST['type']) ? addslashes($_POST['type']) : '';
+        if (!isset(OAuthHelper::CHANNELS[$type])) {
+            jsonResponse(-1, '参数错误');
+        }
+        $DB->exec("DELETE FROM nteam_user_oauth WHERE user_id='$userId' AND oauth_type='$type'");
+        jsonResponse(0, '解绑成功');
+    break;
+
+    /* ==================== 第三方账号登录（聚合登录） ==================== */
+
+    case 'get_oauth_channels':
+        // 登录页使用，无需鉴权
+        require_once __DIR__ . '/funsion/OAuthHelper.php';
+        $enabled = OAuthHelper::isEnabled($DB);
+        jsonResponse(0, 'success', [
+            'enabled'  => $enabled ? 1 : 0,
+            'channels' => $enabled ? OAuthHelper::getEnabledChannels($DB) : []
+        ]);
+    break;
+
+    case 'get_oauth_login_url':
+        // 登录页使用，无需鉴权；返回授权地址与登录票据
+        require_once __DIR__ . '/funsion/OAuthHelper.php';
+        $type = isset($_POST['type']) ? addslashes($_POST['type']) : '';
+        if (!OAuthHelper::isChannelEnabled($DB, $type)) {
+            jsonResponse(-1, '该登录渠道不可用');
+        }
+        $ticket = OAuthHelper::issueLoginTicket($DB, $type);
+        $callback = OAuthHelper::buildCallbackUrl();
+        $redirectUri = $callback . '?type=' . $type . '&state=loginapp_' . $ticket;
+        $res = OAuthHelper::getLoginUrl($DB, $type, $redirectUri);
+        if (!is_array($res) || $res['code'] != 0) {
+            jsonResponse(-1, isset($res['msg']) ? $res['msg'] : '获取授权地址失败');
+        }
+        jsonResponse(0, 'success', [
+            'url'    => $res['url'],
+            'qrcode' => isset($res['qrcode']) ? $res['qrcode'] : '',
+            'ticket' => $ticket
+        ]);
+    break;
+
+    case 'oauth_login_poll':
+        // App 轮询登录结果：pending 表示用户尚未完成授权；ok 时返回正式登录令牌
+        $ticket = isset($_POST['ticket']) ? addslashes($_POST['ticket']) : '';
+        if ($ticket === '') {
+            jsonResponse(-1, '参数错误');
+        }
+        $now = date('Y-m-d H:i:s');
+        $row = $DB->getRow("SELECT * FROM nteam_tokens WHERE token_type='oauth_login' AND token='$ticket' AND used=0 AND expire_time > '$now' ORDER BY id DESC LIMIT 1");
+        if (!$row) {
+            jsonResponse(-1, '登录链接已失效，请重新发起登录');
+        }
+        if (intval($row['user_id']) <= 0) {
+            // 尚未在授权页完成登录
+            jsonResponse(0, 'pending', ['status' => 'pending']);
+        }
+        $userId = intval($row['user_id']);
+        $user = $DB->getRow("SELECT * FROM nteam_users WHERE id='$userId'");
+        if (!$user) {
+            $DB->exec("DELETE FROM nteam_tokens WHERE id='" . intval($row['id']) . "'");
+            jsonResponse(-1, '账号不存在或已注销');
+        }
+        if (intval($user['is_banned']) === 1) {
+            $DB->exec("DELETE FROM nteam_tokens WHERE id='" . intval($row['id']) . "'");
+            jsonResponse(-1, '该账号已被封禁');
+        }
+        // 消费票据并签发 App 登录令牌
+        $DB->exec("UPDATE nteam_tokens SET used=1 WHERE id='" . intval($row['id']) . "'");
+        $token = generateToken($userId, $DB);
+        $ip = $Gets->ip();
+        $DB->exec("UPDATE nteam_users SET last_login_time=NOW(), last_login_ip='$ip' WHERE id='$userId'");
+        jsonResponse(0, '登录成功', [
+            'status'         => 'ok',
+            'token'          => $token,
+            'user_id'        => $userId,
+            'username'       => $user['username'],
+            'email'          => $user['email'],
+            'qq'             => $user['qq'],
+            'cancel_revoked' => (isset($row['email']) && $row['email'] === 'revoked') ? 1 : 0
+        ]);
+    break;
+
     /* ==================== 账号注销 ==================== */
 
     case 'get_cancel_config':

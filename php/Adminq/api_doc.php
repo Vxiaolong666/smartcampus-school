@@ -62,6 +62,7 @@ include './head.php';
                             <a class="nav-link" href="#push-api">推送设置API</a>
                             <a class="nav-link" href="#feature-api">功能设置API</a>
                             <a class="nav-link" href="#cancel-api">账号注销API</a>
+                            <a class="nav-link" href="#oauth-bind-api">第三方账号绑定API</a>
                             <a class="nav-link" href="#error-code">错误码说明</a>
                         </nav>
                     </div>
@@ -1409,6 +1410,88 @@ wx.request({
                                 <tr><td><code>api.php?act=cancel_account</code></td><td>POST</td><td>agree、confirm_text、<strong>pass</strong></td><td>提交注销申请（App 端不含人机验证；以第三步签发的核验凭据 + 确认短语核验。旧客户端可不传 pass，改传 password/email_code 现场核验）</td></tr>
                             </tbody>
                         </table>
+                    </div>
+                </div>
+
+                <div class="block block-rounded block-bordered mb-4" id="oauth-bind-api">
+                    <div class="block-header block-header-default">
+                        <h3 class="block-title">
+                            <i class="fa fa-link me-2"></i>第三方账号绑定API（聚合登录）
+                        </h3>
+                    </div>
+                    <div class="block-content">
+                        <div class="alert alert-info">
+                            <i class="fa fa-info-circle me-2"></i>
+                            可绑定的渠道与总开关由后台「聚合登录配置」决定。Web 端接口位于 <code>{站点}/user/ajax.php</code>（Session 登录态）；App / 小程序端位于 <code>{站点}/api.php</code>（Token 鉴权），两者参数与返回结构一致。
+                        </div>
+                        <p><strong>绑定流程（App / 小程序）：</strong>调用 <code>get_oauth_url</code> 获取授权地址 → 在 WebView 中打开并完成第三方授权 → 服务端回调 <code>user/oauth_callback.php</code> 完成绑定 → 返回 App 后刷新绑定状态。WebView 内没有登录会话，服务端通过<strong>一次性绑定票据</strong>（<code>state=bindapp_{ticket}</code>，10 分钟有效、绑定即失效）识别发起绑定的用户；App 端绑定结果页为 <code>user/oauth_bind_result.php</code>。</p>
+
+                        <h5 class="text-primary mt-4">1. 获取绑定列表</h5>
+                        <p><strong>接口：</strong><code>/api.php?act=get_oauth_binds</code>（GET，需 Token）／<code>/user/ajax.php?act=get_oauth_binds</code>（POST，需登录）</p>
+                        <p><strong>返回：</strong></p>
+                        <pre class="bg-light p-2 rounded"><code>{
+    "code": 0,
+    "msg": "success",
+    "data": {
+        "enabled": 1,
+        "channels": {"qq": {"name": "QQ", "icon": "fab fa-qq", "color": "#12b7f5"}},
+        "binds": [
+            {"type": "qq", "name": "QQ", "color": "#12b7f5", "nickname": "小明", "avatar": "", "create_time": "2026-09-18 10:00:00"}
+        ]
+    }
+}</code></pre>
+
+                        <h5 class="text-primary mt-4">2. 获取授权地址（App / 小程序）</h5>
+                        <p><strong>接口：</strong><code>/api.php?act=get_oauth_url</code>（POST，需 Token）</p>
+                        <table class="table table-bordered table-sm">
+                            <thead><tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr></thead>
+                            <tbody>
+                                <tr><td>type</td><td>string</td><td>是</td><td>渠道标识，如 <code>qq</code> / <code>wx</code> / <code>github</code>（须为后台已启用渠道）</td></tr>
+                            </tbody>
+                        </table>
+                        <p><strong>Web 端对应接口：</strong><code>/user/ajax.php?act=get_oauth_url</code>（POST，Session 登录态），参数 <code>type</code> 与 <code>state</code>（<code>login</code> 登录 / <code>bind</code> 绑定），返回结构相同；Web 端绑定页为 <code>/user/oauth_bind.php</code>。</p>
+                        <p><strong>返回：</strong></p>
+                        <pre class="bg-light p-2 rounded"><code>{
+    "code": 0,
+    "msg": "success",
+    "data": {"url": "https://...", "qrcode": "https://..."}
+}</code></pre>
+
+                        <h5 class="text-primary mt-4">3. 解除绑定</h5>
+                        <p><strong>接口：</strong><code>/api.php?act=unbind_oauth</code>（POST，需 Token）／<code>/user/ajax.php?act=unbind_oauth</code>（POST，需登录）</p>
+                        <p><strong>参数：</strong><code>type</code>（渠道标识，必填）</p>
+                        <p><strong>返回：</strong><code>{"code":0,"msg":"解绑成功"}</code></p>
+
+                        <h5 class="text-primary mt-4">4. 第三方登录（登录页，无需鉴权）</h5>
+                        <p>App / 小程序登录页可通过聚合登录完成第三方一键登录：回调时同样没有登录会话，因此用<strong>登录票据</strong>标识本次登录——回调把票据标记为"已授权"，App 轮询到后由服务端签发正式登录令牌（票据一次性消费，10 分钟有效）。</p>
+                        <table class="table table-bordered table-sm">
+                            <thead><tr><th>接口</th><th>方法</th><th>参数</th><th>说明</th></tr></thead>
+                            <tbody>
+                                <tr><td><code>api.php?act=get_oauth_channels</code></td><td>GET</td><td>-</td><td>返回已启用的登录渠道，供登录页渲染第三方登录按钮</td></tr>
+                                <tr><td><code>api.php?act=get_oauth_login_url</code></td><td>POST</td><td>type</td><td>返回授权地址 <code>url</code> 与登录票据 <code>ticket</code>（10 分钟有效）</td></tr>
+                                <tr><td><code>api.php?act=oauth_login_poll</code></td><td>POST</td><td>ticket</td><td>轮询登录结果：<code>status=pending</code> 表示用户尚未完成授权；<code>status=ok</code> 时返回正式登录 <code>token</code> 及用户信息</td></tr>
+                            </tbody>
+                        </table>
+                        <p><strong>返回示例（授权完成）：</strong></p>
+                        <pre class="bg-light p-2 rounded"><code>{
+    "code": 0,
+    "msg": "登录成功",
+    "data": {
+        "status": "ok",
+        "token": "…",
+        "user_id": 1,
+        "username": "demo",
+        "email": "demo@example.com",
+        "qq": "",
+        "cancel_revoked": 0
+    }
+}</code></pre>
+                        <p><code>cancel_revoked=1</code> 表示该账号此前处于注销冷静期，本次登录已<strong>自动撤销注销</strong>，客户端应提示用户。返回 <code>code:-1</code> 时（票据失效 / 账号被封禁或已注销）客户端应停止轮询并提示重新登录。</p>
+                        <p><strong>Web 端：</strong>登录页通过 <code>/user/ajax.php?act=get_oauth_channels</code> 与 <code>get_oauth_url</code>（<code>state=login</code>）完成，回调后服务端直接写入会话并跳转用户中心，无需轮询。</p>
+
+                        <div class="alert alert-warning mt-3 mb-0">
+                            <strong>注意：</strong>一个第三方账号只能绑定一个本平台账号；若该第三方账号已被其它有效账号绑定，绑定流程只返回错误提示，<strong>绝不会切换当前登录账号</strong>。第三方登录要求该第三方账号<strong>已绑定</strong>本平台账号（不支持自动注册），未绑定时返回提示并引导用户先用账号密码登录后绑定。小程序端使用 WebView 打开授权页时，需将聚合登录服务域名（<code>u.daib.cn</code>）及各平台授权域名加入小程序<strong>业务域名白名单</strong>。
+                        </div>
                     </div>
                 </div>
 

@@ -92,6 +92,10 @@
         </view>
 
         <view class="bottom-actions">
+            <button class="action-btn secondary" bindtap="goToSubscriptionHistory">
+                <image class="btn-icon" src="/assets/wxmp-clock.svg" mode="widthFix"></image>
+                <text>订阅历史</text>
+            </button>
             <button class="action-btn secondary" bindtap="goToPushTest">
                 <image class="btn-icon" src="/assets/wxmp-test.svg" mode="widthFix"></image>
                 <text>推送测试</text>

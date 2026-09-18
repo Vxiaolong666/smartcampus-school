@@ -152,4 +152,79 @@ class OAuthHelper
         $base = $siteBasePath ?: '';
         return $scheme . '://' . $host . $base . '/user/oauth_callback.php';
     }
+
+    /**
+     * 签发 App/WebView 绑定票据（10 分钟有效、一次性）
+     *
+     * App 端在 WebView / 外部浏览器中完成授权，回调时没有登录会话，
+     * 因此用票据（包含渠道类型）来识别发起绑定的用户。
+     *
+     * @return string 票据，形如 "qq.1a2b3c..."
+     */
+    public static function issueBindTicket($DB, $userId, $type)
+    {
+        $userId = intval($userId);
+        $ticket = $type . '.' . bin2hex(random_bytes(12));
+        $now    = date('Y-m-d H:i:s');
+        $expire = date('Y-m-d H:i:s', time() + 600);
+        $DB->exec("DELETE FROM nteam_tokens WHERE user_id='$userId' AND token_type='oauth_bind'");
+        $DB->exec("INSERT INTO nteam_tokens (user_id, token_type, token, expire_time, used, create_time) VALUES ('$userId', 'oauth_bind', '$ticket', '$expire', 0, '$now')");
+        return $ticket;
+    }
+
+    /**
+     * 校验并消费 App 绑定票据
+     *
+     * @return int 票据对应的用户 ID；无效返回 0
+     */
+    public static function resolveBindTicket($DB, $ticket, $type)
+    {
+        $ticket = addslashes((string) $ticket);
+        if ($ticket === '' || strpos($ticket, $type . '.') !== 0) {
+            return 0;
+        }
+        $now = date('Y-m-d H:i:s');
+        $row = $DB->getRow("SELECT * FROM nteam_tokens WHERE token_type='oauth_bind' AND token='$ticket' AND used=0 AND expire_time > '$now' ORDER BY id DESC LIMIT 1");
+        if (!$row) {
+            return 0;
+        }
+        $DB->exec("UPDATE nteam_tokens SET used=1 WHERE id='" . intval($row['id']) . "'");
+        return intval($row['user_id']);
+    }
+
+    /**
+     * 签发 App/WebView 登录票据（10 分钟有效）
+     *
+     * App 端在 WebView / 外部浏览器中完成第三方授权，回调时没有登录会话，
+     * 因此用票据标识本次登录：回调写入 user_id 表示"已授权"，
+     * App 轮询到 user_id 后由 api.php 换取正式登录令牌（票据一次性消费）。
+     *
+     * @return string 票据，形如 "qq.1a2b3c..."
+     */
+    public static function issueLoginTicket($DB, $type)
+    {
+        $ticket = $type . '.' . bin2hex(random_bytes(16));
+        $now    = date('Y-m-d H:i:s');
+        $expire = date('Y-m-d H:i:s', time() + 600);
+        // 顺带清理已过期票据，避免堆积
+        $DB->exec("DELETE FROM nteam_tokens WHERE token_type='oauth_login' AND expire_time < '$now'");
+        $DB->exec("INSERT INTO nteam_tokens (user_id, token_type, token, expire_time, used, create_time) VALUES (0, 'oauth_login', '$ticket', '$expire', 0, '$now')");
+        return $ticket;
+    }
+
+    /**
+     * 查找有效的登录票据（未被消费、未过期、渠道匹配）
+     *
+     * @return array|null 票据记录，或 null
+     */
+    public static function findLoginTicket($DB, $ticket, $type)
+    {
+        $ticket = addslashes((string) $ticket);
+        if ($ticket === '' || strpos($ticket, $type . '.') !== 0) {
+            return null;
+        }
+        $now = date('Y-m-d H:i:s');
+        $row = $DB->getRow("SELECT * FROM nteam_tokens WHERE token_type='oauth_login' AND token='$ticket' AND used=0 AND expire_time > '$now' ORDER BY id DESC LIMIT 1");
+        return $row ? $row : null;
+    }
 }

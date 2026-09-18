@@ -364,6 +364,18 @@ page {
     border: 1rpx solid #13c2c2;
 }
 
+/* 三个入口并排（订阅历史 / 推送测试 / 刷新数据）时适度收紧，避免文字换行 */
+.bottom-actions .action-btn {
+    padding: 20rpx 12rpx;
+    font-size: 24rpx;
+}
+
+.bottom-actions .btn-icon {
+    width: 28rpx;
+    height: 28rpx;
+    margin-right: 6rpx;
+}
+
 .btn-icon {
     width: 32rpx;
     height: 32rpx;

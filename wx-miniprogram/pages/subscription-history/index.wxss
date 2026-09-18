@@ -1,0 +1,300 @@
+/* 说明：本页样式与 uniapp 端 pages/subscription-history/index.vue 保持一致（同一套尺寸与配色） */
+page {
+    background: #eff1ff;
+}
+
+.nav-title {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    font-size: 32rpx;
+    font-weight: bold;
+    position: relative;
+    z-index: 1;
+    color: white;
+    letter-spacing: 6rpx;
+}
+
+.background-wrapper {
+    position: fixed;
+    width: 100%;
+    top: 0;
+}
+
+.background {
+    width: 100%;
+    position: absolute;
+    top: 0;
+    height: 800rpx;
+}
+
+.background-mask {
+    background-image: linear-gradient(rgba(0, 0, 0, .8), transparent);
+    height: 600rpx;
+    position: absolute;
+    width: 100%;
+    top: 0;
+}
+
+.content-wrapper {
+    position: relative;
+    z-index: 1;
+    background: #eff1ff;
+    top: 30rpx;
+    min-height: calc(100vh - 200rpx);
+    border-top-left-radius: 60rpx;
+    border-top-right-radius: 60rpx;
+    box-shadow: 0 -80rpx 80rpx 40rpx rgba(0, 0, 0, .2);
+    padding: 30rpx;
+    padding-bottom: 30rpx;
+}
+
+.info-card {
+    background: white;
+    border-radius: 20rpx;
+    padding: 24rpx;
+    margin-top: 25rpx;
+    margin-bottom: 24rpx;
+    display: flex;
+    align-items: center;
+    box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.05);
+}
+
+.info-icon {
+    width: 48rpx;
+    height: 48rpx;
+    margin-right: 20rpx;
+    flex-shrink: 0;
+}
+
+.info-content {
+    flex: 1;
+}
+
+.info-text {
+    font-size: 28rpx;
+    color: #48416f;
+    font-weight: bold;
+}
+
+.info-sub {
+    font-size: 22rpx;
+    color: #948eb3;
+    margin-top: 6rpx;
+}
+
+.tab-bar {
+    display: flex;
+    background: white;
+    border-radius: 16rpx;
+    padding: 8rpx;
+    margin-bottom: 24rpx;
+    box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.05);
+}
+
+.tab-item {
+    flex: 1;
+    text-align: center;
+    font-size: 26rpx;
+    color: #948eb3;
+    padding: 16rpx 0;
+    border-radius: 12rpx;
+    transition: all 0.2s;
+}
+
+.tab-item.active {
+    background: #13c2c2;
+    color: white;
+    font-weight: bold;
+}
+
+.loading-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60rpx 0;
+}
+
+.loading-spinner {
+    width: 60rpx;
+    height: 60rpx;
+    border: 4rpx solid #e8e8e8;
+    border-top-color: #13c2c2;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.loading-text {
+    font-size: 26rpx;
+    color: #948eb3;
+    margin-top: 20rpx;
+}
+
+.empty-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 100rpx 0;
+}
+
+.empty-icon {
+    width: 100rpx;
+    height: 100rpx;
+    margin-bottom: 20rpx;
+}
+
+.empty-text {
+    color: #948eb3;
+    font-size: 28rpx;
+}
+
+.history-list {
+    margin-top: 6rpx;
+}
+
+.history-item {
+    background: white;
+    border-radius: 20rpx;
+    padding: 24rpx;
+    margin-bottom: 20rpx;
+    display: flex;
+    box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.05);
+}
+
+.history-icon {
+    width: 56rpx;
+    height: 56rpx;
+    margin-right: 20rpx;
+    flex-shrink: 0;
+}
+
+.history-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12rpx;
+}
+
+.history-category {
+    font-size: 22rpx;
+    color: white;
+    background: #13c2c2;
+    padding: 4rpx 14rpx;
+    border-radius: 6rpx;
+    flex-shrink: 0;
+}
+
+.history-item.power_push .history-category {
+    background: #ff9f43;
+}
+
+.history-item.academic_push .history-category {
+    background: #667eea;
+}
+
+.history-status {
+    font-size: 22rpx;
+    padding: 4rpx 12rpx;
+    border-radius: 6rpx;
+    flex-shrink: 0;
+}
+
+.history-status.success {
+    background: #f6ffed;
+    color: #52c41a;
+}
+
+.history-status.fail {
+    background: #fff2f0;
+    color: #ff4d4f;
+}
+
+.history-status.pending {
+    background: #f4f4f5;
+    color: #9494a8;
+}
+
+.history-title {
+    font-size: 28rpx;
+    font-weight: bold;
+    color: #48416f;
+    line-height: 1.4;
+    margin-bottom: 10rpx;
+}
+
+.history-content {
+    display: block;
+    font-size: 24rpx;
+    color: #6b6585;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-all;
+    margin-bottom: 10rpx;
+}
+
+.history-error {
+    font-size: 22rpx;
+    color: #ff4d4f;
+    background: #fff2f0;
+    border-radius: 8rpx;
+    padding: 12rpx;
+    margin-bottom: 10rpx;
+}
+
+.history-time {
+    font-size: 22rpx;
+    color: #c0c0c0;
+    text-align: right;
+}
+
+.no-more {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 30rpx 0;
+}
+
+.no-more-text {
+    color: #948eb3;
+    font-size: 26rpx;
+}
+
+.back-top {
+    position: fixed;
+    right: 30rpx;
+    bottom: 60rpx;
+    width: 88rpx;
+    height: 88rpx;
+    border-radius: 50%;
+    background: #13c2c2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8rpx 24rpx rgba(19, 194, 194, 0.4);
+    z-index: 50;
+}
+
+.back-top:active {
+    opacity: 0.85;
+}
+
+/* 无 wxmp-arrow-up.svg 资源，使用文字箭头保持一致的视觉效果 */
+.back-top-arrow {
+    color: #fff;
+    font-size: 44rpx;
+    font-weight: bold;
+    line-height: 1;
+}

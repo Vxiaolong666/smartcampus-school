@@ -20,6 +20,7 @@
     "pages/power-statistics/index",
     "pages/push-settings/index",
     "pages/subscription/index",
+    "pages/subscription-history/index",
     "pages/black-mine/index",
     "pages/black-notice/index",
     "pages/black-notice-info/index",

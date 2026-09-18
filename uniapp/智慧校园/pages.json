@@ -151,6 +151,25 @@
 			}
 		},
 		{
+			"path": "pages/oauth-bind/index",
+			"style": {
+				"navigationBarTitleText": "第三方账号绑定"
+			}
+		},
+		{
+			"path": "pages/oauth-bind-webview/index",
+			"style": {
+				"navigationBarTitleText": "第三方账号授权",
+				"navigationStyle": "default",
+				"app-plus": {
+					"titleNView": {
+						"type": "default",
+						"titleText": "第三方账号授权"
+					}
+				}
+			}
+		},
+		{
 			"path": "pages/power-fee-batch/index",
 			"style": {
 				"navigationBarTitleText": "批量查询"

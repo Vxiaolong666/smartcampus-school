@@ -118,5 +118,10 @@ Page({
     //跳转到推送测试页
     goToPushTest() {
         wx.navigateTo({ url: '/pages/push-test/index' });
+    },
+
+    //跳转到订阅历史记录页
+    goToSubscriptionHistory() {
+        wx.navigateTo({ url: '/pages/subscription-history/index' });
     }
 });

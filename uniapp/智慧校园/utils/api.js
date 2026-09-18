@@ -537,6 +537,56 @@ const cancelAccount = (data) => {
   });
 };
 
+/* ==================== 第三方账号绑定（聚合登录） ==================== */
+
+const getOauthBinds = () => {
+  return request({
+    act: 'get_oauth_binds',
+    method: 'GET'
+  });
+};
+
+const getOauthUrl = (type) => {
+  return request({
+    act: 'get_oauth_url',
+    method: 'POST',
+    data: { type, state: 'bind' }
+  });
+};
+
+const unbindOauth = (type) => {
+  return request({
+    act: 'unbind_oauth',
+    method: 'POST',
+    data: { type }
+  });
+};
+
+/* ==================== 第三方账号登录（聚合登录） ==================== */
+
+const getOauthChannels = () => {
+  return request({
+    act: 'get_oauth_channels',
+    method: 'GET'
+  });
+};
+
+const getOauthLoginUrl = (type) => {
+  return request({
+    act: 'get_oauth_login_url',
+    method: 'POST',
+    data: { type }
+  });
+};
+
+const oauthLoginPoll = (ticket) => {
+  return request({
+    act: 'oauth_login_poll',
+    method: 'POST',
+    data: { ticket }
+  });
+};
+
 /* ==================== 本地存储工具方法 ==================== */
 
 const isLoggedIn = () => {
@@ -614,5 +664,11 @@ export default {
   getCancelConfig,
   sendCancelCode,
   verifyCancelIdentity,
-  cancelAccount
+  cancelAccount,
+  getOauthBinds,
+  getOauthUrl,
+  unbindOauth,
+  getOauthChannels,
+  getOauthLoginUrl,
+  oauthLoginPoll
 };

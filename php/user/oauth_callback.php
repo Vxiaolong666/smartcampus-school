@@ -10,10 +10,36 @@ $type = isset($_GET['type']) ? daddslashes($_GET['type']) : '';
 $code = isset($_GET['code']) ? daddslashes($_GET['code']) : '';
 $state = isset($_GET['state']) ? daddslashes($_GET['state']) : 'login';
 
+// App / WebView 绑定流程：state 形如 bindapp_{ticket}，用一次性票据识别用户（该场景无登录会话）
+$appBindTicket = (strpos($state, 'bindapp_') === 0) ? substr($state, 8) : '';
+$isAppBind = ($appBindTicket !== '');
+
+// App / WebView 登录流程：state 形如 loginapp_{ticket}，登录结果由 App 轮询票据领取
+$appLoginTicket = (strpos($state, 'loginapp_') === 0) ? substr($state, 9) : '';
+$isAppLogin = ($appLoginTicket !== '');
+
 // 统一跳转到登录页并提示
 function oauthFail($msg)
 {
     header('Location:./login.php?oauth_error=' . urlencode($msg));
+    exit;
+}
+
+// 绑定结果跳转：Web 流程回到绑定页；App/WebView 流程跳到结果页
+function oauthBindRedirect($ok, $msg, $isAppBind)
+{
+    if ($isAppBind) {
+        header('Location:./oauth_bind_result.php?ok=' . ($ok ? 1 : 0) . '&msg=' . urlencode($msg));
+    } else {
+        header('Location:./oauth_bind.php?' . ($ok ? 'oauth_bind=1' : 'oauth_error=' . urlencode($msg)));
+    }
+    exit;
+}
+
+// App / WebView 登录结果跳转（结果页 type=login）
+function oauthLoginAppRedirect($ok, $msg)
+{
+    header('Location:./oauth_bind_result.php?type=login&ok=' . ($ok ? 1 : 0) . '&msg=' . urlencode($msg));
     exit;
 }
 
@@ -44,14 +70,21 @@ $accessToken = isset($result['access_token']) ? daddslashes($result['access_toke
 // 查找已有的第三方绑定（oauth_type + oauth_uid 唯一）
 $bind = $DB->getRow("SELECT * FROM nteam_user_oauth WHERE oauth_type='$type' AND oauth_uid='$socialUid'");
 
-if ($state === 'bind') {
+if ($state === 'bind' || $isAppBind) {
     // ===================== 绑定流程（已登录用户主动绑定） =====================
     // 绑定流程任何时候都不触发登录 / 不切换当前登录账号
-    if (!isset($_SESSION['userId'])) {
+    if ($isAppBind) {
+        // App / WebView：无登录会话，用一次性绑定票据识别发起绑定的用户
+        $currentUserId = OAuthHelper::resolveBindTicket($DB, $appBindTicket, $type);
+        if (!$currentUserId) {
+            oauthBindRedirect(false, '绑定链接已失效，请返回 App 重新发起绑定', true);
+        }
+    } elseif (isset($_SESSION['userId'])) {
+        $currentUserId = intval($_SESSION['userId']);
+    } else {
         header('Location:./login.php?oauth_error=' . urlencode('登录状态已失效，请重新登录后再进行绑定'));
         exit;
     }
-    $currentUserId = intval($_SESSION['userId']);
     $chName = OAuthHelper::CHANNELS[$type]['name'] ?? $type;
 
     if ($bind) {
@@ -61,46 +94,66 @@ if ($state === 'bind') {
         if ($bindUser && intval($bindUser['id']) === $currentUserId) {
             // 已绑定到当前账号：刷新资料后直接返回成功（不做任何登录操作）
             $DB->exec("UPDATE nteam_user_oauth SET access_token='$accessToken', nickname='$nickname', avatar='$faceimg', gender='$gender', update_time=NOW() WHERE id='{$bind['id']}'");
-            header('Location:./oauth_bind.php?oauth_bind=1');
-            exit;
+            oauthBindRedirect(true, '该' . $chName . '账号已绑定到当前账号', $isAppBind);
         }
 
         if ($bindUser) {
             // 该第三方账号已被其它有效账号绑定：仅提示错误，禁止绑定且绝不触发登录
-            header('Location:./oauth_bind.php?oauth_error=' . urlencode('该' . $chName . '账号已被其它账号绑定，请先解绑后再试'));
-            exit;
+            oauthBindRedirect(false, '该' . $chName . '账号已被其它账号绑定，请先解绑后再试', $isAppBind);
         }
 
         // 绑定记录关联的账号已不存在（脏数据）：允许覆盖该特征信息，改绑到当前账号
         $DB->exec("UPDATE nteam_user_oauth SET user_id='$currentUserId', access_token='$accessToken', nickname='$nickname', avatar='$faceimg', gender='$gender', update_time=NOW() WHERE id='{$bind['id']}'");
-        header('Location:./oauth_bind.php?oauth_bind=1');
-        exit;
+        oauthBindRedirect(true, '绑定成功', $isAppBind);
     }
 
     // 该第三方账号尚未绑定：直接绑定到当前账号
     $DB->exec("INSERT INTO nteam_user_oauth (user_id, oauth_type, oauth_uid, access_token, nickname, avatar, gender, create_time, update_time) VALUES ('$currentUserId', '$type', '$socialUid', '$accessToken', '$nickname', '$faceimg', '$gender', NOW(), NOW())");
-    header('Location:./oauth_bind.php?oauth_bind=1');
-    exit;
+    oauthBindRedirect(true, '绑定成功', $isAppBind);
 }
 
 // ===================== 登录流程 =====================
+// App / WebView 流程：用登录票据标识本次登录，登录结果由 App 轮询领取（无会话）
+$appLoginTicketId = 0;
+if ($isAppLogin) {
+    $appLoginRow = OAuthHelper::findLoginTicket($DB, $appLoginTicket, $type);
+    if (!$appLoginRow) {
+        oauthLoginAppRedirect(false, '登录链接已失效，请返回 App 重新发起登录');
+    }
+    $appLoginTicketId = intval($appLoginRow['id']);
+}
+
 if ($bind) {
     $user = $DB->getRow("SELECT * FROM nteam_users WHERE id='{$bind['user_id']}'");
     if (!$user) {
         // 绑定记录存在但关联用户已不存在，清理脏数据后提示
         $DB->exec("DELETE FROM nteam_user_oauth WHERE id='{$bind['id']}'");
-        oauthFail('该第三方账号未关联有效用户，请先登录账号后再绑定');
+        $tip = '该第三方账号未关联有效用户，请先登录账号后再绑定';
+        if ($isAppLogin) { oauthLoginAppRedirect(false, $tip); }
+        oauthFail($tip);
     }
     if (intval($user['is_banned']) === 1) {
-        oauthFail('该账号已被封禁，请联系管理员');
+        $tip = '该账号已被封禁，请联系管理员';
+        if ($isAppLogin) { oauthLoginAppRedirect(false, $tip); }
+        oauthFail($tip);
     }
     // 冷静期处理：冷静期内登录即自动撤销注销；已到期则不撤销
     $cancelState = cancelHandleLogin($DB, $user, $Gets->ip());
     if ($cancelState === 'expired') {
-        oauthFail('该账号已进入注销流程，无法登录');
+        $tip = '该账号已进入注销流程，无法登录';
+        if ($isAppLogin) { oauthLoginAppRedirect(false, $tip); }
+        oauthFail($tip);
     }
-    // 更新最新资料并登录
+    // 更新最新资料
     $DB->exec("UPDATE nteam_user_oauth SET access_token='$accessToken', nickname='$nickname', avatar='$faceimg', gender='$gender', update_time=NOW() WHERE id='{$bind['id']}'");
+
+    if ($isAppLogin) {
+        // 标记票据已授权（user_id>0），App 轮询时据此签发登录令牌；email 记录冷静期撤销标记
+        $revokedNote = ($cancelState === 'revoked') ? 'revoked' : '';
+        $DB->exec("UPDATE nteam_tokens SET user_id='{$user['id']}', email='$revokedNote' WHERE id='$appLoginTicketId'");
+        oauthLoginAppRedirect(true, '登录成功，请返回 App');
+    }
+
     loginUser($DB, $user);
     $_SESSION['cancelRevoked'] = ($cancelState === 'revoked') ? 1 : 0;
     header('Location:./');
@@ -108,7 +161,9 @@ if ($bind) {
 }
 
 // 未绑定且非绑定流程：仅支持已绑定账号登录，不允许自动注册新用户
-oauthFail('该第三方账号尚未绑定，请先使用账号密码登录后在「个人资料」中绑定');
+$tip = '该第三方账号尚未绑定，请先使用账号密码登录后在「个人资料」中绑定';
+if ($isAppLogin) { oauthLoginAppRedirect(false, $tip); }
+oauthFail($tip);
 
 /**
  * 设置登录态
