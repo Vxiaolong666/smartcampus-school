@@ -106,6 +106,7 @@ WHERE s.status = 1
     AND s.subscribe_count < 2 
     AND t.status = 1
     AND t.scene_type != 'subscription_alert'
+    AND u.is_cancelling = 0
 ORDER BY s.user_id, s.subscribe_count ASC");
 
 if (empty($lowSubscriptionUsers)) {

@@ -96,7 +96,7 @@ include './head.php';
                                   <td>'.$res['qq'].'</td>
                                   <td>'.$res['points'].'</td>
                                   <td>'.$res['level'].'</td>
-                                  <td>'.($res['is_banned']==1?'<span class="badge bg-danger">已封禁</span>':'<span class="badge bg-success">正常</span>').'</td>
+                                  <td>'.((isset($res['is_cancelling']) && $res['is_cancelling']==1)?'<span class="badge bg-warning">注销中</span>':($res['is_banned']==1?'<span class="badge bg-danger">已封禁</span>':'<span class="badge bg-success">正常</span>')).'</td>
                                   <td>'.$res['register_time'].'</td>
                                   <td class="text-center" style="white-space: nowrap;">';
                                       echo '<a href="./uset.php?my=edit&id='.$res['id'].'" class="btn btn-sm btn btn-primary"><b>编辑</b></a> ';
@@ -207,7 +207,7 @@ function unbanUser(id) {
 }
 
 function deleteUser(id) {
-    layer.confirm('确定要删除该用户吗？删除后无法恢复！', {
+    layer.confirm('确定要删除该用户吗？将同时删除其宿舍绑定、第三方授权等全部个人数据，且无法恢复！', {
         btn: ['确定', '取消']
     }, function() {
         $.ajax({

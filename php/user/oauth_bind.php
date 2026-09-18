@@ -61,6 +61,12 @@ if (oauthAlert) {
     layer.alert('第三方账号绑定成功', {icon: 1});
 }
 
+// 绑定失败提示（如该第三方账号已被其它账号绑定）
+const oauthErrorMsg = new URLSearchParams(window.location.search).get('oauth_error');
+if (oauthErrorMsg) {
+    layer.alert(oauthErrorMsg, {icon: 2});
+}
+
 loadOauthBinds();
 
 function loadOauthBinds() {

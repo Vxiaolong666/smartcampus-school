@@ -12,6 +12,12 @@ include './head.php';
 require_once '../funsion/OAuthHelper.php';
 $config = OAuthHelper::getConfig($DB);
 $enabledChannels = $config && !empty($config['channels_arr']) ? $config['channels_arr'] : [];
+
+// 用户第三方绑定信息（关联用户表，便于判断账号是否存在）
+$bindings = $DB->getAll("SELECT o.*, u.username, u.email FROM nteam_user_oauth o LEFT JOIN nteam_users u ON o.user_id = u.id ORDER BY o.id DESC");
+if (!is_array($bindings)) {
+    $bindings = [];
+}
 ?>
 <div id="pjax-container">
     <div class="bg-body-light">
@@ -99,6 +105,84 @@ $enabledChannels = $config && !empty($config['channels_arr']) ? $config['channel
 
         <div class="block block-rounded">
             <div class="block-header block-header-default">
+                <h3 class="block-title">用户绑定信息</h3>
+                <div class="block-options">
+                    <button type="button" class="btn btn-sm btn-alt-danger me-2" onclick="clearInvalidOauth()"><i class="fa fa-broom me-1"></i>清除无效</button>
+                    <span class="badge bg-primary">共 <?php echo count($bindings); ?> 条</span>
+                </div>
+            </div>
+            <div class="block-content">
+                <?php if (empty($bindings)): ?>
+                    <div class="text-center text-muted py-4">
+                        <i class="fa fa-link-slash fa-2x mb-2 d-block opacity-50"></i>
+                        暂无用户绑定记录
+                    </div>
+                <?php else: ?>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped table-vcenter">
+                        <thead>
+                            <tr>
+                                <th class="text-center" style="width:60px;">ID</th>
+                                <th style="min-width:90px;">渠道</th>
+                                <th style="min-width:130px;">第三方账号</th>
+                                <th class="d-none d-md-table-cell" style="min-width:150px;">第三方UID</th>
+                                <th style="min-width:130px;">绑定用户</th>
+                                <th class="d-none d-sm-table-cell" style="min-width:150px;">绑定时间</th>
+                                <th class="text-center" style="min-width:90px;">状态</th>
+                                <th class="text-center" style="min-width:80px;">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($bindings as $b):
+                                $meta = OAuthHelper::CHANNELS[$b['oauth_type']] ?? ['name' => $b['oauth_type'], 'icon' => 'fa fa-link', 'color' => '#6c757d'];
+                                $userExists = !empty($b['username']);
+                            ?>
+                            <tr>
+                                <td class="text-center"><?php echo intval($b['id']); ?></td>
+                                <td>
+                                    <i class="<?php echo $meta['icon']; ?> me-1" style="color:<?php echo $meta['color']; ?>;"></i>
+                                    <?php echo htmlspecialchars($meta['name']); ?>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <?php if (!empty($b['avatar'])): ?>
+                                        <img src="<?php echo htmlspecialchars($b['avatar']); ?>" alt="avatar" class="rounded-circle me-2" style="width:32px;height:32px;object-fit:cover;" onerror="this.style.display='none'">
+                                        <?php endif; ?>
+                                        <span><?php echo htmlspecialchars($b['nickname'] !== '' && $b['nickname'] !== null ? $b['nickname'] : '未设置'); ?></span>
+                                    </div>
+                                </td>
+                                <td class="d-none d-md-table-cell"><code><?php echo htmlspecialchars($b['oauth_uid']); ?></code></td>
+                                <td>
+                                    <?php if ($userExists): ?>
+                                        <a href="./uset.php?my=edit&id=<?php echo intval($b['user_id']); ?>"><?php echo htmlspecialchars($b['username']); ?></a>
+                                        <div class="fs-sm text-muted">ID: <?php echo intval($b['user_id']); ?></div>
+                                    <?php else: ?>
+                                        <span class="text-danger">用户不存在</span>
+                                        <div class="fs-sm text-muted">ID: <?php echo intval($b['user_id']); ?></div>
+                                    <?php endif; ?>
+                                </td>
+                                <td class="d-none d-sm-table-cell"><?php echo htmlspecialchars($b['create_time']); ?></td>
+                                <td class="text-center">
+                                    <?php if ($userExists): ?>
+                                        <span class="badge bg-success">正常</span>
+                                    <?php else: ?>
+                                        <span class="badge bg-danger">账号不存在</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td class="text-center">
+                                    <button type="button" class="btn btn-sm btn-alt-danger" onclick="unbindOauthBinding(<?php echo intval($b['id']); ?>)">解绑</button>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <div class="block block-rounded">
+            <div class="block-header block-header-default">
                 <h3 class="block-title">配置说明</h3>
             </div>
             <div class="block-content">
@@ -150,6 +234,61 @@ function saveOauthConfig(obj){
         }
     });
     return false;
+}
+
+// 解绑单条第三方绑定
+function unbindOauthBinding(id){
+    layer.confirm('确定要解绑该第三方账号吗？解绑后该账号将无法通过此方式登录。', {
+        btn: ['确定解绑', '取消'],
+        icon: 3
+    }, function(){
+        var ii = layer.load(2, {shade:[0.1,'#fff']});
+        $.ajax({
+            type: 'POST',
+            url: 'Ajax.php?act=delete_oauth_binding',
+            data: {id: id},
+            dataType: 'json',
+            success: function(data){
+                layer.close(ii);
+                if(data.code == 0){
+                    layer.msg(data.msg, {icon: 1}, function(){ window.location.reload(); });
+                }else{
+                    layer.alert(data.msg, {icon: 2});
+                }
+            },
+            error: function(){
+                layer.close(ii);
+                layer.msg('服务器错误');
+            }
+        });
+    });
+}
+
+// 清除无效绑定（关联用户已不存在）
+function clearInvalidOauth(){
+    layer.confirm('确定要清除全部「账号不存在」的无效绑定记录吗？此操作不可恢复。', {
+        btn: ['确定清除', '取消'],
+        icon: 3
+    }, function(){
+        var ii = layer.load(2, {shade:[0.1,'#fff']});
+        $.ajax({
+            type: 'POST',
+            url: 'Ajax.php?act=clear_invalid_oauth',
+            dataType: 'json',
+            success: function(data){
+                layer.close(ii);
+                if(data.code == 0){
+                    layer.msg(data.msg, {icon: 1}, function(){ window.location.reload(); });
+                }else{
+                    layer.alert(data.msg, {icon: 2});
+                }
+            },
+            error: function(){
+                layer.close(ii);
+                layer.msg('服务器错误');
+            }
+        });
+    });
 }
 </script>
 </body>

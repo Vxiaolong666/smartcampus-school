@@ -660,6 +660,12 @@ function getUserDisplayName($nickname, $username) {
                                                 <span class="nav-main-link-name"><b>修改密码</b></span>
                                             </a>
                                         </li>
+                                        <li class="nav-main-item">
+                                            <a class="nav-main-link" href="cancel_account.php">
+                                                <i class="nav-main-link-icon fa fa-user-slash"></i>
+                                                <span class="nav-main-link-name"><b>注销账户</b></span>
+                                            </a>
+                                        </li>
                                         <li class="nav-main-heading text-center">- 更多功能敬请期待 -</li>
                                     </ul>
                                 </div>

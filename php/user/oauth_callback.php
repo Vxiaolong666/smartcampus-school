@@ -4,6 +4,7 @@ include('../Common/Core_brain.php');
 /** @var \lib\PdoHelper $DB */
 
 require_once '../funsion/OAuthHelper.php';
+require_once '../funsion/AccountCancellation.php';
 
 $type = isset($_GET['type']) ? daddslashes($_GET['type']) : '';
 $code = isset($_GET['code']) ? daddslashes($_GET['code']) : '';
@@ -40,9 +41,49 @@ $faceimg = isset($result['faceimg']) ? daddslashes($result['faceimg']) : '';
 $gender = isset($result['gender']) ? daddslashes($result['gender']) : '';
 $accessToken = isset($result['access_token']) ? daddslashes($result['access_token']) : '';
 
-// 查找已有绑定
+// 查找已有的第三方绑定（oauth_type + oauth_uid 唯一）
 $bind = $DB->getRow("SELECT * FROM nteam_user_oauth WHERE oauth_type='$type' AND oauth_uid='$socialUid'");
 
+if ($state === 'bind') {
+    // ===================== 绑定流程（已登录用户主动绑定） =====================
+    // 绑定流程任何时候都不触发登录 / 不切换当前登录账号
+    if (!isset($_SESSION['userId'])) {
+        header('Location:./login.php?oauth_error=' . urlencode('登录状态已失效，请重新登录后再进行绑定'));
+        exit;
+    }
+    $currentUserId = intval($_SESSION['userId']);
+    $chName = OAuthHelper::CHANNELS[$type]['name'] ?? $type;
+
+    if ($bind) {
+        // 绑定记录所关联的用户
+        $bindUser = $DB->getRow("SELECT * FROM nteam_users WHERE id='{$bind['user_id']}'");
+
+        if ($bindUser && intval($bindUser['id']) === $currentUserId) {
+            // 已绑定到当前账号：刷新资料后直接返回成功（不做任何登录操作）
+            $DB->exec("UPDATE nteam_user_oauth SET access_token='$accessToken', nickname='$nickname', avatar='$faceimg', gender='$gender', update_time=NOW() WHERE id='{$bind['id']}'");
+            header('Location:./oauth_bind.php?oauth_bind=1');
+            exit;
+        }
+
+        if ($bindUser) {
+            // 该第三方账号已被其它有效账号绑定：仅提示错误，禁止绑定且绝不触发登录
+            header('Location:./oauth_bind.php?oauth_error=' . urlencode('该' . $chName . '账号已被其它账号绑定，请先解绑后再试'));
+            exit;
+        }
+
+        // 绑定记录关联的账号已不存在（脏数据）：允许覆盖该特征信息，改绑到当前账号
+        $DB->exec("UPDATE nteam_user_oauth SET user_id='$currentUserId', access_token='$accessToken', nickname='$nickname', avatar='$faceimg', gender='$gender', update_time=NOW() WHERE id='{$bind['id']}'");
+        header('Location:./oauth_bind.php?oauth_bind=1');
+        exit;
+    }
+
+    // 该第三方账号尚未绑定：直接绑定到当前账号
+    $DB->exec("INSERT INTO nteam_user_oauth (user_id, oauth_type, oauth_uid, access_token, nickname, avatar, gender, create_time, update_time) VALUES ('$currentUserId', '$type', '$socialUid', '$accessToken', '$nickname', '$faceimg', '$gender', NOW(), NOW())");
+    header('Location:./oauth_bind.php?oauth_bind=1');
+    exit;
+}
+
+// ===================== 登录流程 =====================
 if ($bind) {
     $user = $DB->getRow("SELECT * FROM nteam_users WHERE id='{$bind['user_id']}'");
     if (!$user) {
@@ -53,22 +94,16 @@ if ($bind) {
     if (intval($user['is_banned']) === 1) {
         oauthFail('该账号已被封禁，请联系管理员');
     }
+    // 冷静期处理：冷静期内登录即自动撤销注销；已到期则不撤销
+    $cancelState = cancelHandleLogin($DB, $user, $Gets->ip());
+    if ($cancelState === 'expired') {
+        oauthFail('该账号已进入注销流程，无法登录');
+    }
     // 更新最新资料并登录
     $DB->exec("UPDATE nteam_user_oauth SET access_token='$accessToken', nickname='$nickname', avatar='$faceimg', gender='$gender', update_time=NOW() WHERE id='{$bind['id']}'");
     loginUser($DB, $user);
+    $_SESSION['cancelRevoked'] = ($cancelState === 'revoked') ? 1 : 0;
     header('Location:./');
-    exit;
-}
-
-// 未找到绑定：仅允许已登录用户进行“绑定到当前账号”操作
-// 不允许为未绑定的第三方账号自动注册新用户，仅支持已绑定账号登录
-if ($state === 'bind' && isset($_SESSION['userId'])) {
-    $userId = intval($_SESSION['userId']);
-    $chk = $DB->getRow("SELECT * FROM nteam_user_oauth WHERE oauth_type='$type' AND oauth_uid='$socialUid'");
-    if (!$chk) {
-        $DB->exec("INSERT INTO nteam_user_oauth (user_id, oauth_type, oauth_uid, access_token, nickname, avatar, gender, create_time, update_time) VALUES ('$userId', '$type', '$socialUid', '$accessToken', '$nickname', '$faceimg', '$gender', NOW(), NOW())");
-    }
-    header('Location:./oauth_bind.php?oauth_bind=1');
     exit;
 }
 

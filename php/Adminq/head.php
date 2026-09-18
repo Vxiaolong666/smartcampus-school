@@ -514,6 +514,12 @@ include('../Common/Core_brain.php');
                                                     <span class="nav-main-link-name"><b>聚合登录配置</b></span>
                                                 </a>
                                             </li>
+                                            <li class="nav-main-item">
+                                                <a class="nav-main-link" href="cancel_config.php">
+                                                    <i class="nav-main-link-icon fa fa-user-slash"></i>
+                                                    <span class="nav-main-link-name"><b>注销管理</b></span>
+                                                </a>
+                                            </li>
                                             <li class="nav-main-heading">Build</li>
                                             <li class="nav-main-item">
                                                 <a class="nav-main-link" href="set.php">

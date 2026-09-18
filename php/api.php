@@ -1,6 +1,7 @@
 <?php
 $notLogin = true;
 include('Common/Core_brain.php');
+require_once __DIR__ . '/funsion/AccountCancellation.php';
 /** @var array $dbconfig */
 /** @var \lib\PdoHelper $DB */
 

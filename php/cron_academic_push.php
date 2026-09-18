@@ -325,7 +325,7 @@ function sendScheduleReminder() {
         FROM nteam_academic_push_settings aps
         LEFT JOIN nteam_academic_accounts aa ON aps.academic_account_id = aa.id
         LEFT JOIN nteam_users u ON aps.user_id = u.id
-        WHERE aps.is_enabled = 1 AND aps.schedule_reminder_enabled = 1 AND aa.status = 1");
+        WHERE aps.is_enabled = 1 AND aps.schedule_reminder_enabled = 1 AND aa.status = 1 AND (u.is_cancelling IS NULL OR u.is_cancelling = 0)");
     
     if (!$pushSettings) {
         academicCronLog("没有需要发送课程提醒的用户");
@@ -489,7 +489,7 @@ function sendGradeNotification() {
         FROM nteam_academic_push_settings aps
         LEFT JOIN nteam_academic_accounts aa ON aps.academic_account_id = aa.id
         LEFT JOIN nteam_users u ON aps.user_id = u.id
-        WHERE aps.is_enabled = 1 AND aps.grade_notify_enabled = 1 AND aa.status = 1");
+        WHERE aps.is_enabled = 1 AND aps.grade_notify_enabled = 1 AND aa.status = 1 AND (u.is_cancelling IS NULL OR u.is_cancelling = 0)");
     
     if (!$pushSettings) {
         academicCronLog("没有需要发送成绩通知的用户");

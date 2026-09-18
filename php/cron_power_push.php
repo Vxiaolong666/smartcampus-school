@@ -283,7 +283,7 @@ function checkAndSendPush() {
         FROM nteam_push_settings ps
         LEFT JOIN nteam_dormitory_bindings db ON ps.dormitory_binding_id = db.id
         LEFT JOIN nteam_users u ON ps.user_id = u.id
-        WHERE ps.is_enabled = 1 AND db.status = 1");
+        WHERE ps.is_enabled = 1 AND db.status = 1 AND (u.is_cancelling IS NULL OR u.is_cancelling = 0)");
 
     if (!$pushSettings) {
         cronLog("没有需要处理的推送设置");
@@ -462,7 +462,7 @@ function sendDailySummary() {
         FROM nteam_push_settings ps
         LEFT JOIN nteam_dormitory_bindings db ON ps.dormitory_binding_id = db.id
         LEFT JOIN nteam_users u ON ps.user_id = u.id
-        WHERE ps.is_enabled = 1 AND db.status = 1 AND FIND_IN_SET('daily_summary', ps.notify_types)");
+        WHERE ps.is_enabled = 1 AND db.status = 1 AND FIND_IN_SET('daily_summary', ps.notify_types) AND (u.is_cancelling IS NULL OR u.is_cancelling = 0)");
     
     if (!$pushSettings) {
         cronLog("没有需要发送每日汇总的用户");

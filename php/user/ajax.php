@@ -7,6 +7,8 @@ $act=isset($_GET['act'])?daddslashes($_GET['act']):null;
 
 @header('Content-Type: application/json; charset=UTF-8');
 
+require_once '../funsion/AccountCancellation.php';
+
 switch($act){
     case 'register':
         $username = addslashes($_POST['username']);
@@ -188,6 +190,12 @@ switch($act){
         }
         
         $ip = $Gets->ip();
+
+        // 冷静期处理：冷静期内登录即自动撤销注销；已到期则不撤销
+        $cancelState = cancelHandleLogin($DB, $userData, $ip);
+        if ($cancelState === 'expired') {
+            exit('{"code":-1,"msg":"该账号已进入注销流程，无法登录"}');
+        }
         
         $updateSql = "UPDATE nteam_users SET last_login_time=NOW(), last_login_ip='$ip' WHERE id='{$userData['id']}'";
         $DB->exec($updateSql);
@@ -196,6 +204,7 @@ switch($act){
         $_SESSION['userName'] = $userData['username'];
         $_SESSION['userEmail'] = $userData['email'];
         $_SESSION['userQq'] = $userData['qq'];
+        $_SESSION['cancelRevoked'] = ($cancelState === 'revoked') ? 1 : 0;
         
         exit('{"code":0,"msg":"登录成功"}');
     break;
@@ -1345,6 +1354,164 @@ switch($act){
         }
         $DB->exec("DELETE FROM nteam_user_oauth WHERE user_id='$userId' AND oauth_type='$type'");
         exit('{"code":0,"msg":"解绑成功"}');
+    break;
+
+    case 'send_cancel_code':
+        if(!isset($_SESSION['userId'])){
+            exit('{"code":-1,"msg":"请先登录"}');
+        }
+        $cfg = cancelGetConfig();
+        if ($cfg['enable'] !== 1) {
+            exit('{"code":-1,"msg":"注销功能未开启"}');
+        }
+        if (strpos($cfg['verify_mode'], 'email') === false) {
+            exit('{"code":-1,"msg":"当前验证方式无需邮件验证码"}');
+        }
+        $userId = intval($_SESSION['userId']);
+        $user = $DB->getRow("SELECT * FROM nteam_users WHERE id='$userId'");
+        if (!$user) {
+            exit('{"code":-1,"msg":"请先登录"}');
+        }
+        if (!empty($_SESSION['cancel_code_time']) && (time() - intval($_SESSION['cancel_code_time'])) < 60) {
+            $left = 60 - (time() - intval($_SESSION['cancel_code_time']));
+            exit('{"code":-1,"msg":"请勿频繁发送，请 '.$left.' 秒后重试"}');
+        }
+        if (empty($user['email'])) {
+            exit('{"code":-1,"msg":"账号未绑定邮箱，无法发送验证码"}');
+        }
+        $code = sprintf('%06d', random_int(0, 999999));
+        $_SESSION['cancel_code'] = $code;
+        $_SESSION['cancel_code_time'] = time();
+        $_SESSION['cancel_code_email'] = $user['email'];
+
+        $siteName = conf('Name');
+        $mailContent = '<html><head><meta charset="UTF-8"></head><body style="font-family:Arial,sans-serif;line-height:1.6;color:#333;">'
+            . '<div style="max-width:600px;margin:0 auto;padding:20px;border:1px solid #ddd;border-radius:5px;">'
+            . '<h2 style="color:#dc3545;border-bottom:2px solid #dc3545;padding-bottom:10px;">账号注销邮箱验证码</h2>'
+            . '<p>您好，<strong>' . htmlspecialchars($user['username']) . '</strong>：</p>'
+            . '<p>您正在申请注销账号，本次验证码为：</p>'
+            . '<p style="font-size:28px;font-weight:bold;letter-spacing:6px;color:#dc3545;">' . $code . '</p>'
+            . '<p>验证码 10 分钟内有效，请勿泄露给他人。如非本人操作，请忽略本邮件。</p>'
+            . '<p style="color:#999;font-size:12px;">—— ' . htmlspecialchars($siteName) . '</p>'
+            . '</div></body></html>';
+        $res = cancelSendMail($user['email'], '账号注销验证码 - ' . $siteName, $mailContent);
+        if ($res !== true) {
+            unset($_SESSION['cancel_code'], $_SESSION['cancel_code_time'], $_SESSION['cancel_code_email']);
+            exit('{"code":-1,"msg":"验证码发送失败，请稍后重试"}');
+        }
+        exit('{"code":0,"msg":"验证码已发送至您的邮箱"}');
+    break;
+
+    case 'cancellation_status':
+        if(!isset($_SESSION['userId'])){
+            exit('{"code":-1,"msg":"请先登录"}');
+        }
+        $userId = intval($_SESSION['userId']);
+        $user = $DB->getRow("SELECT is_cancelling, cancel_time, cancel_expire_time FROM nteam_users WHERE id='$userId'");
+        $cfg = cancelGetConfig();
+        $remain = 0;
+        if ($user && !empty($user['is_cancelling']) && !empty($user['cancel_expire_time'])) {
+            $remain = max(0, (int)ceil((strtotime($user['cancel_expire_time']) - time()) / 86400));
+        }
+        exit(json_encode([
+            'code' => 0,
+            'enable' => $cfg['enable'],
+            'verify_mode' => $cfg['verify_mode'],
+            'cooling_enable' => $cfg['cooling_enable'],
+            'cooling_days' => $cfg['cooling_days'],
+            'is_cancelling' => $user ? intval($user['is_cancelling']) : 0,
+            'cancel_time' => $user ? $user['cancel_time'] : null,
+            'expire_time' => $user ? $user['cancel_expire_time'] : null,
+            'remain_days' => $remain
+        ]));
+    break;
+
+    case 'cancel_account':
+        if(!isset($_SESSION['userId'])){
+            exit('{"code":-1,"msg":"请先登录"}');
+        }
+        $cfg = cancelGetConfig();
+        if ($cfg['enable'] !== 1) {
+            exit('{"code":-1,"msg":"注销功能未开启"}');
+        }
+        $userId = intval($_SESSION['userId']);
+        $user = $DB->getRow("SELECT * FROM nteam_users WHERE id='$userId'");
+        if (!$user) {
+            unset($_SESSION['userId'], $_SESSION['userName'], $_SESSION['userEmail'], $_SESSION['userQq']);
+            exit('{"code":-1,"msg":"请先登录"}');
+        }
+        if (!empty($user['is_cancelling']) && intval($user['is_cancelling']) === 1) {
+            exit('{"code":-1,"msg":"账号已处于冷静期中"}');
+        }
+        if (intval($_POST['agree'] ?? 0) !== 1) {
+            exit('{"code":-1,"msg":"请先阅读并同意《用户注销服务协议》"}');
+        }
+        $confirmText = isset($_POST['confirm_text']) ? trim($_POST['confirm_text']) : '';
+        if ($confirmText !== '我已确认注销后用户数据无法找回并确认注销') {
+            exit('{"code":-1,"msg":"确认短语不正确"}');
+        }
+        $tcTicket = isset($_POST['tc_ticket']) ? addslashes($_POST['tc_ticket']) : '';
+        $tcRandstr = isset($_POST['tc_randstr']) ? addslashes($_POST['tc_randstr']) : '';
+        $captcha = isset($_POST['captcha']) ? strtoupper(addslashes($_POST['captcha'])) : '';
+        $captchaValid = false;
+        if (!empty($tcTicket) && !empty($tcRandstr)) {
+            $captchaValid = true;
+        } elseif (!empty($captcha)) {
+            if (isset($_SESSION['captcha']) && strtoupper($_SESSION['captcha']) === $captcha) {
+                $captchaValid = true;
+                unset($_SESSION['captcha']);
+            }
+        }
+        if (!$captchaValid) {
+            exit('{"code":-1,"msg":"请先完成安全验证"}');
+        }
+        $mode = $cfg['verify_mode'];
+        if (strpos($mode, 'password') !== false) {
+            $password = isset($_POST['password']) ? md5($_POST['password']) : '';
+            if ($password !== $user['password']) {
+                exit('{"code":-1,"msg":"密码错误"}');
+            }
+        }
+        if (strpos($mode, 'email') !== false) {
+            $emailCode = isset($_POST['email_code']) ? trim($_POST['email_code']) : '';
+            $codeOk = !empty($_SESSION['cancel_code'])
+                && !empty($_SESSION['cancel_code_time'])
+                && (time() - intval($_SESSION['cancel_code_time'])) <= 600
+                && $emailCode !== ''
+                && hash_equals((string)$_SESSION['cancel_code'], (string)$emailCode);
+            if (!$codeOk) {
+                exit('{"code":-1,"msg":"邮箱验证码错误或已失效"}');
+            }
+            unset($_SESSION['cancel_code'], $_SESSION['cancel_code_time'], $_SESSION['cancel_code_email']);
+        }
+        $ip = $Gets->ip();
+
+        if ($cfg['cooling_enable'] !== 1) {
+            // 未启用冷静期：立即注销
+            $auditId = cancelCreateAudit($DB, $user, $cfg, $ip, 'pending', null);
+            if ($cfg['mail_deleted'] === 1) {
+                cancelSendDeleteMail($user);
+            }
+            $del = deleteUserAccount($DB, $userId, $user);
+            if (!$del['success']) {
+                $DB->exec("UPDATE nteam_account_deletions SET status='failed' WHERE id='".intval($auditId)."'");
+                exit('{"code":-1,"msg":"注销失败['.$del['error'].']"}');
+            }
+            $DB->exec("UPDATE nteam_account_deletions SET status='deleted', delete_time=NOW() WHERE id='".intval($auditId)."'");
+            unset($_SESSION['userId'], $_SESSION['userName'], $_SESSION['userEmail'], $_SESSION['userQq']);
+            exit('{"code":0,"msg":"账号已注销","immediate":1}');
+        }
+
+        // 启用冷静期
+        $days = intval($cfg['cooling_days']);
+        $expire = date('Y-m-d H:i:s', strtotime("+{$days} days"));
+        $DB->exec("UPDATE nteam_users SET is_cancelling=1, cancel_time=NOW(), cancel_expire_time='$expire' WHERE id='$userId'");
+        cancelCreateAudit($DB, $user, $cfg, $ip, 'pending', $expire);
+        if ($cfg['mail_submit'] === 1) {
+            cancelSendSubmitMail($user, $expire, $days);
+        }
+        unset($_SESSION['userId'], $_SESSION['userName'], $_SESSION['userEmail'], $_SESSION['userQq']);
+        exit('{"code":0,"msg":"注销申请已提交，账号将在 '.substr($expire, 0, 10).' 正式注销，期间登录可撤销","expire_time":"'.$expire.'"}');
     break;
 
     case 'ai_analyze_schedule':

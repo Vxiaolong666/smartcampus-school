@@ -61,6 +61,7 @@ include './head.php';
                             <a class="nav-link" href="#wx-api">微信订阅消息API</a>
                             <a class="nav-link" href="#push-api">推送设置API</a>
                             <a class="nav-link" href="#feature-api">功能设置API</a>
+                            <a class="nav-link" href="#cancel-api">账号注销API</a>
                             <a class="nav-link" href="#error-code">错误码说明</a>
                         </nav>
                     </div>
@@ -1310,6 +1311,75 @@ wx.request({
                     </div>
                 </div>
                 
+                <div class="block block-rounded block-bordered mb-4" id="cancel-api">
+                    <div class="block-header block-header-default">
+                        <h3 class="block-title">
+                            <i class="fa fa-user-slash me-2"></i>账号注销API（用户端）
+                        </h3>
+                    </div>
+                    <div class="block-content">
+                        <div class="alert alert-info">
+                            <i class="fa fa-info-circle me-2"></i>
+                            账号注销为用户端（Web）流程，接口位于 <code>{站点}/user/ajax.php</code>，依赖登录态（Session）。是否开启、身份验证方式（密码 / 邮件验证码 / 人机验证组合）、冷静期开关与天数，均由后台「注销管理」配置决定。
+                        </div>
+                        <p><strong>流程：</strong>阅读并同意《用户注销服务协议》→ 风险告知 → 身份核验（按后台配置）→ 提交注销申请 → 启用冷静期时进入冷静期（期间登录即自动撤销）→ 冷静期到期由定时任务 <code>cron_account_cancel.php</code> 正式注销。</p>
+
+                        <h5 class="text-primary mt-4">1. 发送邮箱验证码</h5>
+                        <p><strong>接口：</strong><code>/user/ajax.php?act=send_cancel_code</code>（POST）</p>
+                        <p>说明：仅当后台验证方式包含"邮件验证码"时可用；发送至当前登录用户的注册邮箱；60 秒冷却，验证码 10 分钟内有效。</p>
+                        <p><strong>返回：</strong></p>
+                        <pre class="bg-light p-2 rounded"><code>{
+    "code": 0,
+    "msg": "验证码已发送至您的邮箱"
+}</code></pre>
+
+                        <h5 class="text-primary mt-4">2. 提交注销申请</h5>
+                        <p><strong>接口：</strong><code>/user/ajax.php?act=cancel_account</code>（POST）</p>
+                        <table class="table table-bordered table-sm">
+                            <thead><tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr></thead>
+                            <tbody>
+                                <tr><td>agree</td><td>int</td><td>是</td><td>固定为 1，表示已同意《用户注销服务协议》</td></tr>
+                                <tr><td>confirm_text</td><td>string</td><td>是</td><td>固定为"注销账户"或当前用户名</td></tr>
+                                <tr><td>password</td><td>string</td><td>条件</td><td>验证方式含密码时必填（明文，服务端 MD5 后比对）</td></tr>
+                                <tr><td>email_code</td><td>string</td><td>条件</td><td>验证方式含邮件验证码时必填</td></tr>
+                                <tr><td>tc_ticket / tc_randstr</td><td>string</td><td>否*</td><td>腾讯滑块票据</td></tr>
+                                <tr><td>captcha</td><td>string</td><td>否*</td><td>图形验证码（滑块不可用时；与 tc_ticket 二者至少一个）</td></tr>
+                            </tbody>
+                        </table>
+                        <p><strong>返回（启用冷静期）：</strong></p>
+                        <pre class="bg-light p-2 rounded"><code>{
+    "code": 0,
+    "msg": "注销申请已提交，账号将在 2026-09-28 正式注销，期间登录可撤销",
+    "expire_time": "2026-09-28 12:00:00"
+}</code></pre>
+                        <p><strong>返回（未启用冷静期，立即注销）：</strong></p>
+                        <pre class="bg-light p-2 rounded"><code>{
+    "code": 0,
+    "msg": "账号已注销",
+    "immediate": 1
+}</code></pre>
+
+                        <h5 class="text-primary mt-4">3. 查询注销状态</h5>
+                        <p><strong>接口：</strong><code>/user/ajax.php?act=cancellation_status</code>（POST）</p>
+                        <p><strong>返回：</strong></p>
+                        <pre class="bg-light p-2 rounded"><code>{
+    "code": 0,
+    "enable": 1,
+    "verify_mode": "password",
+    "cooling_enable": 1,
+    "cooling_days": 10,
+    "is_cancelling": 0,
+    "cancel_time": null,
+    "expire_time": null,
+    "remain_days": 0
+}</code></pre>
+
+                        <div class="alert alert-warning mt-3 mb-0">
+                            <strong>注意：</strong>冷静期内没有独立的"撤销"接口——用户在冷静期内<strong>重新登录即自动撤销</strong>注销；冷静期到期后由定时任务执行正式注销，届时账号及个人数据将被删除。
+                        </div>
+                    </div>
+                </div>
+
                 <div class="block block-rounded block-bordered mb-4" id="error-code">
                     <div class="block-header block-header-default">
                         <h3 class="block-title">

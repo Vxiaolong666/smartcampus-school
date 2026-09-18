@@ -134,6 +134,31 @@ include './head.php';
 
         <div class="block block-rounded mb-5">
             <div class="block-header block-header-default">
+                <h3 class="block-title">账号注销定时任务</h3>
+            </div>
+            <div class="block-content">
+                <div class="alert alert-info">
+                    <h5><i class="fa fa-user-slash me-2"></i>账号注销冷静期到期处理</h5>
+                    <p>请在宝塔面板中添加以下定时任务：</p>
+                    <ul>
+                        <li class="mb-3">
+                            <strong>注销到期处理</strong>：建议每小时执行一次，处理冷静期结束的账号（自动删除账号及其个人数据）
+                            <pre class="bg-light p-2 mt-1 mb-1">php <?php echo dirname(__FILE__); ?>/cron_account_cancel.php</pre>
+                            <span class="text-muted">或使用URL方式：</span>
+                            <a href="../cron_account_cancel.php" target="_blank" class="btn btn-sm btn-outline-primary ms-2">
+                                <i class="fa fa-play me-1"></i>URL测试
+                            </a>
+                        </li>
+                    </ul>
+                    <div class="alert alert-warning mt-3 mb-0">
+                        <strong>说明：</strong>仅当后台「注销管理」启用了冷静期时才会产生待处理账号；冷静期内用户重新登录会自动撤销注销，不会进入删除流程。
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="block block-rounded mb-5">
+            <div class="block-header block-header-default">
                 <h3 class="block-title">配置说明</h3>
             </div>
             <div class="block-content">
@@ -146,6 +171,7 @@ include './head.php';
                         <li>课程提醒建议在每天晚上固定时间执行，如20:00</li>
                         <li>成绩通知建议每30分钟执行一次，及时发现新成绩</li>
                         <li>订阅额度提醒建议每天执行一次，如每天早上9点</li>
+                        <li>账号注销到期处理建议每小时执行一次，及时清理冷静期结束的账号（后台「注销管理」启用冷静期后生效）</li>
                         <li>首次使用前请确保已在微信公众平台申请相关订阅消息模板</li>
                     </ul>
                 </div>

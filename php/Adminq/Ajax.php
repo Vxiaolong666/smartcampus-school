@@ -202,9 +202,37 @@ switch($act){
         }elseif ($type == 'del') {
             $rows=$DB->query("select * from nteam_users where id='$id' limit 1")->fetch();
             if(!$rows)exit('{"code":-1,"msg":"用户不存在"}');
-            $sql="DELETE FROM nteam_users WHERE id='$id'";
-            if($DB->exec($sql)===false){exit('{"code":-1,"msg":"删除用户失败！"}');}else{
-            $DB->query("insert into `nteam_log` (`adminUser`,`type`,`data`,`ip`,`city`) values ('" . $_SESSION['adminUser'] . "','删除了ID为".$id."的用户', NOW(), '".$ip."', '')");
+            // 级联删除该用户的个人数据（先删子表，最后再删用户，避免残留）
+            // 注意：宿舍/电费相关数据予以保留（其他用户可能查询该宿舍电费历史）：
+            //   - nteam_power_daily_records：用电历史（按 room_num 存储，不删除）
+            //   - nteam_dormitory_bindings：宿舍记录（仅置为停用 status=0，保留记录）
+            //   - nteam_push_settings：电费推送设置（仅停用，保留记录）
+            //   - nteam_push_logs：电费推送记录（保留）
+            $userDataTables = array(
+                'nteam_user_oauth',            // 第三方登录授权信息
+                'nteam_academic_accounts',     // 教务账号（含明文密码、真实姓名等）
+                'nteam_academic_push_settings',// 教务推送设置
+                'nteam_academic_push_logs',    // 教务推送日志
+                'nteam_tokens',                // 用户令牌（登录/验证）
+                'nteam_subscriptions',         // 微信订阅记录（含 openid）
+                'nteam_subscription_logs',     // 订阅操作日志
+                'nteam_grade_push_records',    // 成绩推送记录
+            );
+            foreach ($userDataTables as $tbl) {
+                if ($DB->exec("DELETE FROM {$tbl} WHERE user_id='$id'") === false) {
+                    exit('{"code":-1,"msg":"删除用户数据失败（'.$tbl.'）：'.$DB->error().'"}');
+                }
+            }
+            // 宿舍绑定：软删除（保留宿舍记录，不影响该宿舍电费历史）
+            if ($DB->exec("UPDATE nteam_dormitory_bindings SET status=0 WHERE user_id='$id'") === false) {
+                exit('{"code":-1,"msg":"停用宿舍绑定失败：'.$DB->error().'"}');
+            }
+            // 电费推送设置：停用（保留记录，不再推送）
+            if ($DB->exec("UPDATE nteam_push_settings SET is_enabled=0 WHERE user_id='$id'") === false) {
+                exit('{"code":-1,"msg":"停用电费推送设置失败：'.$DB->error().'"}');
+            }
+            if($DB->exec("DELETE FROM nteam_users WHERE id='$id'")===false){exit('{"code":-1,"msg":"删除用户失败！"}');}else{
+            $DB->query("insert into `nteam_log` (`adminUser`,`type`,`data`,`ip`,`city`) values ('" . $_SESSION['adminUser'] . "','删除了ID为".$id."的用户及其全部个人数据', NOW(), '".$ip."', '')");
             exit('{"code":0,"msg":"删除用户成功！"}');}
         }elseif ($type == 'edit') {
             $qq = addslashes($_POST['qq']);
@@ -1048,7 +1076,103 @@ switch($act){
             exit('{"code":-1,"msg":"保存失败['.$DB->errorInfo()[2].'"}');
         }
     break;
-    
+
+    case 'delete_oauth_binding':
+        if(!$isLogin) exit('{"code":-1,"msg":"未登录"}');
+        if($adminData['adminRank']!=1){exit('{"code":-1,"msg":"您的账号没有权限使用此功能！"}');}
+
+        $id = intval($_POST['id']);
+        if ($id <= 0) {
+            exit('{"code":-1,"msg":"参数错误"}');
+        }
+        $existing = $DB->getRow("SELECT * FROM nteam_user_oauth WHERE id='$id'");
+        if (!$existing) {
+            exit('{"code":-1,"msg":"绑定记录不存在"}');
+        }
+        if ($DB->exec("DELETE FROM nteam_user_oauth WHERE id='$id'") !== false) {
+            $DB->query("insert into `nteam_log` (`adminUser`,`type`,`data`,`ip`,`city`) values ('" . $_SESSION['adminUser'] . "','解绑了第三方账号绑定(ID:".$id.")', NOW(), '".$ip."', '')");
+            exit('{"code":0,"msg":"解绑成功"}');
+        } else {
+            exit('{"code":-1,"msg":"解绑失败['.$DB->error().']"}');
+        }
+    break;
+
+    case 'clear_invalid_oauth':
+        if(!$isLogin) exit('{"code":-1,"msg":"未登录"}');
+        if($adminData['adminRank']!=1){exit('{"code":-1,"msg":"您的账号没有权限使用此功能！"}');}
+
+        // 删除关联用户已不存在的第三方绑定（脏数据）
+        $deleted = $DB->exec("DELETE o FROM nteam_user_oauth o LEFT JOIN nteam_users u ON o.user_id = u.id WHERE u.id IS NULL");
+        if ($deleted === false) {
+            exit('{"code":-1,"msg":"清除失败['.$DB->error().']"}');
+        }
+        $deleted = intval($deleted);
+        $DB->query("insert into `nteam_log` (`adminUser`,`type`,`data`,`ip`,`city`) values ('" . $_SESSION['adminUser'] . "','清除了".$deleted."条无效的第三方绑定', NOW(), '".$ip."', '')");
+        exit('{"code":0,"msg":"清除成功，共删除 '.$deleted.' 条无效绑定"}');
+    break;
+
+    case 'save_cancel_config':
+        if(!$isLogin) exit('{"code":-1,"msg":"未登录"}');
+        if($adminData['adminRank']!=1){exit('{"code":-1,"msg":"您的账号没有权限使用此功能！"}');}
+
+        $enable = intval($_POST['enable']) === 1 ? 1 : 0;
+        $verifyMode = isset($_POST['verify_mode']) ? $_POST['verify_mode'] : 'password';
+        if (!in_array($verifyMode, ['password', 'email', 'password_email'], true)) {
+            $verifyMode = 'password';
+        }
+        $coolingEnable = intval($_POST['cooling_enable']) === 1 ? 1 : 0;
+        $coolingDays = intval($_POST['cooling_days']);
+        if ($coolingDays < 1 || $coolingDays > 90) {
+            $coolingDays = 10;
+        }
+        $mailSubmit = intval($_POST['mail_submit']) === 1 ? 1 : 0;
+        $mailDeleted = intval($_POST['mail_deleted']) === 1 ? 1 : 0;
+        $mailRevoked = intval($_POST['mail_revoked']) === 1 ? 1 : 0;
+        $agreement = isset($_POST['agreement']) ? $_POST['agreement'] : '';
+
+        saveSetting('Cancel_Enable', $enable);
+        saveSetting('Cancel_Verify_Mode', $verifyMode);
+        saveSetting('Cancel_Cooling_Enable', $coolingEnable);
+        saveSetting('Cancel_Cooling_Days', $coolingDays);
+        saveSetting('Cancel_Mail_Submit', $mailSubmit);
+        saveSetting('Cancel_Mail_Deleted', $mailDeleted);
+        saveSetting('Cancel_Mail_Revoked', $mailRevoked);
+        saveSetting('Cancel_Agreement', $agreement);
+
+        $DB->query("insert into `nteam_log` (`adminUser`,`type`,`data`,`ip`,`city`) values ('" . $_SESSION['adminUser'] . "','修改了注销管理配置', NOW(), '".$ip."', '')");
+        exit('{"code":0,"msg":"保存成功"}');
+    break;
+
+    case 'delete_cancel_record':
+        if(!$isLogin) exit('{"code":-1,"msg":"未登录"}');
+        if($adminData['adminRank']!=1){exit('{"code":-1,"msg":"您的账号没有权限使用此功能！"}');}
+
+        $id = intval($_POST['id']);
+        if ($id <= 0) exit('{"code":-1,"msg":"参数错误"}');
+        $rec = $DB->getRow("SELECT * FROM nteam_account_deletions WHERE id='$id'");
+        if (!$rec) exit('{"code":-1,"msg":"记录不存在"}');
+        if ($rec['status'] === 'pending') exit('{"code":-1,"msg":"该记录处于冷静期内，不可删除"}');
+        if ($DB->exec("DELETE FROM nteam_account_deletions WHERE id='$id'") === false) {
+            exit('{"code":-1,"msg":"删除失败：'.$DB->error().'"}');
+        }
+        $DB->query("insert into `nteam_log` (`adminUser`,`type`,`data`,`ip`,`city`) values ('" . $_SESSION['adminUser'] . "','删除了注销记录(ID:".$id.")', NOW(), '".$ip."', '')");
+        exit('{"code":0,"msg":"删除成功"}');
+    break;
+
+    case 'clear_cancel_records':
+        if(!$isLogin) exit('{"code":-1,"msg":"未登录"}');
+        if($adminData['adminRank']!=1){exit('{"code":-1,"msg":"您的账号没有权限使用此功能！"}');}
+
+        // 保留冷静期内（pending）的记录，仅清空其余记录（含其日志）
+        $deleted = $DB->exec("DELETE FROM nteam_account_deletions WHERE status <> 'pending'");
+        if ($deleted === false) {
+            exit('{"code":-1,"msg":"清空失败：'.$DB->error().'"}');
+        }
+        $deleted = intval($deleted);
+        $DB->query("insert into `nteam_log` (`adminUser`,`type`,`data`,`ip`,`city`) values ('" . $_SESSION['adminUser'] . "','清空了".$deleted."条注销记录（保留冷静期内）', NOW(), '".$ip."', '')");
+        exit('{"code":0,"msg":"清空成功，共删除 '.$deleted.' 条（冷静期内记录已保留）"}');
+    break;
+
     // ===== 首页配置（官网：网站地址 / 联系方式 / 下载方式 / 常见问题 / 联系我们留言） =====
     case 'home_config_save':
         if(!$isLogin) exit('{"code":-1,"msg":"未登录"}');

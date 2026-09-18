@@ -374,16 +374,18 @@ $sceneTypeNames = [
             <div class="col-md-3">
                 <div class="block block-rounded">
                     <div class="block-header block-header-default">
-                        <h3 class="block-title"><b>账户安全</b></h3>
+                        <h3 class="block-title"><b>注销账户</b></h3>
                     </div>
                     <div class="block-content">
                         <div class="py-3 text-center">
                             <div class="mb-3">
-                                <i class="fa fa-shield-alt fa-3x text-success"></i>
+                                <i class="fa fa-user-slash fa-3x text-danger"></i>
                             </div>
-                            <div class="fs-5 fw-semibold">安全提示</div>
+                            <div class="fs-5 fw-semibold">注销账户</div>
                             <div class="pt-3">
-                                <p class="text-muted small">请定期修改密码</p>
+                                <a class="btn btn-alt-danger" href="cancel_account.php">
+                                    <i class="fa fa-user-slash opacity-50 me-1"></i> <b>前往注销</b>
+                                </a>
                             </div>
                         </div>
                     </div>
@@ -393,4 +395,9 @@ $sceneTypeNames = [
     </div>
 </div>
 
+<?php if(!empty($_SESSION['cancelRevoked'])): unset($_SESSION['cancelRevoked']); ?>
+<script>
+$(function(){ layer.alert('您的注销申请已自动撤销，账号已恢复正常。', {icon: 1}); });
+</script>
+<?php endif; ?>
 <?php include 'foot.php'; ?>
