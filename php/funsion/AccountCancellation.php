@@ -323,13 +323,13 @@ function cancelSendDeleteMail($user)
     $siteName = function_exists('conf') ? conf('Name') : '智慧校园';
     $html = '<html><head><meta charset="UTF-8"></head><body style="font-family:Arial,sans-serif;line-height:1.6;color:#333;">'
         . '<div style="max-width:600px;margin:0 auto;padding:20px;border:1px solid #ddd;border-radius:5px;">'
-        . '<h2 style="color:#6c757d;border-bottom:2px solid #6c757d;padding-bottom:10px;">账号已注销</h2>'
+        . '<h2 style="color:#6c757d;border-bottom:2px solid #6c757d;padding-bottom:10px;">账号注销成功通知</h2>'
         . '<p>您好，<strong>' . htmlspecialchars($user['username']) . '</strong>：</p>'
-        . '<p>您的账号及全部个人数据已删除，与该账号关联的各项服务已终止。</p>'
-        . '<p>感谢您的使用，期待与您再次相遇。</p>'
+        . '<p>您已成功注销账号，同时，依照相关法律法规，我们已删除您的账号及全部个人数据，与该账号关联的各项服务也已同步终止。</p>'
+        . '<p>相聚有时，离别终至。感谢您一路的相伴与使用，虽有不舍，仍盼来日，我们期待与您再次相逢。</p>'
         . '<p style="color:#999;font-size:12px;">—— ' . htmlspecialchars($siteName) . '</p>'
         . '</div></body></html>';
-    return cancelSendMail($user['email'], '账号已注销 - ' . $siteName, $html);
+    return cancelSendMail($user['email'], '账号注销成功通知 - ' . $siteName, $html);
 }
 
 /**
