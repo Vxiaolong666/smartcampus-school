@@ -362,6 +362,54 @@
 			<text class="ai-fab-icon">AI</text>
 			<text class="ai-fab-label">分析</text>
 		</view>
+
+		<!-- 课程详情自定义弹窗 -->
+		<view class="detail-mask" v-if="showDetail" @click="closeDetail">
+			<view class="detail-modal" @click.stop>
+				<view class="detail-modal-header" :style="'background: linear-gradient(160deg, ' + detailCourse.color.bg + ' 0%, #ffffff 100%);'">
+					<view class="detail-title-wrap">
+						<view class="detail-title" :style="'color: ' + detailCourse.color.text + ';'">{{ detailCourse.courseName }}</view>
+						<view class="detail-sub">
+							<text class="detail-sub-chip" :style="'background-color: ' + detailCourse.color.text + ';'">{{ detailCourse.weekDayName }} · 第{{ detailCourse.slots[0] }}节</text>
+						</view>
+					</view>
+					<view class="detail-close" @click="closeDetail">✕</view>
+				</view>
+
+				<view class="detail-modal-body">
+					<view class="detail-row" v-if="detailCourse.timeDisplay">
+						<view class="detail-row-icon" :style="'background-color: ' + detailCourse.color.bg + ';'">
+							<image class="detail-row-icon-img" :src="detailIcons.time" mode="aspectFit"></image>
+						</view>
+						<text class="detail-row-label">上课时段</text>
+						<text class="detail-row-value">{{ detailCourse.timeDisplay }}</text>
+					</view>
+					<view class="detail-row">
+						<view class="detail-row-icon" :style="'background-color: ' + detailCourse.color.bg + ';'">
+							<image class="detail-row-icon-img" :src="detailIcons.location" mode="aspectFit"></image>
+						</view>
+						<text class="detail-row-label">上课地点</text>
+						<text class="detail-row-value">{{ detailCourse.location || '待定' }}</text>
+					</view>
+					<view class="detail-row">
+						<view class="detail-row-icon" :style="'background-color: ' + detailCourse.color.bg + ';'">
+							<image class="detail-row-icon-img" :src="detailIcons.user" mode="aspectFit"></image>
+						</view>
+						<text class="detail-row-label">授课教师</text>
+						<text class="detail-row-value">{{ detailCourse.teacher || '待定' }}</text>
+					</view>
+					<view class="detail-row">
+						<view class="detail-row-icon" :style="'background-color: ' + detailCourse.color.bg + ';'">
+							<image class="detail-row-icon-img" :src="detailIcons.calendar" mode="aspectFit"></image>
+						</view>
+						<text class="detail-row-label">上课周次</text>
+						<text class="detail-row-value">{{ detailCourse.weeks || '-' }}</text>
+					</view>
+
+					<button class="detail-btn" @click="closeDetail" :style="'background: linear-gradient(90deg, ' + detailCourse.color.text + ', ' + detailBtnBgLight + '); box-shadow: 0 10rpx 24rpx ' + detailBtnShadow + ';'">我知道了</button>
+				</view>
+			</view>
+		</view>
 	</view>
 </template>
 
@@ -379,6 +427,28 @@ import { aiScrollLockMixin } from '../../utils/scroll-lock.js';
 
 const DAY_NAMES = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
 const FULL_DAY_NAMES = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+
+// 课程详情弹窗图标 path 数据（与小程序端一致，fill 颜色按课程色动态生成）
+const ICON_CLOCK_PATHS = [
+	'M512 96C282.2 96 96 282.2 96 512s186.2 416 416 416 416-186.2 416-416S741.8 96 512 96z m0 752c-185.6 0-336-150.4-336-336S326.4 176 512 176s336 150.4 336 336-150.4 336-336 336z',
+	'M512 248c-4.4 0-8 3.6-8 8v256c0 4.4 3.6 8 8 8h200c4.4 0 8-3.6 8-8v-48c0-4.4-3.6-8-8-8H568V256c0-4.4-3.6-8-8-8h-48z'
+];
+const ICON_LOCATION_PATHS = [
+	'M512 64C323.5 64 168 219.5 168 408c0 193.5 184.5 412.5 302.5 540.5 23 25 62 25 85 0C673.5 820.5 858 601.5 858 408 858 219.5 700.5 64 512 64z m0 448c-70.7 0-128-57.3-128-128s57.3-128 128-128 128 57.3 128 128-57.3 128-128 128z'
+];
+const ICON_USER_PATHS = [
+	'M512 512c123.8 0 224-100.2 224-224S635.8 64 512 64 288 164.2 288 288s100.2 224 224 224z m0-352c70.7 0 128 57.3 128 128s-57.3 128-128 128-128-57.3-128-128 57.3-128 128-128z',
+	'M858.5 764.4C781.8 656.9 654.5 592 512 592s-269.8 64.9-346.5 172.4c-10.3 14.8-6.1 35.2 8.7 45.5 14.8 10.3 35.2 6.1 45.5-8.7C281.6 714.3 389.8 664 512 664s230.4 50.3 292.3 137.2c6.3 9.1 16.4 14 26.6 14 6.4 0 12.9-1.9 18.6-5.9 14.8-10.3 18.9-30.7 8.6-45.5z'
+];
+const ICON_CALENDAR_PATHS = [
+	'M880 184H712v-64c0-4.4-3.6-8-8-8h-56c-4.4 0-8 3.6-8 8v64H384v-64c0-4.4-3.6-8-8-8h-56c-4.4 0-8 3.6-8 8v64H144c-17.7 0-32 14.3-32 32v664c0 17.7 14.3 32 32 32h736c17.7 0 32-14.3 32-32V216c0-17.7-14.3-32-32-32z m-40 600H184V272h128v48c0 4.4 3.6 8 8 8h56c4.4 0 8-3.6 8-8v-48h256v48c0 4.4 3.6 8 8 8h56c4.4 0 8-3.6 8-8v-48h128v512z',
+	'M424 432h-80c-4.4 0-8 3.6-8 8v48c0 4.4 3.6 8 8 8h80c4.4 0 8-3.6 8-8v-48c0-4.4-3.6-8-8-8z',
+	'M552 432h-80c-4.4 0-8 3.6-8 8v48c0 4.4 3.6 8 8 8h80c4.4 0 8-3.6 8-8v-48c0-4.4-3.6-8-8-8z',
+	'M680 432h-80c-4.4 0-8 3.6-8 8v48c0 4.4 3.6 8 8 8h80c4.4 0 8-3.6 8-8v-48c0-4.4-3.6-8-8-8z',
+	'M424 560h-80c-4.4 0-8 3.6-8 8v48c0 4.4 3.6 8 8 8h80c4.4 0 8-3.6 8-8v-48c0-4.4-3.6-8-8-8z',
+	'M552 560h-80c-4.4 0-8 3.6-8 8v48c0 4.4 3.6 8 8 8h80c4.4 0 8-3.6 8-8v-48c0-4.4-3.6-8-8-8z',
+	'M680 560h-80c-4.4 0-8 3.6-8 8v48c0 4.4 3.6 8 8 8h80c4.4 0 8-3.6 8-8v-48c0-4.4-3.6-8-8-8z'
+];
 
 /**
  * 判断两节课是否同一节，用于避免对象引用变化导致的无谓重渲染
@@ -428,6 +498,12 @@ export default {
 			aiResult: '',
 			aiLoading: false,
 			aiCache: {},
+			// 课程详情自定义弹窗
+			showDetail: false,
+			detailCourse: null,
+			detailIcons: null,
+			detailBtnBgLight: '#36cfc9',
+			detailBtnShadow: 'rgba(19, 194, 194, 0.35)',
 			windowHeight: 0,
 			sheetHeight: 0,
 			dragStartY: 0,
@@ -830,27 +906,61 @@ export default {
 			this.filterDayCourses();
 		},
 
+		//点击课程查看详情（自定义弹窗，与页面风格一致）
 		onCourseTap(e) {
 			const { group, index } = e.currentTarget.dataset;
 			const list = group === 'morning' ? this.morningCourses : group === 'afternoon' ? this.afternoonCourses : this.eveningCourses;
 			const course = list[index];
 			if (!course) return;
 
-			const lines = [
-				`课程：${course.courseName || '未知'}`,
-				`时间：${course.weekDayName || ''} 第${(course.slots && course.slots[0]) || '-'}节`,
-				`时段：${course.timeDisplay || '待定'}`,
-				`地点：${course.location || '待定'}`,
-				`教师：${course.teacher || '待定'}`,
-				`周次：${course.weeks || '-'}`
-			];
+			// 课程主色（文字色），无则回退主题青色
+			const color = (course.color && course.color.text) ? course.color.text : '#13c2c2';
+			this.showDetail = true;
+			this.detailCourse = course;
+			this.detailIcons = {
+				time: this.buildIconDataUri(ICON_CLOCK_PATHS, color),
+				location: this.buildIconDataUri(ICON_LOCATION_PATHS, color),
+				user: this.buildIconDataUri(ICON_USER_PATHS, color),
+				calendar: this.buildIconDataUri(ICON_CALENDAR_PATHS, color)
+			};
+			// 按钮渐变终点色：课程色向白色混合 40%
+			this.detailBtnBgLight = this.mixWithWhite(color, 0.4);
+			this.detailBtnShadow = this.hexToRgba(color, 0.35);
+		},
 
-			uni.showModal({
-				title: '课程详情',
-				content: lines.join('\n'),
-				showCancel: false,
-				confirmText: '关闭'
-			});
+		//生成指定颜色的 SVG 图标 data URI（供 <image> 渲染）
+		buildIconDataUri(paths, color) {
+			const body = paths.map(d => `<path d="${d}" fill="${color}"/>`).join('');
+			const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">${body}</svg>`;
+			return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+		},
+
+		//十六进制颜色转 rgba 字符串
+		hexToRgba(hex, alpha) {
+			let h = String(hex || '#13c2c2').replace('#', '');
+			if (h.length === 3) h = h.split('').map(c => c + c).join('');
+			const r = parseInt(h.slice(0, 2), 16) || 0;
+			const g = parseInt(h.slice(2, 4), 16) || 0;
+			const b = parseInt(h.slice(4, 6), 16) || 0;
+			return 'rgba(' + r + ', ' + g + ', ' + b + ', ' + alpha + ')';
+		},
+
+		//颜色向白色混合（ratio 为白色的占比 0~1）
+		mixWithWhite(hex, ratio) {
+			let h = String(hex || '#13c2c2').replace('#', '');
+			if (h.length === 3) h = h.split('').map(c => c + c).join('');
+			const mix = v => Math.round(v + (255 - v) * ratio);
+			const r = mix(parseInt(h.slice(0, 2), 16) || 0);
+			const g = mix(parseInt(h.slice(2, 4), 16) || 0);
+			const b = mix(parseInt(h.slice(4, 6), 16) || 0);
+			const toHex = v => ('0' + v.toString(16)).slice(-2);
+			return '#' + toHex(r) + toHex(g) + toHex(b);
+		},
+
+		//关闭课程详情弹窗
+		closeDetail() {
+			this.showDetail = false;
+			this.detailCourse = null;
 		},
 
 		goToFullSchedule() {
@@ -1553,5 +1663,159 @@ page {
 	color: #48416f;
 	line-height: 1.75;
 	word-break: break-word;
+}
+
+/* ==================== 课程详情自定义弹窗 ==================== */
+
+.detail-mask {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(50, 44, 84, 0.45);
+	backdrop-filter: blur(4px);
+	-webkit-backdrop-filter: blur(4px);
+	z-index: 998;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 60rpx;
+	animation: detailMaskFade 0.25s ease;
+}
+
+@keyframes detailMaskFade {
+	from { opacity: 0; }
+	to { opacity: 1; }
+}
+
+.detail-modal {
+	width: 100%;
+	max-width: 620rpx;
+	background: white;
+	border-radius: 32rpx;
+	overflow: hidden;
+	box-shadow: 0 24rpx 80rpx rgba(50, 44, 84, 0.25);
+	animation: detailModalUp 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes detailModalUp {
+	from { transform: translateY(80rpx) scale(0.96); opacity: 0; }
+	to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.detail-modal-header {
+	display: flex;
+	align-items: flex-start;
+	padding: 36rpx 32rpx 28rpx;
+}
+
+.detail-title-wrap {
+	flex: 1;
+	min-width: 0;
+}
+
+.detail-title {
+	font-size: 36rpx;
+	font-weight: bold;
+	line-height: 1.35;
+	word-break: break-all;
+	letter-spacing: 1rpx;
+}
+
+.detail-sub {
+	margin-top: 16rpx;
+}
+
+.detail-sub-chip {
+	display: inline-block;
+	font-size: 22rpx;
+	color: white;
+	padding: 8rpx 22rpx;
+	border-radius: 999rpx;
+	letter-spacing: 1rpx;
+}
+
+.detail-close {
+	width: 52rpx;
+	height: 52rpx;
+	line-height: 50rpx;
+	text-align: center;
+	font-size: 26rpx;
+	color: #948eb3;
+	background: rgba(255, 255, 255, 0.85);
+	border-radius: 50%;
+	flex-shrink: 0;
+	margin-left: 16rpx;
+	box-shadow: 0 4rpx 12rpx rgba(50, 44, 84, 0.08);
+}
+
+.detail-close:active {
+	background: #f0eef6;
+	transform: scale(0.92);
+}
+
+.detail-modal-body {
+	padding: 8rpx 36rpx 40rpx;
+}
+
+.detail-row {
+	display: flex;
+	align-items: center;
+	padding: 22rpx 0;
+}
+
+.detail-row-icon {
+	width: 60rpx;
+	height: 60rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 50%;
+	margin-right: 22rpx;
+	flex-shrink: 0;
+}
+
+.detail-row-icon-img {
+	width: 32rpx;
+	height: 32rpx;
+}
+
+.detail-row-label {
+	font-size: 26rpx;
+	color: #948eb3;
+	width: 150rpx;
+	flex-shrink: 0;
+}
+
+.detail-row-value {
+	flex: 1;
+	font-size: 27rpx;
+	color: #48416f;
+	font-weight: 500;
+	text-align: right;
+	word-break: break-all;
+	line-height: 1.5;
+}
+
+.detail-btn {
+	margin-top: 36rpx;
+	height: 84rpx;
+	line-height: 84rpx;
+	border-radius: 42rpx;
+	color: white;
+	font-size: 30rpx;
+	font-weight: bold;
+	letter-spacing: 4rpx;
+	padding: 0;
+}
+
+.detail-btn:active {
+	opacity: 0.85;
+	transform: scale(0.98);
+}
+
+.detail-btn::after {
+	border: none;
 }
 </style>

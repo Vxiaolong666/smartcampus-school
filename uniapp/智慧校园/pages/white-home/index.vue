@@ -199,7 +199,6 @@ import api from '../../utils/api.js';
 import feature from '../../utils/feature.js';
 import { sceneTypeNames } from '../../utils/common.js';
 
-const API_BASE = 'http://127.0.0.12';
 const __tab__ = 0;
 
 // 诗句为静态数据，放到 data 外避免被 Vue 做无意义的响应式代理
@@ -255,6 +254,7 @@ export default {
 		this.checkLoginStatus();
 		this.loadRandomPoem();
 		this.loadFeatureSettings();
+		this.loadBanners();
 
 		if (!api.isLoggedIn()) {
 			uni.redirectTo({
@@ -317,6 +317,23 @@ export default {
 			this.randomPoem = POEMS[Math.floor(Math.random() * POEMS.length)];
 		},
 
+		//加载后台「轮播图配置」，失败或为空时保留内置默认轮播图
+		async loadBanners() {
+			try {
+				const res = await api.getBanners();
+				const list = (res.data || []).map(item => ({
+					id: item.id,
+					image: item.image_url || item.image,
+					url: item.url || ''
+				}));
+				if (list.length > 0) {
+					this.swiperList = list;
+				}
+			} catch (err) {
+				console.warn('加载轮播图配置失败，使用默认轮播图', err);
+			}
+		},
+
 		async loadGlanceData() {
 			if (!api.isLoggedIn()) return;
 			try {
@@ -347,7 +364,7 @@ export default {
 				const res = await api.getNotices(1, 3);
 				const list = res.data.list.map(item => ({
 					...item,
-					cover: item.cover ? API_BASE + item.cover : ''
+					cover: api.getFileUrl(item.cover)
 				}));
 				this.notices = list;
 			} catch (err) {
@@ -405,7 +422,20 @@ export default {
 
 		handleSwiperTap(e) {
 			const url = e.currentTarget.dataset.url;
-			if (url) uni.navigateTo({ url });
+			if (!url) return;
+			// 站外链接：H5 直接新窗口打开，小程序端复制链接提示
+			if (/^https?:\/\//i.test(url)) {
+				// #ifdef H5
+				window.open(url, '_blank');
+				return;
+				// #endif
+				uni.setClipboardData({
+					data: url,
+					success: () => uni.showToast({ title: '链接已复制，请在浏览器打开', icon: 'none' })
+				});
+				return;
+			}
+			uni.navigateTo({ url });
 		},
 
 		handleTodaySchedule() {

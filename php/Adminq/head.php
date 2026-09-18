@@ -546,6 +546,12 @@ include('../Common/Core_brain.php');
                                                     <span class="nav-main-link-name"><b>首页配置</b></span>
                                                 </a>
                                             </li>
+                                            <li class="nav-main-item">
+                                                <a class="nav-main-link" href="banner_config.php">
+                                                    <i class="nav-main-link-icon fa fa-images"></i>
+                                                    <span class="nav-main-link-name"><b>轮播图配置</b></span>
+                                                </a>
+                                            </li>
                                             <li class="nav-main-heading">Settings</li>
                                             <li class="nav-main-item">
                                                 <a class="nav-main-link" href="set.php">

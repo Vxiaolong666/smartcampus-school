@@ -13,34 +13,180 @@
     </view>
 
     <view class="content-wrapper">
-      <scroll-view class="chat-body" scroll-y :scroll-into-view="scrollTarget" scroll-with-animation>
+      <scroll-view
+        class="chat-body"
+        scroll-y
+        :scroll-into-view="scrollTarget"
+        :scroll-with-animation="true"
+      >
+        <!-- 欢迎区（未开始对话时显示） -->
+        <view v-if="!hasConversation" class="welcome">
+          <view class="welcome-avatar">AI</view>
+          <view class="welcome-text">
+            <view class="welcome-title">你好，我是智能助手</view>
+            <view class="welcome-sub">我可以帮助你解决使用中遇到的问题~</view>
+          </view>
+        </view>
+
+        <!-- 推荐问题 -->
+        <view v-if="!hasConversation" class="suggest">
+          <view class="suggest-label">你可以这样问我：</view>
+          <view
+            class="suggest-chip"
+            v-for="(q, i) in suggestions"
+            :key="i"
+            @click="onSuggestTap(q)"
+          >{{ q }}</view>
+        </view>
+
+        <!-- 消息列表 -->
         <view
           v-for="m in chatList"
-          :key="m._i"
-          :id="'msg-' + m._i"
+          :key="m._uid"
+          :id="'msg-' + m._uid"
           class="msg-row"
           :class="m.role === 'user' ? 'is-user' : 'is-ai'"
         >
-          <view class="msg-avatar ai-avatar" v-if="m.role === 'assistant'">AI</view>
-          <msg-bubble :role="m.role" :content="m.content" />
-          <view class="msg-avatar user-avatar" v-if="m.role === 'user'">我</view>
+          <!-- 用户消息 -->
+          <template v-if="m.role === 'user'">
+            <view class="msg-col">
+              <view class="bubble bubble-user" :class="{ editing: editingUid === m._uid }">
+                <view v-if="editingUid === m._uid" class="edit-card">
+                  <textarea
+                    class="edit-area"
+                    v-model="editText"
+                    :auto-height="true"
+                    maxlength="-1"
+                  ></textarea>
+                  <view class="edit-actions">
+                    <view class="edit-btn edit-btn-cancel" @click="cancelEdit">取消</view>
+                    <view class="edit-btn edit-btn-save" @click="confirmEdit(m)">发送</view>
+                  </view>
+                </view>
+                <text v-else class="bubble-text">{{ m.content }}</text>
+              </view>
+              <view class="msg-actions" v-if="editingUid !== m._uid">
+                <view class="act-btn" @click="copyText(m.content)">
+                  <image class="act-icon" src="/static/assets/wxmp-copy.svg" mode="aspectFit"></image>
+                </view>
+                <view class="act-btn" @click="startEdit(m)">
+                  <image class="act-icon" src="/static/assets/wxmp-edit.svg" mode="aspectFit"></image>
+                </view>
+              </view>
+            </view>
+          </template>
+
+          <!-- AI 消息 -->
+          <template v-else>
+            <view class="msg-avatar ai-avatar">AI</view>
+            <view class="msg-col">
+              <view class="ai-name">智能助手</view>
+
+              <!-- 思考过程框 -->
+              <view
+                v-if="m.thinkState"
+                class="think-box"
+                :class="{ open: m.thinkOpen }"
+                :data-state="m.thinkState"
+                @click="toggleThink(m)"
+              >
+                <view class="think-head">
+                  <view class="think-icon" :class="{ spinning: m.thinkState === 'thinking' }">AI</view>
+                  <text class="think-text">{{ m.thinkState === 'thinking' ? '正在思考' : '思考已完成' }}</text>
+                  <view v-if="m.thinkState === 'thinking'" class="think-dots">
+                    <view class="dot"></view>
+                    <view class="dot"></view>
+                    <view class="dot"></view>
+                  </view>
+                  <text v-if="m.thinkState === 'done'" class="think-caret">›</text>
+                </view>
+                <view v-if="m.thinkState === 'done' && m.thinkOpen" class="think-body">
+                  已完成对本问题的思考（用时 {{ m.thinkSeconds }} 秒）。
+                </view>
+              </view>
+
+              <!-- 回复气泡 -->
+              <msg-bubble v-if="m.content" :role="'assistant'" :content="m.content" />
+              <view v-if="m.canceled" class="canceled-tip">已取消回答</view>
+
+              <!-- 气泡操作 -->
+              <view class="msg-actions" v-if="!m.generating">
+                <template v-if="m.versions.length > 1">
+                  <view class="act-btn" :class="{ disabled: m.verIdx <= 0 }" @click="switchVersion(m, -1)">
+                    <image class="act-icon" src="/static/assets/wxmp-arrow-left.svg" mode="aspectFit"></image>
+                  </view>
+                  <text class="ver-indicator">{{ m.verIdx + 1 }}/{{ m.versions.length }}</text>
+                  <view class="act-btn" :class="{ disabled: m.verIdx >= m.versions.length - 1 }" @click="switchVersion(m, 1)">
+                    <image class="act-icon" src="/static/assets/wxmp-arrow-right.svg" mode="aspectFit"></image>
+                  </view>
+                </template>
+                <view class="act-btn" @click="regen(m)">
+                  <image class="act-icon" src="/static/assets/wxmp-regenerate.svg" mode="aspectFit"></image>
+                </view>
+                <view class="act-btn" @click="copyText(m.content)">
+                  <image class="act-icon" src="/static/assets/wxmp-copy.svg" mode="aspectFit"></image>
+                </view>
+              </view>
+              <view class="msg-actions" v-else>
+                <view class="act-btn" @click="stop">
+                  <image class="act-icon" src="/static/assets/wxmp-stop.svg" mode="aspectFit"></image>
+                </view>
+              </view>
+            </view>
+          </template>
         </view>
+
+        <view class="chat-body-tail" id="msg-tail"></view>
       </scroll-view>
 
+      <!-- 输入区 -->
       <view class="chat-input">
-        <textarea
-          class="input-box"
-          v-model="inputText"
-          :disabled="streaming"
-          placeholder="问问 AI 关于课程、成绩、用电…"
-          :auto-height="true"
-          maxlength="-1"
-          @confirm="send"
-        />
-        <button class="send-btn" :class="{ disabled: streaming || !inputText.trim() }" @click="send">
+        <view class="input-box">
+          <textarea
+            class="msg-input"
+            v-model="inputText"
+            :disabled="false"
+            placeholder="问问 AI 关于课程、成绩、用电…"
+            :auto-height="true"
+            maxlength="-1"
+            :adjust-position="true"
+            confirm-type="send"
+            @confirm="send"
+          ></textarea>
+          <view class="aic-toolbar">
+            <view class="toolbar-left">
+              <view class="aic-pill" :class="{ active: showModelMenu }" @click="openModelMenu">
+                <text class="pill-text">{{ currentModel || '默认模型' }}</text>
+                <text class="aic-caret">▾</text>
+              </view>
+              <view class="aic-pill" :class="{ active: deepThink }" @click="deepThink = !deepThink">
+                <text>深度思考</text>
+              </view>
+            </view>
+          </view>
+        </view>
+        <button
+          class="send-btn"
+          :class="{ disabled: !streaming && !inputText.trim() }"
+          @click="onSendBtnTap"
+        >
           <image v-if="!streaming" class="send-icon" src="/static/assets/wxmp-send-white.svg" mode="aspectFit"></image>
-          <view v-else class="send-spinner"></view>
+          <view v-else class="send-stop"></view>
         </button>
+
+        <!-- 模型选择菜单 -->
+        <view v-if="showModelMenu" class="model-mask" @click="showModelMenu = false">
+          <view class="model-menu" :style="{ bottom: modelMenuBottom }" @click.stop>
+            <view
+              class="model-item"
+              :class="{ active: m === currentModel }"
+              v-for="m in models"
+              :key="m"
+              @click="selectModel(m)"
+            >{{ m }}</view>
+            <view v-if="!models.length" class="model-item active">默认模型</view>
+          </view>
+        </view>
       </view>
     </view>
   </view>
@@ -50,100 +196,292 @@
 import api from '../../utils/api';
 import MsgBubble from './msg-bubble.vue';
 
+const SYSTEM_PROMPT = '你是“智慧校园”AI 助手，帮助学生解答校园生活、学习规划、教务查询、宿舍用电等方面的问题。回答简洁友好、条理清晰，可适当使用 Markdown。';
+
+const SUGGESTIONS = [
+  '我最近的成绩怎么样？',
+  '我的宿舍用电情况如何？',
+  '怎么查询我的课程安排？',
+  '校园卡怎么充值？'
+];
+
+let uidSeed = 1;
+
 export default {
   components: { MsgBubble },
   data() {
     return {
       messages: [
-        {
-          role: 'system',
-          content: '你是“智慧校园”AI 助手，帮助学生解答校园生活、学习规划、教务查询、宿舍用电等方面的问题。回答简洁友好、条理清晰，可适当使用 Markdown。'
-        },
-        {
-          role: 'assistant',
-          content: '你好！我是智慧校园 AI 助手 🤖\n可以帮你解答课程安排、成绩分析、宿舍用电、校园生活等问题，试着问我吧～',
-          local: true
-        }
+        { role: 'system', content: SYSTEM_PROMPT, _uid: 0 }
       ],
       inputText: '',
       streaming: false,
-      scrollTarget: 'msg-1'
+      scrollTarget: 'msg-tail',
+      // 思考 / 版本 / 编辑状态
+      streamAbort: null,
+      pageAborted: false,
+      editingUid: -1,
+      editText: '',
+      // 模型
+      models: [],
+      currentModel: '',
+      showModelMenu: false,
+      modelMenuBottom: '260rpx',
+      deepThink: true,
+      suggestions: SUGGESTIONS
     };
   },
 
   computed: {
-    // 过滤掉 system 消息（仅作提示词，不在对话流中展示），并保留原始下标用于滚动定位与稳定 key
+    // 过滤 system（仅提示词，不渲染）
     chatList() {
-      return this.messages
-        .map((m, i) => ({ ...m, _i: i }))
-        .filter(m => m.role !== 'system');
+      return this.messages.filter(m => m.role !== 'system');
+    },
+    hasConversation() {
+      return this.messages.some(m => m.role === 'user');
     }
   },
 
+  onLoad() {
+    this.loadModels();
+  },
+
   methods: {
+    toggleThink(m) {
+      if (m.thinkState !== 'done') return;
+      m.thinkOpen = !m.thinkOpen;
+    },
+
     scrollToBottom() {
       this.$nextTick(() => {
-        this.scrollTarget = 'msg-' + (this.messages.length - 1);
+        this.scrollTarget = '';
+        setTimeout(() => { this.scrollTarget = 'msg-tail'; }, 60);
+      });
+    },
+
+    // ===== 模型 =====
+    async loadModels() {
+      try {
+        const res = await api.getAiModels();
+        const list = (res.data && res.data.models) || [];
+        const def = (res.data && res.data.default) || '';
+        if (def && list.indexOf(def) === -1) list.unshift(def);
+        this.models = list;
+        this.currentModel = def || (list[0] || '');
+      } catch (e) {
+        this.models = [];
+        this.currentModel = '';
+      }
+    },
+    selectModel(m) {
+      this.currentModel = m;
+      this.showModelMenu = false;
+    },
+
+    // 打开模型菜单：实测输入区顶部位置，把菜单精确钉在其上方
+    openModelMenu() {
+      if (this.showModelMenu) {
+        this.showModelMenu = false;
+        return;
+      }
+      try {
+        const sys = uni.getSystemInfoSync();
+        const query = uni.createSelectorQuery().in(this);
+        query.select('.chat-input').boundingClientRect(rect => {
+          if (rect && typeof rect.top === 'number') {
+            // 菜单底部 = 视口高度 - 输入区顶部 + 12px 间距
+            this.modelMenuBottom = Math.max(120, sys.windowHeight - rect.top + 12) + 'px';
+          }
+          this.showModelMenu = true;
+        }).exec();
+      } catch (e) {
+        this.showModelMenu = true;
+      }
+    },
+
+    // ===== 发送 =====
+    onSendBtnTap() {
+      if (this.streaming) {
+        this.stop();
+      } else {
+        this.send();
+      }
+    },
+
+    onSuggestTap(q) {
+      if (this.streaming) return;
+      this.inputText = q;
+      this.send();
+    },
+
+    send() {
+      const text = (this.inputText || '').trim();
+      if (!text || this.streaming) return;
+
+      this.messages.push({ role: 'user', content: text, _uid: uidSeed++ });
+      this.inputText = '';
+      this.requestAi();
+    },
+
+    // 构建 OpenAI 格式上下文（canceled / 空回复 / local 不计入）
+    buildContext() {
+      return this.messages
+        .filter(m => (m.role === 'user' || m.role === 'assistant') && m.content && !m.canceled)
+        .map(m => ({ role: m.role, content: m.content }));
+    },
+
+    // 请求 AI 回复。reuseMsg 传入已有 assistant 消息用于重新生成（保留历史版本）
+    requestAi(reuseMsg) {
+      let m = reuseMsg;
+      if (!m) {
+        m = {
+          role: 'assistant',
+          content: '',
+          _uid: uidSeed++,
+          versions: [],
+          verIdx: -1,
+          thinkState: 'thinking',
+          thinkSeconds: 0,
+          thinkOpen: false,
+          canceled: false,
+          generating: true
+        };
+        this.messages.push(m);
+      } else {
+        m.content = '';
+        m.canceled = false;
+        m.thinkState = 'thinking';
+        m.generating = true;
+        m.thinkStart = Date.now();
+      }
+      m.thinkStart = Date.now();
+      this.pageAborted = false;
+      this.streaming = true;
+      this.editingUid = -1;
+      this.showModelMenu = false;
+      this.scrollToBottom();
+
+      const watchdog = setTimeout(() => {
+        if (this.streaming) {
+          this.pageAborted = true;
+          if (this.streamAbort) this.streamAbort.abort();
+        }
+      }, 300000);
+
+      const p = api.aiChatStream({
+        messages: this.buildContext(),
+        model: this.currentModel,
+        onChunk: (delta) => {
+          if (m.thinkState === 'thinking') {
+            m.thinkState = 'done';
+            m.thinkSeconds = Math.max(1, Math.round((Date.now() - m.thinkStart) / 1000));
+          }
+          m.content += delta;
+          if (m.verIdx >= 0 && m.versions[m.verIdx] !== undefined) {
+            m.versions[m.verIdx] = m.content;
+          }
+          this.scrollToBottom();
+        },
+        onDone: () => {
+          clearTimeout(watchdog);
+          this.streaming = false;
+          m.generating = false;
+          if (this.pageAborted) {
+            m.canceled = true;
+          } else if (m.content) {
+            // 记录为新版本
+            m.versions.push(m.content);
+            m.verIdx = m.versions.length - 1;
+          }
+          m.thinkState = m.content ? 'done' : '';
+          if (!m.thinkSeconds && m.thinkStart) {
+            m.thinkSeconds = Math.max(1, Math.round((Date.now() - m.thinkStart) / 1000));
+          }
+          this.scrollToBottom();
+        },
+        onError: (msg) => {
+          if (!m.content) m.content = '出错了：' + msg;
+        }
+      });
+      // 保存整个 promise（其上挂载了 abort 方法），终止时调用 .abort()
+      this.streamAbort = p;
+    },
+
+    // 终止思考：保留已生成内容
+    stop() {
+      if (!this.streaming) return;
+      this.pageAborted = true;
+      if (this.streamAbort) this.streamAbort.abort();
+    },
+
+    // ===== 重新生成 / 版本 =====
+    regen(m) {
+      if (this.streaming) return;
+      const idx = this.messages.indexOf(m);
+      if (idx < 0) return;
+      // 截断该回复之后的所有消息
+      this.messages = this.messages.slice(0, idx + 1);
+      this.requestAi(m);
+    },
+
+    switchVersion(m, dir) {
+      const next = m.verIdx + dir;
+      if (next < 0 || next >= m.versions.length) return;
+      m.verIdx = next;
+      m.content = m.versions[next];
+      this.scrollToBottom();
+    },
+
+    // ===== 编辑用户消息 =====
+    startEdit(m) {
+      if (this.streaming) return;
+      this.editingUid = m._uid;
+      this.editText = m.content;
+    },
+    cancelEdit() {
+      this.editingUid = -1;
+      this.editText = '';
+    },
+    confirmEdit(m) {
+      const text = (this.editText || '').trim();
+      if (!text) {
+        uni.showToast({ title: '内容不能为空', icon: 'none' });
+        return;
+      }
+      if (this.streaming) return;
+      const idx = this.messages.indexOf(m);
+      m.content = text;
+      // 移除该消息之后的所有消息（原 AI 回复作废），并重新生成
+      this.messages = this.messages.slice(0, idx + 1);
+      this.editingUid = -1;
+      this.editText = '';
+      this.requestAi();
+    },
+
+    // ===== 工具 =====
+    copyText(text) {
+      if (!text) return;
+      uni.setClipboardData({
+        data: text,
+        success: () => uni.showToast({ title: '已复制', icon: 'none' })
       });
     },
 
     clearChat() {
       if (this.streaming) return;
-      this.messages = [
-        this.messages[0],
-        { role: 'assistant', content: '对话已清空，有什么可以帮你的？', local: true }
-      ];
-      this.scrollToBottom();
-    },
-
-    async send() {
-      const text = this.inputText.trim();
-      if (!text || this.streaming) return;
-
-      this.messages.push({ role: 'user', content: text });
-      this.messages.push({ role: 'assistant', content: '' });
-      const aiIndex = this.messages.length - 1;
-      this.inputText = '';
-      this.streaming = true;
-      this.scrollToBottom();
-
-      // 看门狗：若接口在 120s 内仍未返回（如 AI 上游缓慢/网络挂起），强制结束“加载中”，
-      // 避免 Promise 未 resolve 导致气泡永久停留在“正在输入”
-      const watchdog = setTimeout(() => {
-        if (this.streaming) {
-          this.streaming = false;
-          if (!this.messages[aiIndex].content) {
-            this.messages[aiIndex].content = '（请求超时，AI 暂无响应，请稍后重试）';
-          }
+      uni.showModal({
+        title: '提示',
+        content: '确定要清空当前对话吗？',
+        confirmText: '清空',
+        cancelText: '取消',
+        success: (res) => {
+          if (!res.confirm) return;
+          this.messages = [{ role: 'system', content: SYSTEM_PROMPT, _uid: 0 }];
+          this.editingUid = -1;
           this.scrollToBottom();
+          uni.showToast({ title: '已清空', icon: 'none' });
         }
-      }, 120000);
-
-      try {
-        await api.aiChatStream({
-          messages: this.messages.filter(m => !m.local),
-          onChunk: (chunk) => {
-            this.messages[aiIndex].content += chunk;
-            this.scrollToBottom();
-          },
-          onDone: () => {
-            this.streaming = false;
-          },
-          onError: (msg) => {
-            if (!this.messages[aiIndex].content) this.messages[aiIndex].content = '出错了：' + msg;
-          }
-        });
-      } catch (e) {
-        if (!this.messages[aiIndex].content) this.messages[aiIndex].content = '出错了：' + ((e && e.msg) || '请求失败');
-      } finally {
-        clearTimeout(watchdog);
-        this.streaming = false;
-        // 兜底：若整轮对话既无内容也无错误，填充提示，避免气泡永久停留在“正在输入”
-        if (!this.messages[aiIndex].content) {
-          this.messages[aiIndex].content = '（AI 暂无回复，请稍后再试）';
-        }
-        this.scrollToBottom();
-      }
+      });
     }
   }
 };
@@ -152,6 +490,9 @@ export default {
 <style scoped>
 page {
   background: #eff1ff;
+  /* 锁定页面本身滚动，避免对话区被继续下滑出空白 */
+  height: 100%;
+  overflow: hidden;
 }
 
 .page-container {
@@ -161,6 +502,14 @@ page {
   overflow: hidden;
   background: #eff1ff;
 }
+
+/* #ifdef H5 */
+/* uni-app H5 的页面内容包裹层默认高度 auto，会被内容撑高导致整页可下滑 */
+uni-page-body {
+  height: 100%;
+  overflow: hidden;
+}
+/* #endif */
 
 .nav-title {
   display: flex;
@@ -182,7 +531,7 @@ page {
   font-size: 26rpx;
 }
 
-/* 与首页 / 我的 等页完全一致的 banner + 遮罩 */
+/* banner + 遮罩，与系统其他页面一致 */
 .background-wrapper {
   position: fixed;
   top: 0;
@@ -205,11 +554,12 @@ page {
   top: 0;
 }
 
-/* 圆角上拉卡片，与系统二级页 content-wrapper 一致 */
 .content-wrapper {
   position: relative;
   z-index: 1;
   flex: 1;
+  /* 关键：flex 子项默认 min-height:auto 不收缩，会被内容撑高导致整页下滑 */
+  min-height: 0;
   margin-top: 30rpx;
   display: flex;
   flex-direction: column;
@@ -220,22 +570,105 @@ page {
   overflow: hidden;
 }
 
+/* ===== 聊天主体 ===== */
 .chat-body {
   flex: 1;
+  /* 允许收缩，消息再多也只在内部滚动 */
+  min-height: 0;
+  height: 0;
   overflow: hidden;
-  padding: 24rpx 24rpx 8rpx;
+  padding: 24rpx 24rpx 0;
   box-sizing: border-box;
 }
 
+.chat-body-tail {
+  height: 20rpx;
+}
+
+/* 欢迎区 */
+.welcome {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  padding: 32rpx 36rpx;
+  border-radius: 28rpx;
+  background: linear-gradient(90deg, #e8f9f9 0%, #e6f2ff 60%, #eaf4ff 100%);
+  margin-bottom: 32rpx;
+}
+
+.welcome-avatar {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 28rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 40rpx;
+  font-weight: bold;
+  background: linear-gradient(135deg, #13c2c2 0%, #1890ff 100%);
+  box-shadow: 0 10rpx 24rpx rgba(19, 194, 194, 0.35);
+  flex-shrink: 0;
+}
+
+.welcome-title {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #1f2937;
+}
+
+.welcome-sub {
+  font-size: 24rpx;
+  color: #6b7280;
+  margin-top: 4rpx;
+}
+
+/* 推荐问题 */
+.suggest {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 18rpx;
+  margin-bottom: 20rpx;
+}
+
+.suggest-label {
+  font-size: 27rpx;
+  font-weight: 600;
+  color: #374151;
+}
+
+.suggest-chip {
+  background: #fff;
+  border: 1rpx solid #e6e8ef;
+  color: #374151;
+  border-radius: 22rpx;
+  padding: 18rpx 28rpx;
+  font-size: 27rpx;
+  text-align: left;
+}
+
+.suggest-chip:active {
+  border-color: #8adcdc;
+  background: #f0fbfb;
+  color: #0e8c8c;
+}
+
+/* ===== 消息行 ===== */
 .msg-row {
   display: flex;
   align-items: flex-start;
-  margin-bottom: 28rpx;
+  margin-bottom: 30rpx;
   animation: bubble-in 0.3s ease both;
 }
 
 .msg-row.is-user {
   flex-direction: row-reverse;
+}
+
+@keyframes bubble-in {
+  from { opacity: 0; transform: translateY(14rpx); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .msg-avatar {
@@ -245,7 +678,6 @@ page {
   color: #fff;
   font-size: 26rpx;
   font-weight: bold;
-  letter-spacing: 1rpx;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -258,17 +690,191 @@ page {
   box-shadow: 0 6rpx 16rpx rgba(19, 194, 194, 0.3);
 }
 
-.user-avatar {
-  background: linear-gradient(135deg, #8b7fd6 0%, #5a5477 100%);
-  box-shadow: 0 6rpx 16rpx rgba(90, 84, 119, 0.3);
+.msg-col {
+  display: flex;
+  flex-direction: column;
+  max-width: 82%;
+  margin: 0 14rpx;
 }
 
-@keyframes bubble-in {
-  from { opacity: 0; transform: translateY(14rpx); }
-  to { opacity: 1; transform: translateY(0); }
+.msg-row.is-user .msg-col {
+  align-items: flex-end;
 }
 
+.ai-name {
+  font-size: 22rpx;
+  color: #9ca3af;
+  margin-bottom: 10rpx;
+}
+
+/* 用户气泡（AI 气泡由 msg-bubble 组件渲染） */
+.bubble {
+  max-width: 100%;
+  padding: 22rpx 26rpx;
+  border-radius: 24rpx;
+  font-size: 28rpx;
+  line-height: 1.7;
+  word-break: break-word;
+  box-sizing: border-box;
+}
+
+.bubble-user {
+  background: linear-gradient(135deg, #13c2c2 0%, #1890ff 100%);
+  color: #fff;
+  border-bottom-right-radius: 8rpx;
+  box-shadow: 0 6rpx 20rpx rgba(19, 194, 194, 0.28);
+}
+
+.bubble-text {
+  display: block;
+  white-space: pre-wrap;
+}
+
+/* 用户编辑态气泡 */
+.msg-row .bubble.editing {
+  background: #fff;
+  color: #1f2937;
+  border: 2rpx solid #8adcdc;
+  border-bottom-right-radius: 24rpx;
+}
+
+/* ===== 思考过程框 ===== */
+.think-box {
+  border: 1rpx solid #ececf1;
+  background: #fafafc;
+  border-radius: 20rpx;
+  margin-bottom: 14rpx;
+  overflow: hidden;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.think-head {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 16rpx 24rpx;
+  font-size: 24rpx;
+  color: #6b7280;
+}
+
+.think-icon {
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 12rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 18rpx;
+  font-weight: bold;
+  background: linear-gradient(135deg, #13c2c2 0%, #1890ff 100%);
+  flex-shrink: 0;
+}
+
+.think-icon.spinning {
+  animation: think-spin 1.4s ease-in-out infinite;
+}
+
+@keyframes think-spin {
+  0%, 100% { transform: scale(1); opacity: 0.75; }
+  50% { transform: scale(1.18); opacity: 1; }
+}
+
+.think-dots {
+  display: inline-flex;
+  gap: 6rpx;
+}
+
+.think-dots .dot {
+  width: 10rpx;
+  height: 10rpx;
+  border-radius: 50%;
+  background: #13c2c2;
+  animation: think-blink 1.2s infinite ease-in-out;
+}
+
+.think-dots .dot:nth-child(2) { animation-delay: 0.2s; }
+.think-dots .dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes think-blink {
+  0%, 80%, 100% { opacity: 0.25; transform: translateY(0); }
+  40% { opacity: 1; transform: translateY(-6rpx); }
+}
+
+.think-caret {
+  font-size: 22rpx;
+  opacity: 0.7;
+  transition: transform 0.2s;
+  margin-left: 4rpx;
+  transform: rotate(90deg);
+}
+
+.think-box.open .think-caret {
+  transform: rotate(-90deg);
+}
+
+.think-body {
+  padding: 0 24rpx 18rpx 76rpx;
+  font-size: 24rpx;
+  color: #6b7280;
+}
+
+/* ===== 气泡操作 ===== */
+.msg-actions {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+  margin-top: 12rpx;
+  flex-wrap: wrap;
+}
+
+.act-btn {
+  min-width: 52rpx;
+  height: 52rpx;
+  padding: 0 8rpx;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14rpx;
+  background: transparent;
+  color: #6b7280;
+  font-size: 24rpx;
+}
+
+.act-btn:active {
+  background: #eef0f6;
+}
+
+.act-btn.disabled {
+  opacity: 0.35;
+}
+
+.act-icon {
+  width: 30rpx;
+  height: 30rpx;
+}
+
+.act-txt {
+  color: #4b5563;
+}
+
+.ver-indicator {
+  font-size: 22rpx;
+  color: #9ca3af;
+  min-width: 48rpx;
+  text-align: center;
+}
+
+.canceled-tip {
+  font-size: 22rpx;
+  color: #9ca3af;
+  margin-top: 8rpx;
+}
+
+/* ===== 输入区 ===== */
 .chat-input {
+  position: relative;
   display: flex;
   align-items: flex-end;
   padding: 16rpx 20rpx;
@@ -278,18 +884,66 @@ page {
 
 .input-box {
   flex: 1;
-  min-height: 72rpx;
-  max-height: 200rpx;
-  background: #f2f3f5;
-  border-radius: 16rpx;
-  padding: 16rpx 20rpx;
-  font-size: 28rpx;
+  border: 1rpx solid #e6e8ef;
+  border-radius: 28rpx;
+  padding: 18rpx 24rpx;
+  background: #fff;
   box-sizing: border-box;
 }
 
+.msg-input {
+  width: 100%;
+  min-height: 44rpx;
+  max-height: 240rpx;
+  font-size: 28rpx;
+  line-height: 1.6;
+  color: #1f2937;
+}
+
+.aic-toolbar {
+  display: flex;
+  align-items: center;
+  margin-top: 14rpx;
+}
+
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+}
+
+.aic-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8rpx;
+  background: #f4f5f8;
+  color: #4b5563;
+  border-radius: 999rpx;
+  padding: 10rpx 22rpx;
+  font-size: 24rpx;
+}
+
+.aic-pill.active {
+  background: #e8f9f9;
+  color: #0e8c8c;
+  font-weight: 600;
+}
+
+.pill-text {
+  max-width: 240rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.aic-caret {
+  font-size: 20rpx;
+  opacity: 0.7;
+}
+
 .send-btn {
-  width: 76rpx;
-  height: 76rpx;
+  width: 84rpx;
+  height: 84rpx;
   margin-left: 16rpx;
   border-radius: 50%;
   background: linear-gradient(135deg, #13c2c2 0%, #1890ff 100%);
@@ -307,7 +961,7 @@ page {
 }
 
 .send-btn.disabled {
-  background: #cfe8e8;
+  background: #c5c9e8;
   box-shadow: none;
   opacity: 0.65;
 }
@@ -317,20 +971,119 @@ page {
   height: 40rpx;
 }
 
-.send-spinner {
-  width: 34rpx;
-  height: 34rpx;
-  border: 4rpx solid rgba(255, 255, 255, 0.45);
+/* 终止按钮：转圈 + 方块（与网页版一致） */
+.send-stop {
+  position: relative;
+  width: 44rpx;
+  height: 44rpx;
+}
+
+.send-stop::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  border: 5rpx solid rgba(255, 255, 255, 0.35);
   border-top-color: #fff;
   border-radius: 50%;
-  animation: send-spin 0.8s linear infinite;
+  animation: send-spin 0.7s linear infinite;
+}
+
+.send-stop::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 12rpx;
+  height: 12rpx;
+  background: #fff;
+  transform: translate(-50%, -50%);
 }
 
 @keyframes send-spin {
   to { transform: rotate(360deg); }
 }
 
-/* H5 端 tabBar 为 fixed 覆盖底部，需为输入框预留出 tabBar 高度，避免被遮挡 */
+/* ===== 模型选择菜单 ===== */
+.model-mask {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 30;
+}
+
+.model-menu {
+  position: fixed;
+  left: 20rpx;
+  /* bottom 由 openModelMenu 实测输入区位置后动态写入 */
+  min-width: 320rpx;
+  max-width: 80vw;
+  max-height: 480rpx;
+  overflow-y: auto;
+  background: #fff;
+  border: 1rpx solid #eceef4;
+  border-radius: 22rpx;
+  box-shadow: 0 18rpx 56rpx rgba(15, 23, 42, 0.14);
+  padding: 10rpx;
+  box-sizing: border-box;
+  z-index: 31;
+}
+
+.model-item {
+  padding: 18rpx 22rpx;
+  border-radius: 14rpx;
+  font-size: 26rpx;
+  color: #374151;
+  word-break: break-all;
+}
+
+.model-item.active {
+  background: #e8f9f9;
+  color: #0e8c8c;
+  font-weight: 600;
+}
+
+/* ===== 编辑卡片 ===== */
+.edit-card {
+  width: 100%;
+}
+
+.edit-area {
+  width: 100%;
+  min-height: 60rpx;
+  font-size: 28rpx;
+  line-height: 1.6;
+  color: #1f2937;
+}
+
+.edit-actions {
+  display: flex;
+  gap: 14rpx;
+  margin-top: 14rpx;
+  justify-content: flex-end;
+}
+
+.edit-btn {
+  border-radius: 999rpx;
+  padding: 8rpx 26rpx;
+  font-size: 24rpx;
+}
+
+.edit-btn-cancel {
+  background: #fff;
+  border: 1rpx solid #e5e7eb;
+  color: #4b5563;
+}
+
+.edit-btn-save {
+  background: #13c2c2;
+  border: 0;
+  color: #fff;
+}
+
+/* H5 端 tabBar 为 fixed 覆盖底部，需为输入框预留 tabBar 高度 */
 /* #ifdef H5 */
 .chat-input {
   padding-bottom: calc(56px + env(safe-area-inset-bottom));

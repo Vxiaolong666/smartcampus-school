@@ -55,8 +55,6 @@
 <script>
 import api from '../../utils/api.js';
 
-const API_BASE = 'http://127.0.0.12';
-
 export default {
 	data() {
 		return {
@@ -88,7 +86,7 @@ export default {
 
 				const list = res.data.list.map(item => ({
 					...item,
-					cover: item.cover ? API_BASE + item.cover : ''
+					cover: api.getFileUrl(item.cover)
 				}));
 
 				this.notices = [...this.notices, ...list];

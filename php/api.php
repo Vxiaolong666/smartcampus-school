@@ -100,6 +100,21 @@ function jsonResponse($code, $msg, $data = null) {
     exit(json_encode($response, JSON_UNESCAPED_UNICODE));
 }
 
+/**
+ * 站点文件完整 URL：api.php 所在目录即站点根（或子目录部署时自动带前缀），
+ * 根据当前请求自动推导域名与路径，前端与部署域名解耦，更换域名无需改代码。
+ * 已是完整 http(s) 地址或空值时原样返回。
+ */
+function apiFileUrl($path) {
+    if (empty($path)) return '';
+    $path = (string)$path;
+    if (preg_match('#^https?://#i', $path)) return $path;
+    $scheme = (!empty($_SERVER['HTTPS']) && strtolower($_SERVER['HTTPS']) !== 'off') ? 'https' : 'http';
+    $host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : 'localhost';
+    $baseDir = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/')), '/');
+    return $scheme . '://' . $host . $baseDir . $path;
+}
+
 switch($act) {
     case 'login':
         $username = addslashes($_POST['username']);
@@ -563,7 +578,12 @@ switch($act) {
         }
         
         $userData = $DB->getRow("SELECT id, username, email, qq, points, level, register_time, last_login_time, nickname, avatar, wx_openid FROM nteam_users WHERE id='{$user['user_id']}'");
-        
+
+        // 头像输出完整 URL（相对路径按当前请求自动拼接域名，更换部署域名不影响展示）
+        if (!empty($userData['avatar'])) {
+            $userData['avatar'] = apiFileUrl($userData['avatar']);
+        }
+
         jsonResponse(0, 'success', $userData);
     break;
 
@@ -961,7 +981,7 @@ switch($act) {
         if (move_uploaded_file($file['tmp_name'], $filepath)) {
             $avatarUrl = '/uploads/avatars/' . $filename;
             $DB->exec("UPDATE nteam_users SET avatar='$avatarUrl' WHERE id='{$user['user_id']}'");
-            jsonResponse(0, '上传成功', ['avatar' => $avatarUrl]);
+            jsonResponse(0, '上传成功', ['avatar' => apiFileUrl($avatarUrl)]);
         } else {
             jsonResponse(-1, '文件保存失败');
         }
@@ -2385,6 +2405,14 @@ switch($act) {
         
         $notices = $DB->getAll("SELECT id, title, thumbnail as cover, create_time, is_top FROM nteam_announcements WHERE is_published=1 ORDER BY is_top DESC, create_time DESC LIMIT $offset, $size");
         $total = $DB->getRow("SELECT COUNT(*) as count FROM nteam_announcements WHERE is_published=1")['count'];
+
+        // 封面输出完整 URL（自动跟随当前部署域名）
+        if (!empty($notices)) {
+            foreach ($notices as &$n) {
+                if (!empty($n['cover'])) $n['cover'] = apiFileUrl($n['cover']);
+            }
+            unset($n);
+        }
         
         jsonResponse(0, 'success', [
             'list' => $notices ?: [],
@@ -2402,10 +2430,14 @@ switch($act) {
         }
         
         $notice = $DB->getRow("SELECT id, title, content, thumbnail as cover, image, view_count, author, create_time, is_top FROM nteam_announcements WHERE id='$id' AND is_published=1");
-        
+
         if (!$notice) {
             jsonResponse(-1, '通知不存在');
         }
+
+        // 封面 / 图片输出完整 URL（自动跟随当前部署域名）
+        if (!empty($notice['cover'])) $notice['cover'] = apiFileUrl($notice['cover']);
+        if (!empty($notice['image'])) $notice['image'] = apiFileUrl($notice['image']);
         
         $DB->exec("UPDATE nteam_announcements SET view_count = view_count + 1 WHERE id='$id'");
         
@@ -2573,14 +2605,27 @@ switch($act) {
         ];
         
         $context = stream_context_create($options);
-        $result = file_get_contents($sendUrl, false, $context);
-        $resultData = json_decode($result, true);
-        
+        $result = @file_get_contents($sendUrl, false, $context);
+        $resultData = $result ? json_decode($result, true) : null;
+
+        // 记录推送日志（无论成功失败，均写入 nteam_push_logs，供「推送日志」页排查）
+        $tplRow = $DB->getRow("SELECT name FROM nteam_wx_templates WHERE template_id='{$templateId}'");
+        $logTitle = '【推送测试】' . addslashes($tplRow && !empty($tplRow['name']) ? $tplRow['name'] : $templateId);
+        $logContent = addslashes(mb_substr(json_encode($customData, JSON_UNESCAPED_UNICODE) ?: '', 0, 480));
+        $now = date('Y-m-d H:i:s');
+
         if (isset($resultData['errcode']) && $resultData['errcode'] == 0) {
+            $DB->exec("INSERT INTO nteam_push_logs (user_id, dormitory_binding_id, push_type, notify_type, balance, title, content, status, error_msg, sent_at, created_at)
+                VALUES ('{$user['user_id']}', 0, 'wechat', 'test', NULL, '{$logTitle}', '{$logContent}', 1, NULL, '{$now}', '{$now}')");
+
             $newCount = intval($subscription['subscribe_count']) - 1;
             $DB->exec("UPDATE nteam_subscriptions SET subscribe_count={$newCount} WHERE id='{$subscription['id']}'");
             jsonResponse(0, '发送成功', ['subscribe_count' => $newCount]);
         } else {
+            $errMsg = addslashes(mb_substr(isset($resultData['errmsg']) ? $resultData['errmsg'] : '请求微信接口失败', 0, 480));
+            $DB->exec("INSERT INTO nteam_push_logs (user_id, dormitory_binding_id, push_type, notify_type, balance, title, content, status, error_msg, sent_at, created_at)
+                VALUES ('{$user['user_id']}', 0, 'wechat', 'test', NULL, '{$logTitle}', '{$logContent}', 2, '{$errMsg}', '{$now}', '{$now}')");
+
             jsonResponse(-1, '发送失败: ' . ($resultData['errmsg'] ?? '未知错误'));
         }
     break;
@@ -3177,6 +3222,36 @@ switch($act) {
         }
         
         jsonResponse(0, 'success', $result);
+    break;
+
+    // 首页轮播图：免登录，返回启用状态的轮播图列表（image 为相对路径，image_url 为完整 URL）
+    case 'get_banners':
+        $banners = [];
+
+        // 表不存在时静默返回空数组，避免影响旧部署
+        $tableReady = false;
+        try {
+            $chk = $DB->query("SHOW TABLES LIKE 'nteam_banners'");
+            $tableReady = $chk && $chk->fetch();
+        } catch (Exception $e) {
+            $tableReady = false;
+        }
+
+        if ($tableReady) {
+            $rows = $DB->query("SELECT id, title, image, url FROM nteam_banners WHERE `status`=1 ORDER BY `sort` ASC, `id` ASC")->fetchAll();
+            foreach ($rows as $row) {
+                $image = $row['image'] ?? '';
+                $banners[] = [
+                    'id'        => intval($row['id']),
+                    'title'     => $row['title'],
+                    'image'     => $image,
+                    'image_url' => apiFileUrl($image),
+                    'url'       => $row['url'] ?? '',
+                ];
+            }
+        }
+
+        jsonResponse(0, 'success', $banners);
     break;
     
     case 'get_glance_data':

@@ -1,5 +1,4 @@
 const api = require('../../utils/api.js');
-const API_BASE = 'https://mc.xzwmc.com/csgocs';
 
 Page({
     // 页面数据
@@ -31,7 +30,7 @@ Page({
             this.setData({
                 userInfo,
                 nickname: userInfo.nickname || userInfo.username,
-                avatar: userInfo.avatar ? (userInfo.avatar.startsWith('http') ? userInfo.avatar : API_BASE + userInfo.avatar) : '',
+                avatar: api.getFileUrl(userInfo.avatar),
                 hasWxOpenid: !!userInfo.wx_openid
             });
         } catch (err) {
@@ -76,30 +75,16 @@ Page({
     async uploadAvatar(filePath) {
         wx.showLoading({ title: '上传中...' });
 
-        const token = api.getToken();
-
-        wx.uploadFile({
-            url: API_BASE + '/api.php?act=upload_avatar',
-            filePath: filePath,
-            name: 'avatar',
-            header: {
-                'Authorization': token ? 'Bearer ' + token : ''
-            },
-            success: (res) => {
-                wx.hideLoading();
-                const data = JSON.parse(res.data);
-                if (data.code === 0) {
-                    this.setData({ avatar: API_BASE + data.data.avatar });
-                    wx.showToast({ title: '上传成功', icon: 'success' });
-                } else {
-                    wx.showToast({ title: data.msg || '上传失败', icon: 'none' });
-                }
-            },
-            fail: () => {
-                wx.hideLoading();
-                wx.showToast({ title: '上传失败', icon: 'none' });
-            }
-        });
+        try {
+            const res = await api.uploadAvatar(filePath);
+            wx.hideLoading();
+            // 后端返回完整头像 URL
+            this.setData({ avatar: api.getFileUrl(res.data.avatar) });
+            wx.showToast({ title: '上传成功', icon: 'success' });
+        } catch (err) {
+            wx.hideLoading();
+            wx.showToast({ title: err.msg || '上传失败', icon: 'none' });
+        }
     },
 
     // 保存用户资料
@@ -115,8 +100,8 @@ Page({
         wx.showLoading({ title: '保存中...' });
 
         try {
-            // 处理头像路径
-            const avatarPath = avatar.replace(API_BASE, '');
+            // 完整 URL 转回 API 站点相对路径后再保存（第三方头像原样保留）
+            const avatarPath = api.toApiPath(avatar);
             
             // 调用API保存资料
             await api.request({

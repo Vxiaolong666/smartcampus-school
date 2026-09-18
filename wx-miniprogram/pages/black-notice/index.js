@@ -1,7 +1,5 @@
 const api = require('../../utils/api.js');
 
-const API_BASE = 'https://mc.xzwmc.com/csgocs';
-
 Page({
     // 页面数据
     data: {
@@ -31,7 +29,7 @@ Page({
             // 处理通知列表数据
             const list = res.data.list.map(item => ({
                 ...item,
-                cover: item.cover ? API_BASE + item.cover : ''
+                cover: api.getFileUrl(item.cover)
             }));
             
             // 追加新数据到列表

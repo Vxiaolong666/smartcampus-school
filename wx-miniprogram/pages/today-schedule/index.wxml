@@ -304,4 +304,44 @@
       </view>
     </view>
   </view>
+
+  <!-- 课程详情自定义弹窗 -->
+  <view class="detail-mask" wx:if="{{showDetail}}" bindtap="closeDetail">
+    <view class="detail-modal" catchtap="noop">
+      <view class="detail-modal-header" style="background: linear-gradient(160deg, {{detailCourse.color.bg}} 0%, #ffffff 100%);">
+        <view class="detail-title-wrap">
+          <view class="detail-title" style="color: {{detailCourse.color.text}};">{{detailCourse.courseName}}</view>
+          <view class="detail-sub">
+            <text class="detail-sub-chip" style="background-color: {{detailCourse.color.text}};">{{detailCourse.weekDayName}} · 第{{detailCourse.slots[0]}}节</text>
+          </view>
+        </view>
+        <view class="detail-close" catchtap="closeDetail">✕</view>
+      </view>
+
+      <view class="detail-modal-body">
+        <view class="detail-row" wx:if="{{detailCourse.timeDisplay}}">
+          <view class="detail-row-icon" style="background-color: {{detailCourse.color.bg}};"><image class="detail-row-icon-img" src="{{detailIcons.time}}" mode="aspectFit" /></view>
+          <text class="detail-row-label">上课时段</text>
+          <text class="detail-row-value">{{detailCourse.timeDisplay}}</text>
+        </view>
+        <view class="detail-row">
+          <view class="detail-row-icon" style="background-color: {{detailCourse.color.bg}};"><image class="detail-row-icon-img" src="{{detailIcons.location}}" mode="aspectFit" /></view>
+          <text class="detail-row-label">上课地点</text>
+          <text class="detail-row-value">{{detailCourse.location || '待定'}}</text>
+        </view>
+        <view class="detail-row">
+          <view class="detail-row-icon" style="background-color: {{detailCourse.color.bg}};"><image class="detail-row-icon-img" src="{{detailIcons.user}}" mode="aspectFit" /></view>
+          <text class="detail-row-label">授课教师</text>
+          <text class="detail-row-value">{{detailCourse.teacher || '待定'}}</text>
+        </view>
+        <view class="detail-row">
+          <view class="detail-row-icon" style="background-color: {{detailCourse.color.bg}};"><image class="detail-row-icon-img" src="{{detailIcons.calendar}}" mode="aspectFit" /></view>
+          <text class="detail-row-label">上课周次</text>
+          <text class="detail-row-value">{{detailCourse.weeks || '-'}}</text>
+        </view>
+
+        <button class="detail-btn" catchtap="closeDetail" style="background: linear-gradient(90deg, {{detailCourse.color.text}}, {{detailBtnBgLight}}); box-shadow: 0 10rpx 24rpx {{detailBtnShadow}};">我知道了</button>
+      </view>
+    </view>
+  </view>
 </view>

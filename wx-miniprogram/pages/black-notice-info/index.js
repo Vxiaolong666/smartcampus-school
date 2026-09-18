@@ -1,5 +1,4 @@
 const api = require('../../utils/api.js');
-const API_BASE = 'https://mc.xzwmc.com/csgocs';
 
 Page({
     // 页面数据
@@ -14,12 +13,12 @@ Page({
             // 获取通知详情
             const res = await api.getNoticeDetail(options.id);
             
-            // 处理数据，拼接图片URL
+            // 处理数据，图片输出完整 URL（由 getFileUrl 自动拼接站点地址）
             this.setData({
                 notice: {
                     ...res.data,
-                    cover: res.data.cover ? API_BASE + res.data.cover : '',
-                    image: res.data.image ? API_BASE + res.data.image : ''
+                    cover: api.getFileUrl(res.data.cover),
+                    image: api.getFileUrl(res.data.image)
                 },
                 loading: false
             });

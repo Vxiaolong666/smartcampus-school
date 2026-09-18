@@ -76,8 +76,6 @@
 <script>
 import api from '../../utils/api.js';
 
-const API_BASE = 'http://127.0.0.12';
-
 export default {
 	data() {
 		return {
@@ -106,11 +104,7 @@ export default {
 				const userInfo = res.data;
 				this.userInfo = userInfo;
 				this.nickname = userInfo.nickname || userInfo.username;
-				this.avatar = userInfo.avatar
-					? userInfo.avatar.startsWith('http')
-						? userInfo.avatar
-						: API_BASE + userInfo.avatar
-					: '';
+				this.avatar = api.getFileUrl(userInfo.avatar);
 				this.hasWxOpenid = !!userInfo.wx_openid;
 			} catch (err) {
 				uni.showToast({ title: err.msg || '加载失败', icon: 'none' });
@@ -150,30 +144,16 @@ export default {
 		async uploadAvatar(filePath) {
 			uni.showLoading({ title: '上传中...' });
 
-			const token = api.getToken();
-
-			uni.uploadFile({
-				url: API_BASE + '/api.php?act=upload_avatar',
-				filePath: filePath,
-				name: 'avatar',
-				header: {
-					Authorization: token ? 'Bearer ' + token : ''
-				},
-				success: res => {
-					uni.hideLoading();
-					const data = JSON.parse(res.data);
-					if (data.code === 0) {
-						this.avatar = API_BASE + data.data.avatar;
-						uni.showToast({ title: '上传成功', icon: 'success' });
-					} else {
-						uni.showToast({ title: data.msg || '上传失败', icon: 'none' });
-					}
-				},
-				fail: () => {
-					uni.hideLoading();
-					uni.showToast({ title: '上传失败', icon: 'none' });
-				}
-			});
+			try {
+				const res = await api.uploadAvatar(filePath);
+				uni.hideLoading();
+				// 后端返回完整头像 URL
+				this.avatar = api.getFileUrl(res.data.avatar);
+				uni.showToast({ title: '上传成功', icon: 'success' });
+			} catch (err) {
+				uni.hideLoading();
+				uni.showToast({ title: err.msg || '上传失败', icon: 'none' });
+			}
 		},
 
 		async onSave() {
@@ -187,7 +167,8 @@ export default {
 			uni.showLoading({ title: '保存中...' });
 
 			try {
-				const avatarPath = avatar.replace(API_BASE, '');
+				// 完整 URL 转回 API 站点相对路径后再保存（第三方头像原样保留）
+				const avatarPath = api.toApiPath(avatar);
 
 				await api.request({
 					act: 'update_profile',

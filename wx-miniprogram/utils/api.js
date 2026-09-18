@@ -293,6 +293,70 @@ const getScheduleTimes = (modeId = '') => {
   });
 };
 
+/**
+ * 获取首页轮播图（后台「轮播图配置」维护，免登录）
+ * @returns {Promise} data: [{id,title,image,image_url,url}]
+ */
+const getBanners = () => {
+  return request({
+    act: 'get_banners',
+    method: 'GET'
+  });
+};
+
+// 文件基础地址：由 API 地址自动推导（api.php 所在目录），更换部署域名时只需改 API_BASE_URL
+const API_FILE_BASE = API_BASE_URL.replace(/\/api\.php(\?.*)?$/i, '');
+
+/**
+ * 相对路径转完整文件 URL（页面展示用）
+ * 空值返回空串；已是 http(s) 完整地址的原样返回；否则拼接 API 站点基础地址
+ */
+const getFileUrl = (path) => {
+  if (!path) return '';
+  if (/^https?:\/\//i.test(path)) return path;
+  return API_FILE_BASE + path;
+};
+
+/**
+ * 完整文件 URL 转回 API 站点相对路径（把地址存回后端时用）
+ * 非 API 站点的完整地址（如第三方头像）原样返回
+ */
+const toApiPath = (url) => {
+  if (!url) return '';
+  if (/^https?:\/\//i.test(url) && url.indexOf(API_FILE_BASE) === 0) {
+    return url.slice(API_FILE_BASE.length) || '';
+  }
+  return url;
+};
+
+/**
+ * 上传头像（POST multipart 到 upload_avatar 接口）
+ * @param {string} filePath 本地图片临时路径
+ * @returns {Promise} resolve(res)，res.data.avatar 为完整头像 URL
+ */
+const uploadAvatar = (filePath) => {
+  return new Promise((resolve, reject) => {
+    const token = wx.getStorageSync('api_token');
+    wx.uploadFile({
+      url: API_BASE_URL + '?act=upload_avatar',
+      filePath: filePath,
+      name: 'avatar',
+      header: {
+        Authorization: token ? 'Bearer ' + token : ''
+      },
+      success: (res) => {
+        try {
+          const data = JSON.parse(res.data);
+          if (data.code === 0) resolve(data); else reject(data);
+        } catch (e) {
+          reject({ code: -1, msg: '响应解析失败' });
+        }
+      },
+      fail: () => reject({ code: -1, msg: '上传失败' })
+    });
+  });
+};
+
 /* ==================== 宿舍相关接口 ==================== */
 
 /**
@@ -671,6 +735,10 @@ module.exports = {
   getSemesterList,
   getScheduleMode,
   getScheduleTimes,
+  getBanners,
+  getFileUrl,
+  toApiPath,
+  uploadAvatar,
   getDormAreas,
   getDormBuildings,
   getDormRooms,

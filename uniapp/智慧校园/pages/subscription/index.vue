@@ -210,7 +210,7 @@ export default {
 			// #endif
 
 			// #ifndef MP-WEIXIN
-			uni.showToast({ title: '当前平台暂不支持订阅消息', icon: 'none' });
+			uni.showToast({ title: '当前平台暂不支持订阅消息，请在微信小程序端完成订阅', icon: 'none' });
 			// #endif
 		},
 

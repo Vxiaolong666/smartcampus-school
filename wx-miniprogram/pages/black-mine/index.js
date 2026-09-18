@@ -4,7 +4,6 @@
  */
 const api = require('../../utils/api.js');
 const __tab__ = 1;  // 当前TabBar索引
-const API_BASE = 'https://mc.xzwmc.com/csgocs';
 
 Page({
     data: {
@@ -72,17 +71,11 @@ Page({
         api.getUserInfo()
             .then(res => {
                 const userInfo = res.data;
-                let userAvatar = '';
-                
-                // 处理头像URL
-                if (userInfo.avatar) {
-                    userAvatar = userInfo.avatar.startsWith('http') ? userInfo.avatar : API_BASE + userInfo.avatar;
-                }
-                
-                // 更新数据
+
+                // 更新数据（头像由 getFileUrl 自动拼接站点地址）
                 this.setData({
                     apiUserInfo: userInfo,
-                    userAvatar: userAvatar
+                    userAvatar: api.getFileUrl(userInfo.avatar)
                 });
                 
                 // 缓存用户信息

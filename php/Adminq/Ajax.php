@@ -1350,6 +1350,95 @@ switch($act){
         }
     break;
 
+    // ===== 轮播图配置：小程序/uniapp 首页轮播图管理 =====
+    case 'upload_banner_image':
+        if(!$isLogin)exit('{"code":-1,"msg":"未登录"}');
+        if($adminData['adminRank']!=1){exit('{"code":-1,"msg":"您的账号没有权限使用此功能！"}');}
+
+        if (!isset($_FILES['file']) || $_FILES['file']['error'] != 0) {
+            exit('{"code":-1,"msg":"请选择要上传的图片"}');
+        }
+
+        $file = $_FILES['file'];
+
+        $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (!in_array($file['type'], $allowedTypes)) {
+            exit('{"code":-1,"msg":"只允许上传图片文件"}');
+        }
+
+        if ($file['size'] > 5 * 1024 * 1024) {
+            exit('{"code":-1,"msg":"图片大小不能超过5MB"}');
+        }
+
+        $uploadDir = '../uploads/banners/';
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0755, true);
+        }
+
+        $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+        $filename = date('YmdHis') . '_' . uniqid() . '.' . $ext;
+        $filepath = $uploadDir . $filename;
+
+        if (move_uploaded_file($file['tmp_name'], $filepath)) {
+            $url = '/uploads/banners/' . $filename;
+            $displayUrl = $siteBasePath . $url;
+            exit('{"code":0,"msg":"上传成功","data":{"url":"' . $url . '","displayUrl":"' . $displayUrl . '"}}');
+        } else {
+            exit('{"code":-1,"msg":"上传失败"}');
+        }
+    break;
+
+    case 'banner_save':
+        if(!$isLogin)exit('{"code":-1,"msg":"未登录"}');
+        if($adminData['adminRank']!=1){exit('{"code":-1,"msg":"您的账号没有权限使用此功能！"}');}
+        {
+            $id    = intval(isset($_POST['id']) ? $_POST['id'] : 0);
+            $title = addslashes(trim(isset($_POST['title']) ? $_POST['title'] : ''));
+            $image = addslashes(trim(isset($_POST['image']) ? $_POST['image'] : ''));
+            $url   = trim(isset($_POST['url']) ? $_POST['url'] : '');
+            if ($url !== '' && !preg_match('#^(https?://|/)#i', $url)) {
+                exit('{"code":-1,"msg":"跳转链接需以 / 或 http(s):// 开头"}');
+            }
+            $url   = addslashes($url);
+            $sort  = intval(isset($_POST['sort']) ? $_POST['sort'] : 0);
+            $status = intval(isset($_POST['status']) ? $_POST['status'] : 1) ? 1 : 0;
+
+            if ($image === '') {
+                exit('{"code":-1,"msg":"请上传轮播图图片"}');
+            }
+
+            if ($id > 0) {
+                $sql = "update nteam_banners set `title`='{$title}',`image`='{$image}',`url`='{$url}',`sort`={$sort},`status`={$status} where `id`={$id}";
+                $ok = $DB->exec($sql) !== false;
+                $logType = '修改了轮播图(ID:' . $id . ')';
+            } else {
+                $sql = "insert into nteam_banners (`title`,`image`,`url`,`sort`,`status`) values ('{$title}','{$image}','{$url}',{$sort},{$status})";
+                $ok = $DB->exec($sql) !== false;
+                $logType = '新增了轮播图';
+            }
+
+            if ($ok) {
+                $DB->query("insert into `nteam_log` (`adminUser`,`type`,`data`,`ip`,`city`) values ('" . $_SESSION['adminUser'] . "','{$logType}', NOW(), '".$ip."', '')");
+                exit('{"code":0,"msg":"保存成功！"}');
+            }
+            exit('{"code":-1,"msg":"保存失败"}');
+        }
+    break;
+
+    case 'banner_del':
+        if(!$isLogin)exit('{"code":-1,"msg":"未登录"}');
+        if($adminData['adminRank']!=1){exit('{"code":-1,"msg":"您的账号没有权限使用此功能！"}');}
+        {
+            $id = intval(isset($_POST['id']) ? $_POST['id'] : 0);
+            if ($id <= 0) exit('{"code":-1,"msg":"参数错误"}');
+            if ($DB->exec("delete from nteam_banners where `id`={$id}") !== false) {
+                $DB->query("insert into `nteam_log` (`adminUser`,`type`,`data`,`ip`,`city`) values ('" . $_SESSION['adminUser'] . "','删除了轮播图(ID:{$id})', NOW(), '".$ip."', '')");
+                exit('{"code":0,"msg":"删除成功！"}');
+            }
+            exit('{"code":-1,"msg":"删除失败"}');
+        }
+    break;
+
     default:
         exit('{"code":-4,"msg":"No Act"}');
     break;

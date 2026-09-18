@@ -178,141 +178,187 @@ const aiAnalyzeSchedule = (payload) => {
 
 /* ==================== AI 对话 ==================== */
 
+// NDJSON 行解析器：把字符串流按行拆分（内部缓冲跨块残行），逐行回调
+const createNdjsonParser = (handleLine) => {
+  let buf = '';
+  return {
+    push(text) {
+      buf += text || '';
+      const parts = buf.split('\n');
+      buf = parts.pop() || '';
+      parts.forEach((ln) => {
+        const t = ln.trim();
+        if (t) handleLine(t);
+      });
+    },
+    end() {
+      const t = buf.trim();
+      if (t) handleLine(t);
+      buf = '';
+    }
+  };
+};
+
+// UTF-8 字节流解码器：处理跨块截断的多字节字符（微信小程序 onChunkReceived 场景）
+const createUtf8Decoder = () => {
+  let carry = [];
+  return (chunk, final) => {
+    const u8 = chunk instanceof Uint8Array ? chunk : new Uint8Array(chunk || 0);
+    if (typeof TextDecoder !== 'undefined') {
+      try { return new TextDecoder('utf-8').decode(u8, { stream: !final }); } catch (e) { /* 回退手动解码 */ }
+    }
+    const bytes = carry.concat(Array.prototype.slice.call(u8));
+    let out = '';
+    let i = 0;
+    while (i < bytes.length) {
+      const b = bytes[i];
+      let len = 0;
+      if (b < 0x80) len = 1;
+      else if ((b & 0xE0) === 0xC0) len = 2;
+      else if ((b & 0xF0) === 0xE0) len = 3;
+      else if ((b & 0xF8) === 0xF0) len = 4;
+      else { out += '\uFFFD'; i += 1; continue; }
+      if (i + len > bytes.length) {
+        if (final) { out += '\uFFFD'; i = bytes.length; }
+        break; // 等待后续分块
+      }
+      let cp = b & (len === 1 ? 0x7F : len === 2 ? 0x1F : len === 3 ? 0x0F : 0x07);
+      let ok = true;
+      for (let j = 1; j < len; j++) {
+        if ((bytes[i + j] & 0xC0) !== 0x80) { ok = false; break; }
+        cp = (cp << 6) | (bytes[i + j] & 0x3F);
+      }
+      if (!ok) { out += '\uFFFD'; i += 1; continue; }
+      out += String.fromCodePoint(cp);
+      i += len;
+    }
+    carry = bytes.slice(i);
+    return out;
+  };
+};
+
 /**
- * AI 对话（统一非流式：后端 stream=0 一次性返回完整内容）
- * @param {Object} opts
- * @param {Array}    opts.messages OpenAI 格式消息数组
- * @param {Function} opts.onChunk  收到完整文本时回调(content:string)
- * @param {Function} [opts.onDone] 正常结束时回调
+ * AI 对话（真流式，与网页版交互一致）
+ * - POST api.php?act=ai_chat，NDJSON 行协议：每行 {content:"增量"} / {error:"..."} / {done:true}
+ * - H5：fetch + ReadableStream 逐行读取，支持中断（abort 保留已生成内容）
+ * - 微信小程序：enableChunked 分块接收逐行解析；低版本基础库自动回退整包解析
+ * @param {Object}   opts
+ * @param {Array}    opts.messages OpenAI 格式消息数组（system 角色会被后端丢弃）
+ * @param {string}   [opts.model] 模型名（来自 ai_models 接口）
+ * @param {Function} opts.onChunk 收到增量文本时回调(delta:string)
+ * @param {Function} [opts.onDone] 结束时回调（成功/失败/中断都会触发一次）
  * @param {Function} [opts.onError] 出错时回调(msg:string)
- * @returns {Promise<void>}
+ * @returns {Promise} promise.abort() 可中断当前流
  */
 const aiChatStream = (opts) => {
-  const { messages, onChunk, onDone, onError, onDebug } = opts || {};
-  const dbg = (t) => { try { onDebug && onDebug(t); } catch (e) {} };
-  const url = API_BASE_URL + '?act=ai_chat&stream=0';
+  const { messages, model, onChunk, onDone, onError } = opts || {};
   const token = uni.getStorageSync('api_token');
-  const body = 'messages=' + encodeURIComponent(JSON.stringify(messages || []));
-  const callDone = () => { try { onDone && onDone(); } catch (e) {} };
+  const url = API_BASE_URL + '?act=ai_chat';
+  const body = 'messages=' + encodeURIComponent(JSON.stringify(messages || [])) +
+    (model ? '&model=' + encodeURIComponent(model) : '');
 
-  // 从响应中取出 content / error，兼容多种返回结构：
-  // - 单层对象：{content, done} / {error}
-  // - 信封包裹：{code, data:{content, done}}
-  // - 流式 NDJSON 多行：每行 {content} 或末尾 {done:true}/{error}
-  // - SSE：以 "data:" 开头的行
-  const extract = (raw) => {
-    let content = '';
-    let err = '';
-    const collect = (obj) => {
-      if (!obj || typeof obj !== 'object') return;
-      if (typeof obj.content === 'string') content += obj.content;
-      if (obj.error) err = obj.error;
-      if (obj.data && typeof obj.data === 'object') collect(obj.data);
-      else if (typeof obj.data === 'string') content += obj.data;
+  let aborted = false;
+  let done = false;
+  let abortFn = null;
+
+  const promise = new Promise((resolve) => {
+    const finish = () => {
+      if (done) return;
+      done = true;
+      try { onDone && onDone(); } catch (e) {}
+      resolve();
     };
-    if (raw && typeof raw === 'object') {
-      collect(raw);
-    } else if (typeof raw === 'string') {
-      const text = raw.trim();
-      if (text) {
-        try {
-          const o = JSON.parse(text);
-          if (o && typeof o === 'object') collect(o);
-        } catch (e) { /* 不是单行 JSON，继续按行解析 */ }
-        const lines = raw.split('\n');
-        for (const ln of lines) {
-          let t = ln.trim();
-          if (!t) continue;
-          if (t.startsWith('data:')) t = t.slice(5).trim();
-          if (t === '[DONE]' || t === 'done') continue;
-          try {
-            const o = JSON.parse(t);
-            if (o && typeof o === 'object') collect(o);
-          } catch (e) { /* 忽略非 JSON 行 */ }
-        }
-        if (!content && !err) {
-          const m = raw.match(/"content"\s*:\s*"((?:\\.|[^"\\])*)"/);
-          if (m) {
-            content = m[1]
-              .replace(/\\n/g, '\n')
-              .replace(/\\t/g, '\t')
-              .replace(/\\r/g, '\r')
-              .replace(/\\"/g, '"')
-              .replace(/\\\\/g, '\\');
-          }
-        }
+    const fail = (msg) => {
+      if (!aborted && !done) {
+        try { onError && onError(msg); } catch (e) {}
       }
-    }
-    return { content, err };
-  };
-
-  // H5 端 uni.request 对 text/plain chunked 响应会出现 success/fail 均不回调的问题，
-  // 因此在浏览器环境使用原生 fetch 兜底。
-  if (typeof window !== 'undefined' && window.fetch) {
-    dbg('start fetch ' + url + ' token=' + (token ? 'yes' : 'no'));
-    return new Promise((resolve) => {
-      fetch(url, {
-        method: 'POST',
-        cache: 'no-cache',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Authorization': token ? 'Bearer ' + token : ''
-        },
-        body
-      })
-        .then(response => response.text().then(text => ({ status: response.status, text })))
-        .then(({ status, text }) => {
-          dbg('fetch status=' + status + ' textLen=' + text.length + ' preview=' + text.slice(0, 160));
-          const { content, err } = extract(text);
-          dbg('extract contentLen=' + content.length + ' err=' + (err || ''));
-          if (err) onError && onError(err);
-          else if (content) { onChunk && onChunk(content); dbg('onChunk called len=' + content.length); }
-          else dbg('extract produced empty content and no error');
-        })
-        .catch(e => {
-          dbg('fetch error: ' + (e && e.message));
-          try { onError && onError('网络请求失败'); } catch (e) {}
-        })
-        .finally(() => {
-          callDone();
-          resolve();
-        });
+      finish();
+    };
+    const parser = createNdjsonParser((line) => {
+      if (done) return;
+      let obj = null;
+      try { obj = JSON.parse(line); } catch (e) { return; }
+      if (!obj || typeof obj !== 'object') return;
+      if (obj.error) { fail(obj.error); return; }
+      if (obj.done) { finish(); return; }
+      if (typeof obj.content === 'string' && obj.content) {
+        try { onChunk && onChunk(obj.content); } catch (e) {}
+      }
     });
-  }
 
-  return new Promise((resolve) => {
-    dbg('start uni.request ' + url + ' token=' + (token ? 'yes' : 'no'));
-    uni.request({
+    // #ifdef H5
+    const controller = new AbortController();
+    abortFn = () => { aborted = true; try { controller.abort(); } catch (e) {} };
+    fetch(url, {
+      method: 'POST',
+      cache: 'no-cache',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': token ? 'Bearer ' + token : ''
+      },
+      body,
+      signal: controller.signal
+    }).then((res) => {
+      if (!res.ok) { fail('请求失败（HTTP ' + res.status + '）'); return; }
+      if (!res.body || typeof res.body.getReader !== 'function') {
+        // 浏览器不支持流式读取时整体解析
+        return res.text().then((t) => { parser.push(t); parser.end(); finish(); });
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      const pump = () => reader.read().then((r) => {
+        if (r.done) { parser.push(decoder.decode()); parser.end(); finish(); return; }
+        parser.push(decoder.decode(r.value, { stream: true }));
+        return pump();
+      });
+      return pump();
+    }).catch(() => {
+      if (aborted) finish(); else fail('网络请求失败');
+    });
+    // #endif
+
+    // #ifndef H5
+    let gotChunks = false;
+    const task = uni.request({
       url,
       method: 'POST',
       data: body,
-      timeout: 120000,
+      timeout: 300000,
       header: {
         'Content-Type': 'application/x-www-form-urlencoded',
         'Authorization': token ? 'Bearer ' + token : ''
       },
+      // 微信小程序支持分块接收
+      enableChunked: true,
       success: (res) => {
-        dbg('success statusCode=' + res.statusCode + ' dataType=' + typeof res.data + ' preview=' + String(res.data).slice(0, 160));
-        try {
-          const { content, err } = extract(res.data);
-          dbg('extract contentLen=' + content.length + ' err=' + (err || ''));
-          if (err) onError && onError(err);
-          else if (content) { onChunk && onChunk(content); dbg('onChunk called len=' + content.length); }
-          else dbg('extract produced empty content and no error');
-        } catch (e) {
-          dbg('success handler threw: ' + (e && e.message));
-        } finally {
-          callDone();
-          resolve();
+        // 分块接收不可用时回退整包解析
+        if (!gotChunks && res && res.data) {
+          parser.push(typeof res.data === 'string' ? res.data : JSON.stringify(res.data));
         }
+        parser.end();
+        finish();
       },
-      fail: (err) => {
-        dbg('fail ' + JSON.stringify(err));
-        try { onError && onError('网络请求失败'); } catch (e) {}
-        resolve();
+      fail: () => {
+        if (aborted) finish(); else fail('网络请求失败');
       }
     });
+    abortFn = () => { aborted = true; try { task && task.abort(); } catch (e) {} };
+    if (task && typeof task.onChunkReceived === 'function') {
+      const byteDec = createUtf8Decoder();
+      task.onChunkReceived((res) => {
+        if (done) return;
+        gotChunks = true;
+        try { parser.push(byteDec(res.data || new ArrayBuffer(0), false)); } catch (e) {}
+      });
+    }
+    // #endif
   });
+
+  promise.abort = () => {
+    aborted = true;
+    if (abortFn) abortFn(); else finish();
+  };
+  return promise;
 };
 
 const querySchedule = (week, kbjcmsid) => {
@@ -359,6 +405,81 @@ const getScheduleTimes = (modeId) => {
     act: 'get_schedule_times',
     method: 'GET',
     data
+  });
+};
+
+/**
+ * 获取首页轮播图（后台「轮播图配置」维护，免登录）
+ * @returns {Promise} data: [{id,title,image,image_url,url}]
+ */
+const getBanners = () => {
+  return request({
+    act: 'get_banners',
+    method: 'GET'
+  });
+};
+
+/**
+ * 获取当前 AI 提供方支持的模型列表（供对话页下拉选择）
+ * @returns {Promise} data: {models:[], default:''}
+ */
+const getAiModels = () => {
+  return request({
+    act: 'ai_models',
+    method: 'GET'
+  });
+};
+
+// 文件基础地址：由 API 地址自动推导（api.php 所在目录），更换部署域名时只需改 API_BASE_URL
+const API_FILE_BASE = API_BASE_URL.replace(/\/api\.php(\?.*)?$/i, '');
+
+/**
+ * 相对路径转完整文件 URL（页面展示用）
+ * 空值返回空串；已是 http(s) 完整地址的原样返回；否则拼接 API 站点基础地址
+ */
+const getFileUrl = (path) => {
+  if (!path) return '';
+  if (/^https?:\/\//i.test(path)) return path;
+  return API_FILE_BASE + path;
+};
+
+/**
+ * 完整文件 URL 转回 API 站点相对路径（把地址存回后端时用）
+ * 非 API 站点的完整地址（如第三方头像）原样返回
+ */
+const toApiPath = (url) => {
+  if (!url) return '';
+  if (/^https?:\/\//i.test(url) && url.indexOf(API_FILE_BASE) === 0) {
+    return url.slice(API_FILE_BASE.length) || '';
+  }
+  return url;
+};
+
+/**
+ * 上传头像（POST multipart 到 upload_avatar 接口）
+ * @param {string} filePath 本地图片临时路径
+ * @returns {Promise} resolve(res)，res.data.avatar 为完整头像 URL
+ */
+const uploadAvatar = (filePath) => {
+  return new Promise((resolve, reject) => {
+    const token = uni.getStorageSync('api_token');
+    uni.uploadFile({
+      url: API_BASE_URL + '?act=upload_avatar',
+      filePath: filePath,
+      name: 'avatar',
+      header: {
+        Authorization: token ? 'Bearer ' + token : ''
+      },
+      success: (res) => {
+        try {
+          const data = JSON.parse(res.data);
+          if (data.code === 0) resolve(data); else reject(data);
+        } catch (e) {
+          reject({ code: -1, msg: '响应解析失败' });
+        }
+      },
+      fail: () => reject({ code: -1, msg: '上传失败' })
+    });
   });
 };
 
@@ -654,6 +775,11 @@ export default {
   getSemesterList,
   getScheduleMode,
   getScheduleTimes,
+  getBanners,
+  getAiModels,
+  getFileUrl,
+  toApiPath,
+  uploadAvatar,
   getDormAreas,
   getDormBuildings,
   getDormRooms,

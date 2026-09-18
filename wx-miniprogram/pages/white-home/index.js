@@ -6,7 +6,6 @@ const api = require('../../utils/api.js');
 const feature = require('../../utils/feature.js');
 const { sceneTypeNames } = require('../../utils/common.js');
 
-const API_BASE = 'https://mc.xzwmc.com/csgocs';
 const __tab__ = 0;  // 当前TabBar索引
 
 Page({
@@ -61,6 +60,7 @@ Page({
         this.checkLoginStatus();
         this.loadRandomPoem();
         this.loadFeatureSettings();
+        this.loadBanners();
         
         // 未登录则跳转到登录页（使用 redirectTo 避免页面栈累积）
         if (!api.isLoggedIn()) {
@@ -145,7 +145,7 @@ Page({
             const res = await api.getNotices(1, 3);
             const list = res.data.list.map(item => ({
                 ...item,
-                cover: item.cover ? API_BASE + item.cover : ''
+                cover: api.getFileUrl(item.cover)
             }));
             this.setData({ notices: list });
         } catch (err) {
@@ -227,10 +227,36 @@ Page({
         });
     },
 
+    //加载后台「轮播图配置」，失败或为空时保留内置默认轮播图
+    async loadBanners() {
+        try {
+            const res = await api.getBanners();
+            const list = (res.data || []).map(item => ({
+                id: item.id,
+                image: item.image_url || item.image,
+                url: item.url || ''
+            }));
+            if (list.length > 0) {
+                this.setData({ swiperList: list });
+            }
+        } catch (err) {
+            console.warn('加载轮播图配置失败，使用默认轮播图', err);
+        }
+    },
+
     //轮播图点击
     handleSwiperTap(e) {
         const url = e.currentTarget.dataset.url;
-        if (url) wx.navigateTo({ url });
+        if (!url) return;
+        // 站外链接（http开头）小程序无法直接打开，复制链接提示
+        if (/^https?:\/\//i.test(url)) {
+            wx.setClipboardData({
+                data: url,
+                success: () => wx.showToast({ title: '链接已复制，请在浏览器打开', icon: 'none' })
+            });
+            return;
+        }
+        wx.navigateTo({ url });
     },
 
     //跳转到今日课表页

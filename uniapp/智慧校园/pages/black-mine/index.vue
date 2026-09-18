@@ -193,8 +193,6 @@
  */
 import api from '../../utils/api.js';
 
-const API_BASE = 'http://127.0.0.12';
-
 export default {
 	data() {
 		return {
@@ -279,14 +277,9 @@ export default {
 			api.getUserInfo()
 				.then(res => {
 					const userInfo = res.data;
-					let userAvatar = '';
-
-					if (userInfo.avatar) {
-						userAvatar = userInfo.avatar.startsWith('http') ? userInfo.avatar : API_BASE + userInfo.avatar;
-					}
 
 					this.apiUserInfo = userInfo;
-					this.userAvatar = userAvatar;
+					this.userAvatar = api.getFileUrl(userInfo.avatar);
 
 					api.setUserInfoCache(userInfo);
 					this.checkWxBindStatus();

@@ -44,8 +44,6 @@
 <script>
 import api from '../../utils/api.js';
 
-const API_BASE = 'http://127.0.0.12';
-
 export default {
 	data() {
 		return {
@@ -60,8 +58,8 @@ export default {
 
 			this.notice = {
 				...res.data,
-				cover: res.data.cover ? API_BASE + res.data.cover : '',
-				image: res.data.image ? API_BASE + res.data.image : ''
+				cover: api.getFileUrl(res.data.cover),
+				image: api.getFileUrl(res.data.image)
 			};
 			this.loading = false;
 		} catch (err) {

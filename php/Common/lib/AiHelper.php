@@ -101,7 +101,7 @@ class AiHelper
                     sleep($retryDelay);
                     continue;
                 }
-                return ['success' => false, 'msg' => 'AI 返回内容为空（可能是额度或网络波动），请稍后重试'];
+                return ['success' => false, 'msg' => 'AI 连接超时（可能是网络波动），请稍后重试'];
             }
 
             return ['success' => true, 'content' => $content];
@@ -126,7 +126,7 @@ class AiHelper
 
         $useModel = $model ? $model : $cfg['model'];
         if ($cfg['token'] === '' || $cfg['base_url'] === '' || $useModel === '') {
-            return ['success' => false, 'msg' => 'AI 未配置：请在后台「AI 配置」中填写 Token、Base URL 与模型'];
+            return ['success' => false, 'msg' => 'AI 接口未配置：请联系管理员处理'];
         }
 
         $url = rtrim($cfg['base_url'], '/') . '/chat/completions';
@@ -212,7 +212,7 @@ class AiHelper
     {
         $cfg = self::getConfig();
         if ($cfg['token'] === '' || $cfg['base_url'] === '') {
-            return ['success' => false, 'msg' => 'AI 未配置：请在后台「AI 配置」中填写 Token 与 Base URL'];
+            return ['success' => false, 'msg' => 'AI 接口未配置：请联系管理员处理'];
         }
         $url = rtrim($cfg['base_url'], '/') . '/models';
         $ch = curl_init($url);
