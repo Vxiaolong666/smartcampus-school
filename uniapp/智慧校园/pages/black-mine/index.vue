@@ -115,20 +115,20 @@
 							</view>
 
 							<view class="item-item" @click="handleWxBind">
-								<image class="item-logo" src="/static/assets/icon_cvoieudado/a-199_zhekou.svg" mode="widthFix"></image>
+								<image class="item-logo" src="/static/assets/icon_cvoieudado/a-199_zhangdan.svg" mode="widthFix"></image>
 								<view class="item-text">微信绑定</view>
 								<text class="status-text" :class="wxBound ? 'status-bound' : 'status-unbound'">{{ wxBound ? '已绑定' : '未绑定' }}</text>
 								<image class="item-right" src="/static/assets/wxmp-right.svg" mode="widthFix"></image>
 							</view>
 
 							<view class="item-item" @click="handleOauthBind">
-								<image class="item-logo" src="/static/assets/icon_cvoieudado/a-199_gongkai.svg" mode="widthFix"></image>
+								<image class="item-logo" src="/static/assets/icon_cvoieudado/a-199_xiaopiao.svg" mode="widthFix"></image>
 								<view class="item-text">第三方账号绑定</view>
 								<image class="item-right" src="/static/assets/wxmp-right.svg" mode="widthFix"></image>
 							</view>
 
 							<view class="item-item" @click="handleCancelAccount">
-								<image class="item-logo" src="/static/assets/icon_cvoieudado/a-199_zhuye.svg" mode="widthFix"></image>
+								<image class="item-logo" src="/static/assets/icon_cvoieudado/a-199_gongkai.svg" mode="widthFix"></image>
 								<view class="item-text">账号注销</view>
 								<image class="item-right" src="/static/assets/wxmp-right.svg" mode="widthFix"></image>
 							</view>
