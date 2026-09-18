@@ -85,8 +85,14 @@ if (!is_array($bindings)) {
                             <div class="col-md-3 col-sm-4 col-6 mb-2">
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" name="channels[]" value="<?php echo $type; ?>" id="ch_<?php echo $type; ?>" <?=(in_array($type, $enabledChannels, true))?"checked":""?>>
+                                    <?php $chSvg = OAuthHelper::getChannelIcon($type); ?>
                                     <label class="form-check-label" for="ch_<?php echo $type; ?>">
-                                        <i class="<?php echo $meta['icon']; ?>" style="color:<?php echo $meta['color']; ?>;"></i> <?php echo $meta['name']; ?>
+                                        <?php if ($chSvg): ?>
+                                            <img src="<?php echo htmlspecialchars($chSvg); ?>" class="oauth-ico me-1" alt="">
+                                        <?php else: ?>
+                                            <i class="<?php echo $meta['icon']; ?>" style="color:<?php echo $meta['color']; ?>;"></i>
+                                        <?php endif; ?>
+                                        <?php echo $meta['name']; ?>
                                     </label>
                                 </div>
                             </div>
@@ -135,12 +141,17 @@ if (!is_array($bindings)) {
                         <tbody>
                             <?php foreach ($bindings as $b):
                                 $meta = OAuthHelper::CHANNELS[$b['oauth_type']] ?? ['name' => $b['oauth_type'], 'icon' => 'fa fa-link', 'color' => '#6c757d'];
+                                $bSvg = OAuthHelper::getChannelIcon($b['oauth_type']);
                                 $userExists = !empty($b['username']);
                             ?>
                             <tr>
                                 <td class="text-center"><?php echo intval($b['id']); ?></td>
                                 <td>
-                                    <i class="<?php echo $meta['icon']; ?> me-1" style="color:<?php echo $meta['color']; ?>;"></i>
+                                    <?php if ($bSvg): ?>
+                                        <img src="<?php echo htmlspecialchars($bSvg); ?>" class="oauth-ico me-1" alt="">
+                                    <?php else: ?>
+                                        <i class="<?php echo $meta['icon']; ?> me-1" style="color:<?php echo $meta['color']; ?>;"></i>
+                                    <?php endif; ?>
                                     <?php echo htmlspecialchars($meta['name']); ?>
                                 </td>
                                 <td>
@@ -291,5 +302,14 @@ function clearInvalidOauth(){
     });
 }
 </script>
+<style>
+    /* 渠道品牌 SVG 图标（php/images/logo） */
+    .oauth-ico {
+        width: 18px;
+        height: 18px;
+        object-fit: contain;
+        vertical-align: -3px;
+    }
+</style>
 </body>
 </html>

@@ -67,11 +67,11 @@
 						v-for="(c, i) in oauthChannels"
 						:key="i"
 						class="oauth-btn"
-						:style="{ backgroundColor: c.bgColor, borderColor: c.borderColor }"
 						@click="onOauthLogin(c)"
 					>
-						<view class="oauth-badge" :style="{ backgroundColor: c.color }">{{ c.short }}</view>
-						<text class="oauth-name" :style="{ color: c.color }">{{ c.name }}</text>
+						<image v-if="c.icon" class="oauth-logo" :src="c.icon" mode="aspectFit"></image>
+						<view v-else class="oauth-badge" :style="{ backgroundColor: c.color }">{{ c.short }}</view>
+						<text class="oauth-name">{{ c.name }}</text>
 					</view>
 				</view>
 
@@ -103,7 +103,25 @@
  */
 import api from '../../utils/api.js';
 
-// 渠道短标识（无图标字体环境下用文字徽标区分渠道）
+// 渠道品牌图标（static/logo 下已提供 SVG 的渠道优先使用图标，其余回退为文字徽标）
+const CHANNEL_ICONS = {
+	qq: '/static/logo/qq.svg',
+	wx: '/static/logo/weixin.svg',
+	alipay: '/static/logo/zifubao.svg',
+	douyin: '/static/logo/douyin.svg',
+	huawei: '/static/logo/huawei.svg',
+	xiaomi: '/static/logo/xiaomi.svg',
+	google: '/static/logo/google.svg',
+	twitter: '/static/logo/twitter.svg',
+	feishu: '/static/logo/feishu.svg'
+};
+
+// 渠道配色覆盖（QQ 品牌以黑色为主，文字/文字徽标统一用黑色）
+const COLOR_OVERRIDES = {
+	qq: '#000000'
+};
+
+// 渠道短标识（无图标资源时用文字徽标区分渠道）
 const SHORT_NAMES = {
 	qq: 'QQ',
 	wx: '微信',
@@ -199,14 +217,13 @@ export default {
 					const channelMap = d.channels || {};
 					this.oauthChannels = Object.keys(channelMap).map(type => {
 						const meta = channelMap[type] || {};
-						const color = meta.color || '#6c757d';
+						const color = COLOR_OVERRIDES[type] || meta.color || '#6c757d';
 						const name = meta.name || type;
 						return {
 							type: type,
 							name: name,
 							color: color,
-							bgColor: color + '1a',
-							borderColor: color + '59',
+							icon: CHANNEL_ICONS[type] || '',
 							short: SHORT_NAMES[type] || String(name).substring(0, 1)
 						};
 					});
@@ -657,46 +674,61 @@ page {
 .oauth-area {
 	display: flex;
 	flex-wrap: wrap;
+	/* 渠道数为奇数（如仅一个）时，最后一行居中展示 */
+	justify-content: center;
 	padding: 0 30rpx;
-	margin-bottom: 30rpx;
+	margin-bottom: 24rpx;
 }
 
 .oauth-btn {
-	width: calc(50% - 10rpx);
-	height: 84rpx;
+	/* 每行 2 个：宽度 + 左右外边距 ≈ 50%（留 2rpx 余量避免子像素取整换行），多余渠道换行后居中 */
+	width: calc(50% - 22rpx);
+	height: 92rpx;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	border-radius: 16rpx;
-	border: 2rpx solid transparent;
+	/* 胶囊圆角，与网页版 rounded-pill 一致 */
+	border-radius: 46rpx;
+	background: #ffffff;
+	border: 2rpx solid #eef0f6;
 	box-sizing: border-box;
-	margin-bottom: 20rpx;
-}
-
-.oauth-btn:nth-child(odd) {
-	margin-right: 20rpx;
+	margin: 0 10rpx 20rpx;
+	box-shadow: 0 6rpx 18rpx rgba(72, 65, 111, 0.05);
 }
 
 .oauth-btn:active {
-	opacity: 0.85;
+	background: #f5fbfb;
+	border-color: #c8ecec;
+	box-shadow: none;
 }
 
+/* 无图标资源时的文字徽标 */
 .oauth-badge {
-	width: 40rpx;
-	height: 40rpx;
-	border-radius: 10rpx;
+	width: 48rpx;
+	height: 48rpx;
+	border-radius: 50%;
 	color: #fff;
-	font-size: 20rpx;
+	font-size: 22rpx;
 	font-weight: bold;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	margin-right: 12rpx;
+	margin-right: 14rpx;
+	flex-shrink: 0;
+}
+
+/* 渠道品牌图标（SVG） */
+.oauth-logo {
+	width: 48rpx;
+	height: 48rpx;
+	margin-right: 14rpx;
 	flex-shrink: 0;
 }
 
 .oauth-name {
-	font-size: 26rpx;
-	font-weight: bold;
+	font-size: 28rpx;
+	font-weight: 600;
+	letter-spacing: 1rpx;
+	color: #000000;
 }
 </style>

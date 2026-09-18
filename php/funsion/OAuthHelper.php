@@ -30,6 +30,22 @@ class OAuthHelper
     ];
 
     /**
+     * 渠道品牌图标文件（php/images/logo/<file>.svg）
+     * 未登记或文件缺失时，前端回退到 CHANNELS 中的图标字体
+     */
+    const CHANNEL_LOGOS = [
+        'qq'      => 'qq',
+        'wx'      => 'weixin',
+        'alipay'  => 'zifubao',
+        'douyin'  => 'douyin',
+        'huawei'  => 'huawei',
+        'xiaomi'  => 'xiaomi',
+        'google'  => 'google',
+        'twitter' => 'twitter',
+        'feishu'  => 'feishu',
+    ];
+
+    /**
      * 读取聚合登录配置（单行）
      */
     public static function getConfig($DB)
@@ -80,10 +96,34 @@ class OAuthHelper
         $list = [];
         foreach ($cfg['channels_arr'] as $type) {
             if (isset(self::CHANNELS[$type])) {
-                $list[$type] = self::CHANNELS[$type];
+                $meta = self::CHANNELS[$type];
+                // 附带品牌 SVG 图标地址（相对站点根，兼容子目录部署）
+                $meta['svg'] = self::getChannelIcon($type);
+                $list[$type] = $meta;
             }
         }
         return $list;
+    }
+
+    /**
+     * 渠道品牌 SVG 图标地址
+     *
+     * 图标统一存放于 php/images/logo/，文件不存在时返回空串，调用方回退到图标字体。
+     *
+     * @return string 形如 "/images/logo/qq.svg"（子目录部署时自动带前缀），或 ''
+     */
+    public static function getChannelIcon($type)
+    {
+        // 优先取映射表；未登记时按"渠道标识同名文件"查找（如 github.svg）
+        $name = isset(self::CHANNEL_LOGOS[$type]) ? self::CHANNEL_LOGOS[$type] : $type;
+        if (!preg_match('/^[a-z0-9_]+$/', $name)) {
+            return '';
+        }
+        if (!is_file(dirname(__DIR__) . '/images/logo/' . $name . '.svg')) {
+            return '';
+        }
+        global $siteBasePath;
+        return ($siteBasePath ?: '') . '/images/logo/' . $name . '.svg';
     }
 
     /**

@@ -1434,12 +1434,14 @@ wx.request({
     "msg": "success",
     "data": {
         "enabled": 1,
-        "channels": {"qq": {"name": "QQ", "icon": "fab fa-qq", "color": "#12b7f5"}},
+        "channels": {"qq": {"name": "QQ", "icon": "fab fa-qq", "color": "#12b7f5", "svg": "/images/logo/qq.svg"}},
         "binds": [
             {"type": "qq", "name": "QQ", "color": "#12b7f5", "nickname": "小明", "avatar": "", "create_time": "2026-09-18 10:00:00"}
         ]
     }
 }</code></pre>
+
+                        <p><code>channels</code> 中每个渠道包含 <code>name</code>（名称）、<code>icon</code>（图标字体 class，如 <code>fab fa-qq</code>）、<code>color</code>（品牌色）、<code>svg</code>（品牌 SVG 图标地址，位于 <code>php/images/logo/</code>，兼容子目录部署；该渠道暂无 SVG 时为空串，前端回退用 <code>icon</code> 渲染）。</p>
 
                         <h5 class="text-primary mt-4">2. 获取授权地址（App / 小程序）</h5>
                         <p><strong>接口：</strong><code>/api.php?act=get_oauth_url</code>（POST，需 Token）</p>

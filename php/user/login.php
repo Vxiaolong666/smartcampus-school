@@ -60,23 +60,84 @@ if(isset($_SESSION['userId']))header('Location:./');
         .fs-sm {
             color: #ffffff !important;
         }
+        /* 第三方登录按钮：白底胶囊 + 细边框 + 轻阴影（与 App 端保持一致） */
+        #oauthButtons {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin: 0 -6px;
+        }
         .oauth-btn {
-            transition: background-color .18s ease, border-color .18s ease, color .18s ease, transform .18s ease, box-shadow .18s ease;
+            /* 每行 3 个：宽度 + 左右外边距 = 33.333%（留余量避免子像素取整换行） */
+            width: calc(33.333% - 13px);
+            height: 46px;
+            margin: 0 6px 12px;
+            padding: 0 6px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #eef0f6;
+            border-radius: 23px;
+            background-color: #fff;
+            box-shadow: 0 3px 9px rgba(72, 65, 111, .05);
+            color: #000;
+            font-family: inherit;
+            font-size: 13px;
             font-weight: 600;
-            border-width: 1px;
+            overflow: hidden;
+            cursor: pointer;
+            appearance: none;
+            -webkit-appearance: none;
+            transition: background-color .18s ease, border-color .18s ease, box-shadow .18s ease;
+        }
+        /* 渠道名过长时省略，保证每行 3 个不被撑破 */
+        .oauth-name {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
         .oauth-btn:hover {
-            background-color: var(--oc) !important;
-            border-color: var(--oc) !important;
-            color: #fff !important;
-            transform: translateY(-2px);
-            box-shadow: 0 .35rem .9rem rgba(0, 0, 0, .15);
+            background-color: #f5fbfb;
+            border-color: #c8ecec;
+            box-shadow: none;
         }
         .oauth-btn:active {
-            transform: translateY(0);
+            background-color: #eef8f8;
         }
-        .oauth-btn i {
-            font-size: 1.05rem;
+        .oauth-btn[disabled] {
+            opacity: .6;
+            cursor: not-allowed;
+        }
+        /* 渠道品牌 SVG 图标 */
+        .oauth-btn .oauth-ico {
+            width: 20px;
+            height: 20px;
+            object-fit: contain;
+            margin-right: 6px;
+            flex-shrink: 0;
+        }
+        /* 无 SVG 时的图标字体兜底 */
+        .oauth-btn .oauth-ico-font {
+            margin-right: 6px;
+            font-size: .95rem;
+            flex-shrink: 0;
+        }
+        /* 手机竖屏（< 576px）卡片较窄，回退为每行 2 个，避免渠道名被截断 */
+        @media (max-width: 575.98px) {
+            .oauth-btn {
+                width: calc(50% - 12px);
+                font-size: 14px;
+            }
+            .oauth-btn .oauth-ico {
+                width: 22px;
+                height: 22px;
+                margin-right: 7px;
+            }
+            .oauth-btn .oauth-ico-font {
+                font-size: 1rem;
+                margin-right: 7px;
+            }
         }
     </style>
 </head>
@@ -92,7 +153,9 @@ if(isset($_SESSION['userId']))header('Location:./');
                                 <div class="block-content">
                                     <div class="p-sm-3 px-lg-4 px-xxl-5 py-lg-5">
                                         <div class="text-center mb-4">
-                                            <img src="./assets/img/logo-header.png" alt="<?php echo conf('Name');?>" style="height:42px;max-width:100%;margin-bottom:12px;" class="img-fluid">
+                                            <a href="../index.php" title="<?php echo conf('Name');?> 网站首页" style="display:inline-block;line-height:0;">
+                                                <img src="./assets/img/logo-header.png" alt="<?php echo conf('Name');?>" style="height:42px;max-width:100%;margin-bottom:12px;" class="img-fluid">
+                                            </a>
                                             <p class="fw-medium text-muted">欢迎登录，今天是个不错的日子</p>
                                         </div>
                                         <form class="px-4" id="loginForm" method="post" action="javascript:void(0)">
@@ -144,10 +207,10 @@ if(isset($_SESSION['userId']))header('Location:./');
                                         <div id="oauthArea" class="text-center my-3" style="display:none;">
                                             <div class="d-flex align-items-center mb-3">
                                                 <hr class="flex-grow-1">
-                                                <span class="px-2 fs-sm" style="color:#6c757d !important;">第三方登录</span>
+                                                <span class="px-2 fs-sm" style="color:#948eb3 !important;">第三方登录</span>
                                                 <hr class="flex-grow-1">
                                             </div>
-                                            <div id="oauthButtons" class="d-flex flex-wrap justify-content-center gap-2"></div>
+                                            <div id="oauthButtons"></div>
                                         </div>
                                         <div class="text-center mt-4 mb-4">
                                             <a href="./send_verify.php" class="btn btn-sm btn-alt-secondary">
@@ -312,9 +375,12 @@ if(isset($_SESSION['userId']))header('Location:./');
                         if (data.code == 0 && data.enabled == 1 && data.channels && Object.keys(data.channels).length > 0) {
                             var html = '';
                             $.each(data.channels, function(type, meta) {
-                                html += '<button type="button" class="btn oauth-btn rounded-pill d-inline-flex align-items-center justify-content-center px-3 py-2" data-type="' + type + '" '
-                                    + 'style="--oc:' + meta.color + ';background-color:' + meta.color + '1a;border-color:' + meta.color + '59;color:' + meta.color + ';">'
-                                    + '<i class="' + meta.icon + ' me-1"></i>' + meta.name + '</button>';
+                                // 优先使用 php/images/logo 下的品牌 SVG，缺失时回退图标字体
+                                var ico = meta.svg
+                                    ? '<img src="' + meta.svg + '" class="oauth-ico" alt="">'
+                                    : '<i class="' + meta.icon + ' oauth-ico-font" style="color:' + meta.color + ';"></i>';
+                                html += '<button type="button" class="oauth-btn" data-type="' + type + '">'
+                                    + ico + '<span class="oauth-name">' + meta.name + '</span></button>';
                             });
                             $('#oauthButtons').html(html);
                             $('#oauthArea').show();

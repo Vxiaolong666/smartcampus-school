@@ -31,7 +31,8 @@
 				<view v-else class="channel-list">
 					<view class="channel-item" v-for="(c, i) in channels" :key="i">
 						<view class="channel-main">
-							<view class="channel-badge" :style="{ backgroundColor: c.color }">{{ c.short }}</view>
+							<image v-if="c.icon" class="channel-logo" :src="c.icon" mode="aspectFit"></image>
+							<view v-else class="channel-badge" :style="{ backgroundColor: c.color }">{{ c.short }}</view>
 							<view class="channel-info">
 								<view class="channel-name">{{ c.name }}</view>
 								<view class="channel-status" :class="{ 'status-bound': c.bound }">
@@ -66,7 +67,25 @@
  */
 import api from '../../utils/api.js';
 
-// 渠道短标识（无图标字体环境下用文字徽标区分渠道）
+// 渠道品牌图标（static/logo 下已提供 SVG 的渠道优先使用图标，其余回退为文字徽标）
+const CHANNEL_ICONS = {
+	qq: '/static/logo/qq.svg',
+	wx: '/static/logo/weixin.svg',
+	alipay: '/static/logo/zifubao.svg',
+	douyin: '/static/logo/douyin.svg',
+	huawei: '/static/logo/huawei.svg',
+	xiaomi: '/static/logo/xiaomi.svg',
+	google: '/static/logo/google.svg',
+	twitter: '/static/logo/twitter.svg',
+	feishu: '/static/logo/feishu.svg'
+};
+
+// 渠道配色覆盖（QQ 品牌以黑色为主，文字/文字徽标统一用黑色）
+const COLOR_OVERRIDES = {
+	qq: '#000000'
+};
+
+// 渠道短标识（无图标资源时用文字徽标区分渠道）
 const SHORT_NAMES = {
 	qq: 'QQ',
 	wx: '微信',
@@ -144,7 +163,8 @@ export default {
 						return {
 							type: type,
 							name: name,
-							color: meta.color || '#6c757d',
+							color: COLOR_OVERRIDES[type] || meta.color || '#6c757d',
+							icon: CHANNEL_ICONS[type] || '',
 							short: SHORT_NAMES[type] || String(name).substring(0, 1),
 							bound: !!bind,
 							nickname: bind ? (bind.nickname || '') : ''
@@ -392,6 +412,14 @@ page {
 	margin-right: 20rpx;
 }
 
+/* 渠道品牌图标（SVG），与文字徽标保持同等占位，行高一致 */
+.channel-logo {
+	width: 72rpx;
+	height: 72rpx;
+	margin-right: 20rpx;
+	flex-shrink: 0;
+}
+
 .channel-info {
 	flex: 1;
 	min-width: 0;
@@ -400,7 +428,7 @@ page {
 .channel-name {
 	font-size: 28rpx;
 	font-weight: bold;
-	color: #48416f;
+	color: #000000;
 	margin-bottom: 6rpx;
 }
 

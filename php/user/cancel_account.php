@@ -270,15 +270,15 @@ include('./head.php');
                             确认提交后，账号及全部个人数据将被 <strong>立即永久删除</strong>。
                         <?php endif; ?>
                     </div>
-                    <label class="form-label">请手动输入以下确认短语：<span class="text-danger">*</span></label>
+                    <label class="form-label">请手动输入以下文字：<span class="text-danger">*</span></label>
                     <div class="confirm-phrase" id="confirmPhrase"
                          oncopy="return false" oncut="return false" ondragstart="return false"
                          onselectstart="return false" oncontextmenu="return false">我已确认注销后用户数据无法找回并确认注销</div>
                     <input type="text" class="form-control form-control-lg mt-2" id="confirmText"
-                           placeholder="请手动输入上方短语" autocomplete="off"
+                           placeholder="请手动输入上方文字" autocomplete="off"
                            onpaste="return false" oncopy="return false" oncut="return false"
                            ondrop="return false" ondragover="return false">
-                    <div class="form-text">为确保系本人操作，请手动输入上方短语（不可复制、不可粘贴）。</div>
+                    <div class="form-text">为防止误操作，请手动输入上方文字。</div>
                 </div>
 
                 <!-- 导航按钮 -->
@@ -290,7 +290,7 @@ include('./head.php');
                     <div>
                         <button type="button" class="btn btn-primary" id="nextBtn">下一步</button>
                         <button type="button" class="btn btn-danger" id="submitBtn" style="display:none;">
-                            <i class="fa fa-user-slash me-1"></i> 提交注销申请
+                            <i class="fa fa-user-slash me-1"></i> 确认注销
                         </button>
                     </div>
                 </div>

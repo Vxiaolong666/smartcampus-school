@@ -54,6 +54,15 @@ include('./head.php');
     </div>
 </div>
 <?php include './foot.php'?>
+<style>
+    /* 渠道品牌 SVG 图标（php/images/logo） */
+    .oauth-ico {
+        width: 24px;
+        height: 24px;
+        object-fit: contain;
+        flex-shrink: 0;
+    }
+</style>
 <script>
 // 绑定成功提示
 const oauthAlert = new URLSearchParams(window.location.search).get('oauth_bind');
@@ -91,8 +100,12 @@ function loadOauthBinds() {
                 var isBound = boundMap[type];
                 html += '<div class="col-md-6 mb-3">';
                 html += '<div class="d-flex align-items-center justify-content-between border rounded p-3">';
+                // 优先使用 php/images/logo 下的品牌 SVG，缺失时回退图标字体
+                var ico = meta.svg
+                    ? '<img src="' + meta.svg + '" class="oauth-ico me-2" alt="">'
+                    : '<i class="' + meta.icon + ' fa-lg me-2" style="color:' + meta.color + ';"></i>';
                 html += '<div class="d-flex align-items-center">';
-                html += '<i class="' + meta.icon + ' fa-lg me-2" style="color:' + meta.color + ';"></i>';
+                html += ico;
                 html += '<div><div class="fw-medium">' + meta.name + '</div>';
                 if (isBound) {
                     html += '<div class="fs-sm text-muted">' + (isBound.nickname ? escapeHtml(isBound.nickname) : '已绑定') + '</div>';
