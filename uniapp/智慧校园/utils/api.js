@@ -430,6 +430,28 @@ const getAiModels = () => {
   });
 };
 
+/**
+ * 获取联系方式（后台「首页配置」维护，免登录）
+ * @returns {Promise} data: {email, phone, qq, address, worktime, desc}
+ */
+const getContactInfo = () => {
+  return request({
+    act: 'get_contact_info',
+    method: 'GET'
+  });
+};
+
+/**
+ * 获取每日例行维护时段（后台「服务停止时段」配置，免登录）
+ * @returns {Promise} data: {start:'23:00', end:'06:00'}
+ */
+const getMaintenanceConfig = () => {
+  return request({
+    act: 'get_maintenance_config',
+    method: 'GET'
+  });
+};
+
 // 文件基础地址：由 API 地址自动推导（api.php 所在目录），更换部署域名时只需改 API_BASE_URL
 const API_FILE_BASE = API_BASE_URL.replace(/\/api\.php(\?.*)?$/i, '');
 
@@ -777,6 +799,8 @@ export default {
   getScheduleTimes,
   getBanners,
   getAiModels,
+  getContactInfo,
+  getMaintenanceConfig,
   getFileUrl,
   toApiPath,
   uploadAvatar,

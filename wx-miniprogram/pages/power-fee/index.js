@@ -5,6 +5,7 @@
 const api = require('../../utils/api.js');
 const feature = require('../../utils/feature.js');
 const { formatTimeRange } = require('../../utils/common.js');
+const markdownToHtml = require('../../utils/markdown.js');
 
 Page({
     data: {
@@ -14,7 +15,14 @@ Page({
         dormitories: [],        // 宿舍列表
         selectedIndex: -1,      // 选中的宿舍索引
         results: [],            // 查询结果列表
-        queryLoading: false     // 查询加载状态
+        queryLoading: false,    // 查询加载状态
+        showAiResult: false,    // AI 分析结果浮层
+        aiResult: '',           // AI 分析结果（Markdown）
+        aiResultHtml: '',       // 渲染用 HTML
+        aiLoading: false,       // 是否正在分析
+        aiCache: {},            // 分析结果缓存
+        windowHeight: 0,
+        sheetHeight: 0          // 浮层高度（视口 80%）
     },
 
     //页面加载
@@ -167,5 +175,93 @@ Page({
     //跳转到批量查电页
     goToBatch() {
         wx.navigateTo({ url: '/pages/power-fee-batch/index' });
-    }
+    },
+
+    // ===== AI 智能分析电费 =====
+    async aiAnalyze() {
+        if (this.data.aiLoading) {
+            const t = '### AI 正在分析…\n\n正在生成分析报告，请稍候（通常需要十几秒）。';
+            this.setData({ aiResult: t, aiResultHtml: markdownToHtml(t), showAiResult: true });
+            this.initSheetHeight();
+            wx.showToast({ title: 'AI 正在分析...', icon: 'none' });
+            return;
+        }
+        if (this.data.results.length === 0) {
+            wx.showToast({ title: '暂无电费数据', icon: 'none' });
+            return;
+        }
+        const key = this.data.results
+            .map(r => r.room_num + ':' + r.balance + ':' + r.remainingKwh)
+            .join('|');
+        if (this.data.aiCache[key]) {
+            this.setData({
+                aiResult: this.data.aiCache[key],
+                aiResultHtml: markdownToHtml(this.data.aiCache[key]),
+                showAiResult: true
+            });
+            this.initSheetHeight();
+            return;
+        }
+        this.setData({ aiLoading: true });
+        const loadingText = '### AI 正在分析…\n\n正在读取电费数据并生成分析报告，请稍候（通常需要十几秒）。';
+        this.setData({
+            aiResult: loadingText,
+            aiResultHtml: markdownToHtml(loadingText),
+            showAiResult: true
+        });
+        this.initSheetHeight();
+        const rooms = this.data.results.map(r => ({
+            name: r.displayName,
+            balance: r.balance,
+            remainingKwh: r.remainingKwh,
+            pricePerKwh: r.pricePerKwh,
+            estimatedDays: r.estimatedDays,
+            statusText: r.statusText,
+            timeRangeText: r.timeRangeText
+        }));
+        try {
+            const res = await api.aiAnalyzePower({ type: 'query', rooms });
+            const content = res.data && res.data.content ? String(res.data.content).trim() : '';
+            if (!content) {
+                const t = '### 暂无分析结果\n\nAI 未返回有效内容，请稍后重试。';
+                this.setData({ aiResult: t, aiResultHtml: markdownToHtml(t), showAiResult: true });
+                return;
+            }
+            const cache = Object.assign({}, this.data.aiCache);
+            cache[key] = content;
+            this.setData({
+                aiCache: cache,
+                aiResult: content,
+                aiResultHtml: markdownToHtml(content),
+                showAiResult: true
+            });
+        } catch (err) {
+            const msg = (err && err.msg) || '分析失败';
+            const t = '### 分析失败\n\n' + msg + '\n\n请稍后重试，或联系管理员检查「AI 配置」是否正确、额度是否充足。';
+            this.setData({ aiResult: t, aiResultHtml: markdownToHtml(t), showAiResult: true });
+        } finally {
+            this.setData({ aiLoading: false });
+        }
+    },
+
+    //关闭 AI 分析结果浮层
+    closeAiResult() {
+        this.setData({ showAiResult: false });
+    },
+
+    //初始化浮层高度（视口 80%）
+    initSheetHeight() {
+        let h = this.data.windowHeight;
+        if (!h) {
+            try {
+                h = wx.getSystemInfoSync().windowHeight || 0;
+            } catch (e) {
+                h = 0;
+            }
+            this.setData({ windowHeight: h });
+        }
+        this.setData({ sheetHeight: Math.round(h * 0.8) });
+    },
+
+    noop() {}
 });

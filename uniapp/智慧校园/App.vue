@@ -1,5 +1,24 @@
 <script>
+	import api from './utils/api.js';
 	import feature from './utils/feature.js';
+
+	// 内置兜底时段（后台未配置时使用）：23:00 - 次日 06:00
+	const DEFAULT_START = '23:00';
+	const DEFAULT_END = '06:00';
+
+	const toMinutes = (hhmm) => {
+		const parts = String(hhmm || '').split(':');
+		const h = parseInt(parts[0] || '0', 10);
+		const m = parseInt(parts[1] || '0', 10);
+		return (isNaN(h) ? 0 : h) * 60 + (isNaN(m) ? 0 : m);
+	};
+
+	// 支持跨天时段（如 22:00 - 次日 08:00）
+	const inWindow = (nowMin, startMin, endMin) => {
+		if (startMin === endMin) return false;
+		if (startMin < endMin) return nowMin >= startMin && nowMin < endMin;
+		return nowMin >= startMin || nowMin < endMin;
+	};
 
 	export default {
 		onLaunch: function() {
@@ -32,18 +51,37 @@
 		},
 		methods: {
 		/**
+		 * 读取后台「服务停止时段」配置（带缓存，失败时用内置默认值）
+		 */
+		async getMaintenanceWindow() {
+			if (this._maintWindow) return this._maintWindow;
+			let start = DEFAULT_START;
+			let end = DEFAULT_END;
+			try {
+				const res = await api.getMaintenanceConfig();
+				start = (res.data && res.data.start) || DEFAULT_START;
+				end = (res.data && res.data.end) || DEFAULT_END;
+			} catch (e) {
+				// 沿用默认值
+			}
+			this._maintWindow = { start, end };
+			return this._maintWindow;
+		},
+
+		/**
 		 * 检查是否处于维护状态并跳转系统维护页
-		 * 条件1：当前时间在维护时间段（23:00 - 次日 6:00，受学校教务系统每晚关闭维护影响）
+		 * 条件1：当前时间在维护时间段（后台配置的服务停止时段，默认 23:00 - 次日 6:00）
 		 * 条件2：维护页面功能开关启用（weihu_open 的 is_enabled = 1，即管理员手动关闭服务）
 		 * 满足任一条件则跳转到 pages/maintenance/index
 		 * 逻辑与小程序端 app.js 的 checkMaintenanceTime 保持一致
 		 */
 		async checkMaintenance() {
 			try {
-				// 条件1：检查时间
+				// 条件1：检查时间（使用后台配置的时段）
+				const win = await this.getMaintenanceWindow();
 				const now = new Date();
-				const hour = now.getHours();
-				const isMaintenanceTime = hour >= 23 || hour < 6;
+				const nowMin = now.getHours() * 60 + now.getMinutes();
+				const isMaintenanceTime = inWindow(nowMin, toMinutes(win.start), toMinutes(win.end));
 
 				// 条件2：检查功能开关（管理员手动关闭服务）
 				const featureStatus = await feature.checkFeature('weihu_open');
@@ -70,9 +108,17 @@
 				}
 			} catch (error) {
 				// 检查失败时只按时间判断，保证夜间维护仍可正常提示
+				// （时段同样取自后台配置，取不到时用内置默认值）
+				let winStart = DEFAULT_START;
+				let winEnd = DEFAULT_END;
+				try {
+					const win = await this.getMaintenanceWindow();
+					winStart = win.start;
+					winEnd = win.end;
+				} catch (e) {}
 				const now = new Date();
-				const hour = now.getHours();
-				const isMaintenanceTime = hour >= 23 || hour < 6;
+				const nowMin = now.getHours() * 60 + now.getMinutes();
+				const isMaintenanceTime = inWindow(nowMin, toMinutes(winStart), toMinutes(winEnd));
 
 				if (isMaintenanceTime) {
 					const pages = getCurrentPages();

@@ -5,6 +5,9 @@
 const api = require('../../utils/api.js');
 const feature = require('../../utils/feature.js');
 const { getCourseColor, timeSlots, weekDays } = require('../../utils/common.js');
+const markdownToHtml = require('../../utils/markdown.js');
+
+const FULL_DAY_NAMES = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
 
 // 课程详情弹窗图标 path 数据（与 assets 下 SVG 图标一致，fill 颜色按课程色动态生成）
 const ICON_CLOCK_PATHS = [
@@ -54,6 +57,13 @@ Page({
         isEndingSoon: false,        // 当前课程是否即将下课（剩余时间≤20%）
         showDetail: false,          // 课程详情弹窗显示状态
         detailCourse: null,         // 当前查看详情的课程对象
+        showAiResult: false,        // AI 分析结果浮层
+        aiResult: '',               // AI 分析结果（Markdown）
+        aiResultHtml: '',           // 渲染用 HTML
+        aiLoading: false,           // 是否正在分析
+        aiCache: {},                // 分析结果缓存（按选中日）
+        windowHeight: 0,
+        sheetHeight: 0,             // 浮层高度（视口 80%）
         detailIcons: null,          // 弹窗图标 data URI（按课程色生成）
         detailBtnBgLight: '#36cfc9',  // 弹窗按钮渐变终点色
         detailBtnShadow: 'rgba(19, 194, 194, 0.35)'  // 弹窗按钮投影色
@@ -437,6 +447,92 @@ Page({
     //关闭课程详情弹窗
     closeDetail() {
         this.setData({ showDetail: false, detailCourse: null });
+    },
+
+    // ===== AI 智能分析今日安排 =====
+    async aiAnalyze() {
+        if (this.data.aiLoading) {
+            const t = '### AI 正在分析…\n\n正在生成分析报告，请稍候（通常需要十几秒）。';
+            this.setData({ aiResult: t, aiResultHtml: markdownToHtml(t), showAiResult: true });
+            this.initSheetHeight();
+            wx.showToast({ title: 'AI 正在分析...', icon: 'none' });
+            return;
+        }
+        if (this.data.dayCourses.length === 0) {
+            wx.showToast({ title: '今日暂无课程', icon: 'none' });
+            return;
+        }
+        const key = 'k' + this.data.selectedDay;
+        if (this.data.aiCache[key]) {
+            this.setData({
+                aiResult: this.data.aiCache[key],
+                aiResultHtml: markdownToHtml(this.data.aiCache[key]),
+                showAiResult: true
+            });
+            this.initSheetHeight();
+            return;
+        }
+        this.setData({ aiLoading: true });
+        const loadingText = '### AI 正在分析…\n\n正在读取今日课程安排并生成分析报告，请稍候（通常需要十几秒）。';
+        this.setData({
+            aiResult: loadingText,
+            aiResultHtml: markdownToHtml(loadingText),
+            showAiResult: true
+        });
+        this.initSheetHeight();
+        const courses = this.data.dayCourses.map(c => ({
+            name: c.courseName,
+            time: c.timeDisplay,
+            location: c.location,
+            teacher: c.teacher
+        }));
+        const dateInfo = (this.data.weekDates[this.data.selectedDay] && this.data.weekDates[this.data.selectedDay].full) || '';
+        try {
+            const res = await api.aiAnalyzeSchedule({
+                type: 'today',
+                dayName: FULL_DAY_NAMES[this.data.selectedDay],
+                date: dateInfo,
+                courses
+            });
+            const content = res.data && res.data.content ? String(res.data.content).trim() : '';
+            if (!content) {
+                const t = '### 暂无分析结果\n\nAI 未返回有效内容，请稍后重试。';
+                this.setData({ aiResult: t, aiResultHtml: markdownToHtml(t) });
+                return;
+            }
+            const cache = Object.assign({}, this.data.aiCache);
+            cache[key] = content;
+            this.setData({
+                aiCache: cache,
+                aiResult: content,
+                aiResultHtml: markdownToHtml(content)
+            });
+        } catch (err) {
+            const msg = (err && err.msg) || '分析失败';
+            const t = '### 分析失败\n\n' + msg + '\n\n请稍后重试，或联系管理员检查「AI 配置」是否正确、额度是否充足。';
+            this.setData({ aiResult: t, aiResultHtml: markdownToHtml(t) });
+        } finally {
+            this.setData({ aiLoading: false });
+        }
+    },
+
+    //关闭 AI 分析结果浮层
+    closeAiResult() {
+        this.setData({ showAiResult: false });
+    },
+
+    //初始化浮层高度（视口 80%）
+    initSheetHeight() {
+        let h = this.data.windowHeight;
+        if (!h) {
+            try {
+                h = wx.getSystemInfoSync().windowHeight || 0;
+            } catch (e) {
+                h = 0;
+            }
+            this.setData({ windowHeight: h });
+        }
+        this.setData({ sheetHeight: Math.round(h * 0.8) });
     },
 
     //阻止冒泡占位

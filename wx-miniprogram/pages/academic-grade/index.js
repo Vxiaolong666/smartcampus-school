@@ -4,6 +4,7 @@
  */
 const api = require('../../utils/api.js');
 const feature = require('../../utils/feature.js');
+const markdownToHtml = require('../../utils/markdown.js');
 
 Page({
   data: {
@@ -18,7 +19,14 @@ Page({
       avgGpa: 0,             // 平均绩点
       earnedCredits: 0       // 已获学分
     },
-    announcement: null       // 公告信息
+    announcement: null,      // 公告信息
+    showAiResult: false,     // AI 分析结果浮层
+    aiResult: '',            // AI 分析结果（Markdown）
+    aiResultHtml: '',        // 渲染用 HTML
+    aiLoading: false,        // 是否正在分析
+    aiCache: {},             // 分析结果缓存（按学期）
+    windowHeight: 0,
+    sheetHeight: 0           // 浮层高度（视口 80%）
   },
 
   //页面加载
@@ -185,5 +193,85 @@ Page({
     if (score >= 64) return '1.5';
     if (score >= 60) return '1.0';
     return '0';
-  }
+  },
+
+  // ===== AI 智能分析成绩 =====
+  async aiAnalyze() {
+    if (this.data.aiLoading) {
+      const t = '### AI 正在分析…\n\n正在生成分析报告，请稍候（通常需要十几秒）。';
+      this.setData({ aiResult: t, aiResultHtml: markdownToHtml(t), showAiResult: true });
+      this.initSheetHeight();
+      wx.showToast({ title: 'AI 正在分析...', icon: 'none' });
+      return;
+    }
+    if (this.data.grades.length === 0) {
+      wx.showToast({ title: '暂无成绩数据', icon: 'none' });
+      return;
+    }
+    const semesterName = (this.data.semesters[this.data.semesterIndex] && this.data.semesters[this.data.semesterIndex].semesterName) || '';
+    if (this.data.aiCache[semesterName]) {
+      this.setData({
+        aiResult: this.data.aiCache[semesterName],
+        aiResultHtml: markdownToHtml(this.data.aiCache[semesterName]),
+        showAiResult: true
+      });
+      this.initSheetHeight();
+      return;
+    }
+    this.setData({ aiLoading: true });
+    const payload = {
+      achievement: this.data.grades.map(g => ({
+        courseName: g.courseName,
+        fraction: g.score,
+        credit: g.credit,
+        gpa: g.gpa,
+        curriculumAttributes: g.courseType
+      })),
+      gpa: this.data.summary.avgGpa,
+      credit: this.data.summary.earnedCredits,
+      semester: semesterName
+    };
+    try {
+      const res = await api.aiAnalyzeGrades(payload);
+      const content = (res.data && res.data.content) ? String(res.data.content).trim() : '';
+      if (!content) {
+        wx.showToast({ title: '暂无分析结果，请重试', icon: 'none' });
+        return;
+      }
+      const cache = Object.assign({}, this.data.aiCache);
+      cache[semesterName] = content;
+      this.setData({
+        aiCache: cache,
+        aiResult: content,
+        aiResultHtml: markdownToHtml(content),
+        showAiResult: true
+      });
+      this.initSheetHeight();
+    } catch (err) {
+      wx.showToast({ title: (err && err.msg) || '分析失败', icon: 'none' });
+    } finally {
+      this.setData({ aiLoading: false });
+    }
+  },
+
+  //关闭 AI 分析结果浮层
+  closeAiResult() {
+    this.setData({ showAiResult: false });
+  },
+
+  //初始化浮层高度（视口 80%）
+  initSheetHeight() {
+    let h = this.data.windowHeight;
+    if (!h) {
+      try {
+        h = wx.getSystemInfoSync().windowHeight || 0;
+      } catch (e) {
+        h = 0;
+      }
+      this.setData({ windowHeight: h });
+    }
+    this.setData({ sheetHeight: Math.round(h * 0.8) });
+  },
+
+  noop() {}
 });

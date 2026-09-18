@@ -315,6 +315,53 @@ const getAiModels = () => {
   });
 };
 
+/**
+ * 获取每日例行维护时段（后台「服务停止时段」配置，免登录）
+ * @returns {Promise} data: {start:'23:00', end:'06:00'}
+ */
+const getMaintenanceConfig = () => {
+  return request({
+    act: 'get_maintenance_config',
+    method: 'GET'
+  });
+};
+
+/**
+ * AI 智能分析成绩
+ * @param {Object} payload {achievement:[], gpa, credit, semester}
+ */
+const aiAnalyzeGrades = (payload) => {
+  return request({
+    act: 'ai_analyze_grades',
+    method: 'POST',
+    data: { data: JSON.stringify(payload) }
+  });
+};
+
+/**
+ * AI 智能分析用电（电费 / 用电统计）
+ * @param {Object} payload 见各页面组装的数据
+ */
+const aiAnalyzePower = (payload) => {
+  return request({
+    act: 'ai_analyze_power',
+    method: 'POST',
+    data: { data: JSON.stringify(payload) }
+  });
+};
+
+/**
+ * AI 智能分析课表（学期课表 type=semester / 今日安排 type=today）
+ * @param {Object} payload
+ */
+const aiAnalyzeSchedule = (payload) => {
+  return request({
+    act: 'ai_analyze_schedule',
+    method: 'POST',
+    data: { data: JSON.stringify(payload) }
+  });
+};
+
 // NDJSON 行解析器：把字符串流按行拆分（内部缓冲跨块残行），逐行回调
 const createNdjsonParser = (handleLine) => {
   let buf = '';
@@ -898,6 +945,10 @@ module.exports = {
   getScheduleTimes,
   getBanners,
   getAiModels,
+  getMaintenanceConfig,
+  aiAnalyzeGrades,
+  aiAnalyzePower,
+  aiAnalyzeSchedule,
   getFileUrl,
   toApiPath,
   uploadAvatar,

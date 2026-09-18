@@ -123,5 +123,35 @@
         </view>
       </view>
     </view>
+
+    <!-- AI 智能分析电费 -->
+    <view wx:if="{{results.length > 0}}" class="ai-analyze-wrap">
+      <view class="ai-analyze-btn {{aiLoading ? 'ai-loading' : ''}}" bindtap="aiAnalyze">
+        <text wx:if="{{!aiLoading}}">AI 智能分析电费</text>
+        <text wx:else>分析中…</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- AI 分析结果浮层 -->
+  <view wx:if="{{showAiResult}}" class="ai-mask" bindtap="closeAiResult">
+    <view class="ai-modal" style="height: {{sheetHeight}}px" catchtap="noop">
+      <view class="ai-modal-handle"></view>
+      <view class="ai-modal-header">
+        <text class="ai-modal-title">AI 智能电费分析</text>
+        <text class="ai-modal-close" catchtap="closeAiResult">✕</text>
+      </view>
+      <scroll-view scroll-y="true" class="ai-modal-body" catchtap="noop">
+        <view class="ai-modal-body-inner">
+          <rich-text nodes="{{aiResultHtml}}" class="ai-modal-content"></rich-text>
+        </view>
+      </scroll-view>
+    </view>
+  </view>
+
+  <!-- 右侧浮动 AI 分析按钮 -->
+  <view class="ai-fab {{aiLoading ? 'ai-loading' : ''}}" bindtap="aiAnalyze">
+    <text class="ai-fab-icon">AI</text>
+    <text class="ai-fab-label">分析</text>
   </view>
 </view>

@@ -13,40 +13,82 @@
       <view class="card-header">
         <image class="card-logo" src="/assets/wxmp-logo.svg" mode="widthFix"></image>
         <view class="card-title">系统维护中</view>
+        <view class="type-badge" wx:if="{{typeLabel}}">{{typeLabel}}</view>
       </view>
 
       <view class="maintenance-content">
-        <!-- 维护图标 -->
         <view class="maintenance-icon-wrapper">
           <image class="maintenance-icon" src="/assets/wxmp-clock.svg" mode="widthFix"></image>
         </view>
 
-        <!-- 维护提示 -->
-        <view class="maintenance-section">
-          <view class="section-title">维护时间</view>
-          <view class="time-display">
-            <text class="time-text">{{maintenanceTime}}</text>
+        <!-- 每日例行维护 -->
+        <view wx:if="{{dailyActive}}" class="reason-card">
+          <view class="reason-head">
+            <image class="reason-icon-img" src="{{iconClock}}" mode="aspectFit"></image>
+            <view class="reason-title-wrap">
+              <view class="reason-title">每日例行维护</view>
+              <view class="reason-sub">受学校教务系统每晚关闭维护影响</view>
+            </view>
+          </view>
+          <view class="reason-body">
+            <view class="reason-row">
+              <text class="reason-label">维护时段</text>
+              <text class="reason-value">{{maintenanceTime}}</text>
+            </view>
+            <view class="reason-row">
+              <text class="reason-label">当前时间</text>
+              <text class="reason-value">{{currentTime}}</text>
+            </view>
+            <view class="reason-row" wx:if="{{countdown}}">
+              <text class="reason-label">预计恢复</text>
+              <text class="reason-value countdown">{{countdown}} 后</text>
+            </view>
+            <view class="reason-desc">
+              维护期间课表、成绩、今日课程等教务相关功能暂不可用，宿舍电费等功能不受影响，06:00 后将自动恢复。
+            </view>
           </view>
         </view>
 
-        <!-- 维护公告 -->
-        <view wx:if="{{notice}}" class="maintenance-section notice-section">
-          <view class="section-title">维护公告</view>
-          <view class="section-card">
-            <view class="section-text">{{notice.content}}</view>
+        <!-- 管理员开启维护 -->
+        <view wx:if="{{manualActive}}" class="reason-card manual">
+          <view class="reason-head">
+            <image class="reason-icon-img" src="{{iconShield}}" mode="aspectFit"></image>
+            <view class="reason-title-wrap">
+              <view class="reason-title">管理员维护{{featureName ? '（' + featureName + '）' : ''}}</view>
+              <view class="reason-sub">系统维护已由管理员手动开启</view>
+            </view>
+          </view>
+          <view class="reason-body">
+            <view class="reason-row">
+              <text class="reason-label">维护时段</text>
+              <text class="reason-value">{{maintenanceTime}}</text>
+            </view>
+            <!-- 后台配置的实际维护信息 -->
+            <view class="notice-box" wx:if="{{notice}}">
+              <view class="notice-title">维护公告</view>
+              <view class="notice-content">{{notice.content}}</view>
+            </view>
+            <view class="notice-box" wx:else>
+              <view class="notice-content">系统正在维护，恢复时间待定，请留意公告或稍后再试。</view>
+            </view>
           </view>
         </view>
 
         <view class="maintenance-section">
           <view class="section-title">温馨提示</view>
           <view class="section-text">
-            受学校教务系统每晚关闭维护影响，相关系统功能在每日23时至次日上午6时不可用。如需紧急帮助，请通过"我的"页面中的"联系客服"功能与我们取得联系。
+            如需紧急帮助，可点击下方「联系客服」直接发起客服会话。系统恢复后重新进入即可正常使用。
           </view>
         </view>
       </view>
 
       <view class="maintenance-footer">
-        <text class="footer-text">感谢您的耐心等待</text>
+        <!-- 一行两个按钮：联系客服（主）+ 重新检测（次） -->
+        <view class="footer-actions">
+          <button class="action-btn action-primary" open-type="contact">联系客服</button>
+          <button class="action-btn action-plain" bindtap="onRecheck">重新检测</button>
+        </view>
+        <view class="footer-text">感谢您的耐心等待和支持！</view>
       </view>
     </view>
   </view>

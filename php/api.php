@@ -3254,6 +3254,54 @@ switch($act) {
         jsonResponse(0, 'success', $banners);
     break;
     
+    // 每日例行维护时段：取自后台「电费/推送配置 → 服务停止时段」（quiet_hours_start / quiet_hours_end）
+    case 'get_maintenance_config':
+        $start = '23:00';
+        $end   = '06:00';
+        try {
+            $rs = @$DB->query("SELECT quiet_hours_start, quiet_hours_end FROM nteam_power_config WHERE id=1");
+            if ($rs) {
+                $row = $rs->fetch();
+                if ($row) {
+                    if (!empty($row['quiet_hours_start'])) $start = substr($row['quiet_hours_start'], 0, 5);
+                    if (!empty($row['quiet_hours_end']))   $end   = substr($row['quiet_hours_end'], 0, 5);
+                }
+            }
+        } catch (Exception $e) {
+            // 表不存在时沿用内置默认值
+        }
+        jsonResponse(0, 'success', ['start' => $start, 'end' => $end]);
+    break;
+
+    // 联系方式（后台「首页配置」维护，免登录，供维护页等展示）
+    case 'get_contact_info':
+        $info = [
+            'email'    => '',
+            'phone'    => '',
+            'qq'       => '',
+            'address'  => '',
+            'worktime' => '',
+            'desc'     => '',
+        ];
+        try {
+            $rs = @$DB->query("SELECT contact_email, contact_phone, contact_qq, contact_address, contact_worktime, contact_desc FROM nteam_home_config WHERE id=1");
+            if ($rs) {
+                $row = $rs->fetch();
+                if ($row) {
+                    $info['email']    = (string)$row['contact_email'];
+                    $info['phone']    = (string)$row['contact_phone'];
+                    $info['qq']       = (string)$row['contact_qq'];
+                    $info['address']  = (string)$row['contact_address'];
+                    $info['worktime'] = (string)$row['contact_worktime'];
+                    $info['desc']     = (string)$row['contact_desc'];
+                }
+            }
+        } catch (Exception $e) {
+            // 表不存在时返回空值，前端自行兜底
+        }
+        jsonResponse(0, 'success', $info);
+    break;
+
     case 'get_glance_data':
         $user = authenticateUser($DB);
         if (!$user) {

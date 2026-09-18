@@ -1,0 +1,173 @@
+/* ==================== 全局：AI 智能分析（与 uniapp App.vue 全局样式一致） ==================== */
+
+/* 页内触发按钮（全站统一样式，与「成绩查询」页一致） */
+.ai-analyze-wrap {
+  display: flex;
+  justify-content: center;
+  margin-top: 30rpx;
+}
+
+.ai-analyze-btn {
+  background: linear-gradient(135deg, #13c2c2, #1890ff);
+  color: #ffffff;
+  font-size: 28rpx;
+  padding: 20rpx 60rpx;
+  border-radius: 40rpx;
+  box-shadow: 0 10rpx 30rpx rgba(19, 194, 194, 0.3);
+}
+
+.ai-analyze-btn.ai-loading {
+  opacity: 0.7;
+}
+
+/* 右侧浮动圆形触发按钮（各 AI 页面通用） */
+.ai-fab {
+  position: fixed;
+  right: 28rpx;
+  bottom: 160rpx;
+  width: 104rpx;
+  height: 104rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #13c2c2, #1890ff);
+  box-shadow: 0 12rpx 30rpx rgba(19, 194, 194, 0.45);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 90;
+  animation: aiFabPulse 2.4s ease-out infinite;
+}
+
+/* tabBar 页面（如今日课程）需再抬高，避免被底部标签栏遮挡 */
+.ai-fab--tab {
+  bottom: 250rpx;
+}
+
+.ai-fab-icon {
+  color: #ffffff;
+  font-size: 32rpx;
+  font-weight: bold;
+  line-height: 1.05;
+}
+
+.ai-fab-label {
+  color: #ffffff;
+  font-size: 20rpx;
+  line-height: 1.05;
+  opacity: 0.92;
+}
+
+.ai-fab:active {
+  transform: scale(0.92);
+}
+
+.ai-fab.ai-loading {
+  opacity: 0.75;
+}
+
+/* 呼吸光圈，提示「可点击生成 AI 分析」 */
+@keyframes aiFabPulse {
+  0% {
+    box-shadow: 0 12rpx 30rpx rgba(19, 194, 194, 0.45), 0 0 0 0 rgba(19, 194, 194, 0.4);
+  }
+  70% {
+    box-shadow: 0 12rpx 30rpx rgba(19, 194, 194, 0.45), 0 0 0 20rpx rgba(19, 194, 194, 0);
+  }
+  100% {
+    box-shadow: 0 12rpx 30rpx rgba(19, 194, 194, 0.45), 0 0 0 0 rgba(19, 194, 194, 0);
+  }
+}
+
+/* ===== AI 结果浮层 ===== */
+.ai-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 999;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  animation: aiMaskFade 0.25s ease;
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+
+@keyframes aiMaskFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.ai-modal {
+  width: 100%;
+  background: #fff;
+  border-radius: 32rpx 32rpx 0 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 -8rpx 40rpx rgba(0, 0, 0, 0.18);
+  animation: aiModalUp 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes aiModalUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.ai-modal-handle {
+  width: 72rpx;
+  height: 8rpx;
+  border-radius: 8rpx;
+  background: #d8d4e8;
+  margin: 18rpx auto 2rpx;
+  transition: background 0.2s ease;
+}
+
+.ai-modal-handle:active {
+  background: #b9b2d6;
+}
+
+.ai-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14rpx 44rpx 22rpx;
+  border-bottom: 1rpx solid #f0f0f4;
+}
+
+.ai-modal-title {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #322c54;
+}
+
+.ai-modal-close {
+  width: 56rpx;
+  height: 56rpx;
+  line-height: 56rpx;
+  text-align: center;
+  font-size: 30rpx;
+  color: #948eb3;
+  background: #f3f2f8;
+  border-radius: 50%;
+}
+
+.ai-modal-body {
+  flex: 1;
+  min-height: 0;
+  overscroll-behavior: contain;
+}
+
+.ai-modal-body-inner {
+  padding: 30rpx 44rpx;
+}
+
+.ai-modal-content {
+  display: block;
+  font-size: 28rpx;
+  color: #48416f;
+  line-height: 1.75;
+  word-break: break-word;
+}

@@ -6,6 +6,7 @@ const api = require('../../utils/api.js');
 const feature = require('../../utils/feature.js');
 const { getCourseColor, weekDays, timeSlots } = require('../../utils/common.js');
 const { loadScheduleTimes } = require('../../utils/schedule-time.js');
+const markdownToHtml = require('../../utils/markdown.js');
 
 // 课程详情弹窗图标 path 数据（与 assets 下 SVG 图标一致，fill 颜色按课程色动态生成）
 const ICON_CLOCK_PATHS = [
@@ -49,6 +50,13 @@ Page({
         detailBtnBgLight: '#36cfc9',  // 弹窗按钮渐变终点色
         detailBtnShadow: 'rgba(19, 194, 194, 0.35)',  // 弹窗按钮投影色
         sectionTimes: [],        // 节次时间（后台「课程时间配置」，下标 0 = 第1节）
+        showAiResult: false,     // AI 分析结果浮层
+        aiResult: '',            // AI 分析结果（Markdown 原文）
+        aiResultHtml: '',        // 渲染用 HTML
+        aiLoading: false,        // 是否正在分析
+        aiCache: {},             // 分析结果缓存（按周次）
+        windowHeight: 0,
+        sheetHeight: 0,          // 浮层高度（视口 80%）
         weekDates: [],            // 本周各星期对应的日期（如 "09-18"）
         weekHeaders: weekDays.slice(1)  // 表头星期（周一~周日）
     },
@@ -474,6 +482,99 @@ Page({
     //关闭课程详情弹窗
     closeDetail() {
         this.setData({ showDetail: false, detailCourse: null });
+    },
+
+    // ===== AI 智能分析课表 =====
+    async aiAnalyze() {
+        if (this.data.aiLoading) {
+            // 正在分析中再次点击：聚焦浮层并提示，不重复发起请求
+            this.setData({
+                aiResult: '### AI 正在分析…\n\n正在生成分析报告，请稍候（通常需要十几秒）。',
+                aiResultHtml: markdownToHtml('### AI 正在分析…\n\n正在生成分析报告，请稍候（通常需要十几秒）。'),
+                showAiResult: true
+            });
+            this.initSheetHeight();
+            wx.showToast({ title: 'AI 正在分析...', icon: 'none' });
+            return;
+        }
+        if (this.data.courses.length === 0) {
+            wx.showToast({ title: '暂无课程数据', icon: 'none' });
+            return;
+        }
+        const key = 'w' + this.data.weekIndex + '|' + this.data.currentMode + '|' + this.data.courses.length;
+        // 命中缓存直接展示
+        if (this.data.aiCache[key]) {
+            this.setData({
+                aiResult: this.data.aiCache[key],
+                aiResultHtml: markdownToHtml(this.data.aiCache[key]),
+                showAiResult: true
+            });
+            this.initSheetHeight();
+            return;
+        }
+        this.setData({ aiLoading: true });
+        const loadingText = '### AI 正在分析…\n\n正在读取课表数据并生成分析报告，请稍候（通常需要十几秒）。';
+        this.setData({
+            aiResult: loadingText,
+            aiResultHtml: markdownToHtml(loadingText),
+            showAiResult: true
+        });
+        this.initSheetHeight();
+        const courses = this.data.courses.map(c => ({
+            name: c.courseName,
+            weekDay: c.weekDay,
+            section: c.section,
+            location: c.location,
+            teacher: c.teacher,
+            weeks: c.weeks,
+            credit: c.credit,
+            nature: c.courseNature
+        }));
+        try {
+            const res = await api.aiAnalyzeSchedule({
+                type: 'semester',
+                week: this.data.weekIndex === 0 ? this.data.currentWeek : this.data.weekIndex,
+                courses
+            });
+            const content = res.data && res.data.content ? String(res.data.content).trim() : '';
+            if (!content) {
+                const emptyText = '### 暂无分析结果\n\nAI 未返回有效内容，请稍后重试。';
+                this.setData({ aiResult: emptyText, aiResultHtml: markdownToHtml(emptyText) });
+                return;
+            }
+            const cache = Object.assign({}, this.data.aiCache);
+            cache[key] = content;
+            this.setData({
+                aiCache: cache,
+                aiResult: content,
+                aiResultHtml: markdownToHtml(content)
+            });
+        } catch (err) {
+            const msg = (err && err.msg) || '分析失败';
+            const errText = '### 分析失败\n\n' + msg + '\n\n请稍后重试，或联系管理员检查「AI 配置」是否正确、额度是否充足。';
+            this.setData({ aiResult: errText, aiResultHtml: markdownToHtml(errText) });
+        } finally {
+            this.setData({ aiLoading: false });
+        }
+    },
+
+    //关闭 AI 分析结果浮层
+    closeAiResult() {
+        this.setData({ showAiResult: false });
+    },
+
+    //初始化浮层高度（视口 80%）
+    initSheetHeight() {
+        let h = this.data.windowHeight;
+        if (!h) {
+            try {
+                h = wx.getSystemInfoSync().windowHeight || 0;
+            } catch (e) {
+                h = 0;
+            }
+            this.setData({ windowHeight: h });
+        }
+        this.setData({ sheetHeight: Math.round(h * 0.8) });
     },
 
     //阻止冒泡占位
