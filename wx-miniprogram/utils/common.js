@@ -76,6 +76,51 @@ const timeSlots = {
     11: { name: '第11节', time: '21:20-22:00' }
 };
 
+// 内置默认作息（副本，用于后台配置缺失时兜底）
+const DEFAULT_TIME_SLOTS = JSON.parse(JSON.stringify(timeSlots));
+
+/**
+ * 应用后台「课程时间配置」的节次时间
+ * - 就地修改 timeSlots 对象，已 require timeSlots 的页面无需改动即可生效
+ * - 后台未配置的节次保留内置默认值，避免出现空节次导致取值报错
+ *
+ * @param {Array} periods 后台返回的 periods，形如 [{index:1,name:'第1节',start:'08:15',end:'08:55'}]
+ * @returns {boolean} 是否有配置生效
+ */
+const applyTimeSlots = (periods) => {
+    if (!Array.isArray(periods) || periods.length === 0) return false;
+
+    const next = {};
+    // 先铺内置默认，保证 1~11 节始终存在
+    Object.keys(DEFAULT_TIME_SLOTS).forEach(key => {
+        next[key] = {
+            name: DEFAULT_TIME_SLOTS[key].name,
+            time: DEFAULT_TIME_SLOTS[key].time
+        };
+    });
+
+    let applied = 0;
+    periods.forEach((p, i) => {
+        if (!p) return;
+        const index = parseInt(p.index, 10) || (i + 1);
+        const start = p.start ? String(p.start).slice(0, 5) : '';
+        const end = p.end ? String(p.end).slice(0, 5) : '';
+        if (index <= 0 || !start || !end) return;
+        next[index] = {
+            name: p.name ? String(p.name) : ('第' + index + '节'),
+            time: start + '-' + end
+        };
+        applied++;
+    });
+
+    if (applied === 0) return false;
+
+    // 就地替换，保持对象引用不变
+    Object.keys(timeSlots).forEach(key => { delete timeSlots[key]; });
+    Object.keys(next).forEach(key => { timeSlots[key] = next[key]; });
+    return true;
+};
+
 /**
  * 星期名称数组
  * @description  索引0为空，索引1-7对应周一到周日
@@ -97,6 +142,7 @@ module.exports = {
     getCourseColor,
     formatTimeRange,
     timeSlots,
+    applyTimeSlots,
     weekDays,
     sceneTypeNames
 };

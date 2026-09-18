@@ -46,7 +46,7 @@
 						<view class="info-title">{{ currentTime }}</view>
 						<view class="info-sub">
 							<block v-if="selectedDay !== todayDayOfWeek">
-								<text class="status-free">非今日</text>
+								<text class="status-free">非本日课程</text>
 							</block>
 							<block v-else-if="allCoursesEnded">
 								<text class="status-ended">今日课程结束了</text>
@@ -373,6 +373,7 @@
 import api from '../../utils/api.js';
 import feature from '../../utils/feature.js';
 import { getCourseColor, timeSlots, weekDays } from '../../utils/common.js';
+import { loadScheduleTimes as fetchScheduleTimes } from '../../utils/schedule-time.js';
 import markdownToHtml from '../../utils/markdown.js';
 import { aiScrollLockMixin } from '../../utils/scroll-lock.js';
 
@@ -489,10 +490,14 @@ export default {
 			this.selectedDay = today.getDay();
 			this.weekDates = weekDates;
 
-			this.loadSchedule();
-
+			// 先用内置作息即时渲染，再拉后台「课程时间配置」，最后按后台作息查询课程
 			this.updateTime();
 			if (this._pageVisible) this.startTimer();
+
+			fetchScheduleTimes().then(() => {
+				this.loadSchedule();
+				this.updateTime();
+			});
 		});
 	},
 
@@ -578,9 +583,16 @@ export default {
 			const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 			let currentSection = null;
 
-			for (let i = 1; i <= 11; i++) {
-				const [start, end] = timeSlots[i].time.split('-');
-				if (currentTime >= start && currentTime <= end) {
+			// 节次按后台作息动态取（数量可能不是 11 节），避免漏判或取值报错
+			const sectionKeys = Object.keys(timeSlots)
+				.map(key => parseInt(key, 10))
+				.filter(n => n > 0)
+				.sort((a, b) => a - b);
+			for (const i of sectionKeys) {
+				const slot = timeSlots[i];
+				if (!slot || !slot.time) continue;
+				const [start, end] = slot.time.split('-');
+				if (start && end && currentTime >= start && currentTime <= end) {
 					currentSection = i;
 					break;
 				}
@@ -704,7 +716,18 @@ export default {
 		splitGroups(list) {
 			this.morningCourses = list.filter(c => c.slots[0] >= 1 && c.slots[0] <= 4);
 			this.afternoonCourses = list.filter(c => c.slots[0] >= 5 && c.slots[0] <= 7);
-			this.eveningCourses = list.filter(c => c.slots[0] >= 8 && c.slots[0] <= 11);
+			// 晚上时段不设上限，第 12 节及以后的课程也能归入「晚上」
+			this.eveningCourses = list.filter(c => c.slots[0] >= 8);
+		},
+
+		// 节次上限：至少 12 节，后台作息配置更多时按配置
+		maxSection() {
+			let max = 0;
+			Object.keys(timeSlots).forEach(key => {
+				const n = parseInt(key, 10);
+				if (n > max) max = n;
+			});
+			return Math.max(12, max || 11);
 		},
 
 		loadSchedule() {
@@ -758,16 +781,18 @@ export default {
 			const weekDay = parseInt(classTime.charAt(0)) - 1;
 			const timeStr = classTime.substring(1);
 			const sections = [];
+			// 节次上限按后台作息（至少 12 节），第 12 节及以后的课程不再被丢弃
+			const maxSection = this.maxSection();
 
 			for (let i = 0; i < timeStr.length; i += 2) {
 				const section = parseInt(timeStr.substr(i, 2));
-				if (section >= 1 && section <= 11) sections.push(section);
+				if (section >= 1 && section <= maxSection) sections.push(section);
 			}
 
 			if (sections.length === 0) {
 				for (let i = 0; i < timeStr.length; i++) {
 					const section = parseInt(timeStr.charAt(i));
-					if (section >= 1 && section <= 11) sections.push(section);
+					if (section >= 1 && section <= maxSection) sections.push(section);
 				}
 			}
 

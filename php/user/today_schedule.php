@@ -3,6 +3,7 @@ $title = '本周课程';
 $requireLogin = true;
 include('./head.php');
 require_once('../funsion/feature_settings.php');
+require_once('../funsion/ScheduleTime.php');
 
 $userId = $_SESSION['userId'];
 
@@ -123,21 +124,11 @@ if ($tokenResult['success']) {
     $error = $tokenResult['msg'] ?? '登录失败，请检查学工号和密码是否正确';
 }
 
-$timeSlots = [
-    '101' => ['name' => '第1节', 'time' => '08:15-08:55'],
-    '102' => ['name' => '第2节', 'time' => '09:05-09:45'],
-    '103' => ['name' => '第3节', 'time' => '10:05-10:45'],
-    '104' => ['name' => '第4节', 'time' => '10:55-11:35'],
-    '105' => ['name' => '第5节', 'time' => '14:30-15:10'],
-    '106' => ['name' => '第6节', 'time' => '15:20-16:00'],
-    '107' => ['name' => '第7节', 'time' => '16:15-16:55'],
-    '108' => ['name' => '第8节', 'time' => '18:50-19:30'],
-    '109' => ['name' => '第9节', 'time' => '19:40-20:20'],
-    '110' => ['name' => '第10节', 'time' => '20:30-21:10'],
-    '111' => ['name' => '第11节', 'time' => '21:20-22:00'],
-];
-
-function getCourseTimeSlots($classTime, $weekNoteDetail = '') {
+/**
+ * 解析课程节次（返回 1 基节次数组）
+ * $maxSection 为允许的最大节次（默认取后台配置上限 20），第 12 节及以后不再被丢弃
+ */
+function getCourseTimeSlots($classTime, $weekNoteDetail = '', $maxSection = 20) {
     $slots = [];
     
     if (!empty($weekNoteDetail)) {
@@ -146,7 +137,7 @@ function getCourseTimeSlots($classTime, $weekNoteDetail = '') {
             $part = trim($part);
             if (strlen($part) >= 2) {
                 $num = intval(substr($part, -2));
-                if ($num >= 1 && $num <= 11) {
+                if ($num >= 1 && $num <= $maxSection) {
                     $slots[] = $num;
                 }
             }
@@ -156,7 +147,30 @@ function getCourseTimeSlots($classTime, $weekNoteDetail = '') {
         }
     }
     
-    for ($i = 1; $i <= 11; $i++) {
+    // 形如 105106 / 109110111112：按「1 + 两位节次」三位一组解析，
+    // 避免节次编码连写时出现误匹配（如 109110111112 被误判出第 1 节）
+    if ($classTime !== '' && ctype_digit($classTime) && strlen($classTime) % 3 === 0) {
+        $tmp = [];
+        $valid = true;
+        for ($i = 0; $i < strlen($classTime); $i += 3) {
+            $group = substr($classTime, $i, 3);
+            if ($group[0] !== '1') {
+                $valid = false;
+                break;
+            }
+            $num = intval(substr($group, 1));
+            if ($num < 1 || $num > $maxSection) {
+                $valid = false;
+                break;
+            }
+            $tmp[] = $num;
+        }
+        if ($valid && !empty($tmp)) {
+            return array_unique($tmp);
+        }
+    }
+
+    for ($i = 1; $i <= $maxSection; $i++) {
         $code = '1' . sprintf('%02d', $i);
         if (strpos($classTime, $code) !== false) {
             $slots[] = $i;
@@ -165,6 +179,98 @@ function getCourseTimeSlots($classTime, $weekNoteDetail = '') {
     
     return array_unique($slots);
 }
+
+/**
+ * 合并同一天里「同一门课（课程名 + 地点 + 教师 + 周次相同）」的连续节次记录
+ * 教务常把一段连堂课拆成多条记录（如第9-10节、第11-12节），合并成一条展示，避免同一节课重复出现
+ * 合并后把节次写回 classTime（1+两位节次编码）并清空 weekNoteDetail，后续 getCourseTimeSlots() 即可解析出合并结果
+ */
+function mergeSameCourseSections($courses, $maxSection = 20) {
+    if (count($courses) < 2) {
+        return $courses;
+    }
+
+    $groups  = [];
+    $pending = [];   // 解析不出节次的课程原样保留
+
+    foreach ($courses as $course) {
+        $slots = getCourseTimeSlots($course['classTime'] ?? '', $course['weekNoteDetail'] ?? '', $maxSection);
+        if (empty($slots)) {
+            $pending[] = $course;
+            continue;
+        }
+        sort($slots);
+        $key = md5(implode('|', array(
+            trim((string) ($course['courseName'] ?? '')),
+            trim((string) ($course['location'] ?? $course['classroomName'] ?? '')),
+            trim((string) ($course['teacherName'] ?? $course['teacher'] ?? '')),
+            trim((string) ($course['classWeek'] ?? $course['weeks'] ?? '')),
+        )));
+        $groups[$key][] = array('course' => $course, 'slots' => array_values(array_unique($slots)));
+    }
+
+    $merged = [];
+    foreach ($groups as $items) {
+        usort($items, function ($a, $b) {
+            return min($a['slots']) - min($b['slots']);
+        });
+
+        $bucket = array();
+        foreach ($items as $item) {
+            $min  = min($item['slots']);
+            $max  = max($item['slots']);
+            $last = count($bucket) - 1;
+            // 与上一段连续或重叠 → 并入同一条
+            if ($last >= 0 && $min <= $bucket[$last]['max'] + 1) {
+                $bucket[$last]['slots'] = array_values(array_unique(array_merge($bucket[$last]['slots'], $item['slots'])));
+                sort($bucket[$last]['slots']);
+                if ($max > $bucket[$last]['max']) {
+                    $bucket[$last]['max'] = $max;
+                }
+                continue;
+            }
+            $bucket[] = array('course' => $item['course'], 'slots' => $item['slots'], 'max' => $max);
+        }
+
+        foreach ($bucket as $item) {
+            $course = $item['course'];
+            $slots  = $item['slots'];
+            sort($slots);
+            $codes = '';
+            foreach ($slots as $s) {
+                $codes .= '1' . sprintf('%02d', $s);
+            }
+            $course['classTime']      = $codes;
+            $course['weekNoteDetail'] = '';
+            $merged[] = $course;
+        }
+    }
+
+    // 按起始节次排序，保持列表从上到下与作息一致
+    usort($merged, function ($a, $b) use ($maxSection) {
+        $sa = getCourseTimeSlots($a['classTime'] ?? '', '', $maxSection);
+        $sb = getCourseTimeSlots($b['classTime'] ?? '', '', $maxSection);
+        $minA = !empty($sa) ? min($sa) : 99;
+        $minB = !empty($sb) ? min($sb) : 99;
+        return $minA - $minB;
+    });
+
+    return array_merge($merged, $pending);
+}
+
+// 同一门课的连续节次自动合并：如「第9-10节」+「第11-12节」→「第9-12节」，避免同一节课重复展示
+$dayCourses = mergeSameCourseSections($dayCourses, scheduleTimeMaxPeriods());
+
+// 节次时间由后台「课程时间配置」维护（教务接口只返回节数，不返回具体时间）
+// 节次行数至少覆盖当日课程实际出现的最大节次（如第 12 节），避免高节次课程没有时间可显示
+$maxSectionInData = 11;
+foreach ($dayCourses as $c) {
+    $slots = getCourseTimeSlots($c['classTime'] ?? '', $c['weekNoteDetail'] ?? '', scheduleTimeMaxPeriods());
+    foreach ($slots as $s) {
+        if ($s > $maxSectionInData) $maxSectionInData = $s;
+    }
+}
+$timeSlots = scheduleTimePeriodsByCode(scheduleTimeGetPeriods($DB, ''), $maxSectionInData);
 
 $currentTime = date('H:i');
 $currentSection = null;
@@ -409,7 +515,9 @@ if (!empty($dayCourses)) {
                             <div>
                                 <div class="fw-bold fs-5" id="currentTime"><?php echo $currentTime; ?></div>
                                 <div class="text-muted" id="currentStatus">
-                                    <?php if($allCoursesEnded && $isToday): ?>
+                                    <?php if(!$isToday): ?>
+                                        <span class="text-muted">非本日课程</span>
+                                    <?php elseif($allCoursesEnded && $isToday): ?>
                                         <span class="text-success"><i class="fa fa-check-circle me-1"></i>今日课程结束了</span>
                                     <?php elseif($notStarted && $isToday): ?>
                                         <span class="text-info"><i class="fa fa-sun me-1"></i>课程未开始，还有<?php echo $minutesToNext; ?>分钟上课</span>
@@ -420,7 +528,7 @@ if (!empty($dayCourses)) {
                                     <?php elseif($inBreak): ?>
                                         <span class="text-info"><i class="fa fa-coffee me-1"></i>课间休息</span>
                                     <?php else: ?>
-                                        <span class="text-muted"><?php echo $isToday ? '课余时间' : '非今日'; ?></span>
+                                        <span class="text-muted">课余时间</span>
                                     <?php endif; ?>
                                 </div>
                                 <?php if($testMode): ?>
@@ -487,7 +595,7 @@ if (!empty($dayCourses)) {
                         </div>
                     </div>
                 </div>
-                <?php elseif(!empty($dayCourses) && ($currentCourse || $nextCourse)): ?>
+                <?php elseif(!empty($dayCourses) && ($currentCourse || $nextCourse) && $isToday): ?>
                 <div class="row mb-4">
                     <?php if($currentCourse): ?>
                     <?php

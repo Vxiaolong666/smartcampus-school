@@ -7,6 +7,7 @@ $act=isset($_REQUEST['act'])?daddslashes($_REQUEST['act']):null;
 $ip = $Gets->ip();
 
 require_once '../funsion/OAuthHelper.php';
+require_once '../funsion/ScheduleTime.php';
 
 @header('Content-Type: application/json; charset=UTF-8');
 
@@ -1297,6 +1298,55 @@ switch($act){
                 saveSetting($f, isset($_POST[$f]) ? trim($_POST[$f]) : '');
             }
             exit('{"code":0,"msg":"AI 配置保存成功！"}');
+        }
+    break;
+
+    // ===== 课程时间（作息）配置：按「课程模式」维护各节次起止时间 =====
+    case 'save_schedule_mode':
+        if(!$isLogin) exit('{"code":-1,"msg":"未登录"}');
+        if($adminData['adminRank']!=1){exit('{"code":-1,"msg":"您的账号没有权限使用此功能！"}');}
+        {
+            $res = scheduleTimeSaveMode($DB, array(
+                'id'         => isset($_POST['id']) ? intval($_POST['id']) : 0,
+                'mode_name'  => isset($_POST['mode_name']) ? $_POST['mode_name'] : '',
+                'mode_id'    => isset($_POST['mode_id']) ? $_POST['mode_id'] : '',
+                'is_default' => isset($_POST['is_default']) ? intval($_POST['is_default']) : 0,
+                'sort_order' => isset($_POST['sort_order']) ? intval($_POST['sort_order']) : 0,
+                'periods'    => isset($_POST['periods']) ? $_POST['periods'] : '',
+            ));
+            if ($res['code'] === 0) {
+                $logName = addslashes(trim(isset($_POST['mode_name']) ? $_POST['mode_name'] : ''));
+                $DB->query("insert into `nteam_log` (`adminUser`,`type`,`data`,`ip`,`city`) values ('" . $_SESSION['adminUser'] . "','保存了课程时间配置（{$logName}）', NOW(), '".$ip."', '')");
+            }
+            exit(json_encode($res, JSON_UNESCAPED_UNICODE));
+        }
+    break;
+
+    case 'delete_schedule_mode':
+        if(!$isLogin) exit('{"code":-1,"msg":"未登录"}');
+        if($adminData['adminRank']!=1){exit('{"code":-1,"msg":"您的账号没有权限使用此功能！"}');}
+        {
+            $id = intval(isset($_POST['id']) ? $_POST['id'] : 0);
+            if ($id <= 0) exit('{"code":-1,"msg":"参数错误"}');
+            $res = scheduleTimeDeleteMode($DB, $id);
+            if ($res['code'] === 0) {
+                $DB->query("insert into `nteam_log` (`adminUser`,`type`,`data`,`ip`,`city`) values ('" . $_SESSION['adminUser'] . "','删除了课程时间配置(ID:{$id})', NOW(), '".$ip."', '')");
+            }
+            exit(json_encode($res, JSON_UNESCAPED_UNICODE));
+        }
+    break;
+
+    case 'set_default_schedule_mode':
+        if(!$isLogin) exit('{"code":-1,"msg":"未登录"}');
+        if($adminData['adminRank']!=1){exit('{"code":-1,"msg":"您的账号没有权限使用此功能！"}');}
+        {
+            $id = intval(isset($_POST['id']) ? $_POST['id'] : 0);
+            if ($id <= 0) exit('{"code":-1,"msg":"参数错误"}');
+            $res = scheduleTimeSetDefaultMode($DB, $id);
+            if ($res['code'] === 0) {
+                $DB->query("insert into `nteam_log` (`adminUser`,`type`,`data`,`ip`,`city`) values ('" . $_SESSION['adminUser'] . "','设置了默认课程时间配置(ID:{$id})', NOW(), '".$ip."', '')");
+            }
+            exit(json_encode($res, JSON_UNESCAPED_UNICODE));
         }
     break;
 

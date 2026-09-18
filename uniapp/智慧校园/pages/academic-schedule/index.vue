@@ -158,6 +158,7 @@
 import api from '../../utils/api.js';
 import feature from '../../utils/feature.js';
 import { getCourseColor, weekDays, timeSlots } from '../../utils/common.js';
+import { loadScheduleTimes as fetchScheduleTimes } from '../../utils/schedule-time.js';
 import markdownToHtml from '../../utils/markdown.js';
 import { aiScrollLockMixin } from '../../utils/scroll-lock.js';
 
@@ -203,6 +204,8 @@ export default {
 			weekDates: [],
 			weekHeaders: weekDays.slice(1),
 			courseColors: {},
+			// 节次时间（后台「课程时间配置」，索引即节次：1=第1节）
+			sectionTimes: [],
 			showAiResult: false,
 			aiResult: '',
 			aiLoading: false,
@@ -242,6 +245,8 @@ export default {
 		}
 		this.checkFeature().then(canProceed => {
 			if (canProceed) {
+				// 先用内置作息渲染，后台作息到达后再刷新
+				this.syncSectionTimes();
 				this.loadScheduleModes();
 			}
 		});
@@ -273,6 +278,8 @@ export default {
 					this.modeIndex = 0;
 					this.currentMode = currentMode;
 					this.loading = false;
+					// 先取该课程模式的后台作息，再查课程，保证节次时间与后台配置一致
+					this.loadScheduleTimes(currentMode);
 					if (currentMode) this.loadSchedule();
 				})
 				.catch(err => {
@@ -285,6 +292,8 @@ export default {
 			const mode = this.modes[e.detail.value];
 			this.modeIndex = e.detail.value;
 			this.currentMode = mode.kbjcmsid || '';
+			// 不同课程模式可有各自的作息时间
+			this.loadScheduleTimes(this.currentMode);
 			this.loadSchedule();
 		},
 
@@ -319,7 +328,8 @@ export default {
 		},
 
 		processScheduleData(data) {
-			const schedule = Array.from({ length: 12 }, () =>
+			// 行数至少 12 行，后台作息配置更多节次时按配置补齐（如第 12 节及以后）
+			const schedule = Array.from({ length: this.maxSection() }, () =>
 				Array.from({ length: 7 }, () => ({ hasCourse: false }))
 			);
 			const courses = [];
@@ -367,7 +377,7 @@ export default {
 					};
 
 					for (const section of sections) {
-						if (section >= 0 && section < 12) {
+						if (section >= 0 && section < schedule.length) {
 							schedule[section][weekDay] = {
 								hasCourse: true,
 								courseName,
@@ -447,9 +457,41 @@ export default {
 			});
 		},
 
+		// 课程表行数 / 节次上限：至少 12 节，后台作息配置更多时按配置
+		maxSection() {
+			return Math.max(12, this.sectionTotalCount());
+		},
+
+		// 取当前作息里最大的节次数（课程表默认 12 行，配置更多节次时按配置补齐）
+		sectionTotalCount() {
+			let max = 0;
+			Object.keys(timeSlots).forEach(key => {
+				const n = parseInt(key, 10);
+				if (n > max) max = n;
+			});
+			return max;
+		},
+
+		// 把作息同步到响应式数据，供模板渲染（后台配置到达后会自动刷新）
+		syncSectionTimes() {
+			const total = Math.max(12, this.sectionTotalCount());
+			const list = [];
+			for (let i = 1; i <= total; i++) {
+				const t = timeSlots[i];
+				list[i] = t && t.time ? t.time : '';
+			}
+			this.sectionTimes = list;
+		},
+
+		// 加载指定课程模式的后台作息（留空表示默认模式）
+		loadScheduleTimes(modeId) {
+			return fetchScheduleTimes(modeId).then(() => {
+				this.syncSectionTimes();
+			});
+		},
+
 		sectionTime(rowIndex) {
-			const t = timeSlots[rowIndex + 1];
-			return t ? t.time : '';
+			return this.sectionTimes[rowIndex + 1] || '';
 		},
 
 		parseClassTime(course) {
@@ -466,7 +508,9 @@ export default {
 			}
 
 			const sections = [];
-			const pushSection = n => { if (n >= 1 && n <= 12) sections.push(n - 1); };
+			// 节次上限按后台作息（至少 12 节），避免第 12 节及以后的课程被丢弃
+			const maxSection = this.maxSection();
+			const pushSection = n => { if (n >= 1 && n <= maxSection) sections.push(n - 1); };
 
 			// 优先使用 weekNoteDetail（如 "1节,2节"）
 			const weekNoteDetail = course.weekNoteDetail || '';
@@ -476,14 +520,14 @@ export default {
 					const p = part.trim();
 					if (p.length >= 2) {
 						const num = parseInt(p.slice(-2));
-						if (num >= 1 && num <= 11) pushSection(num);
+						if (num >= 1 && num <= maxSection) pushSection(num);
 					}
 				}
 			}
 
 			// 其次按 "1XX" 节次编码扫描 classTime（如 "105106" 表示第5、6节），与网页 getCourseTimeSlots 一致
 			if (sections.length === 0) {
-				for (let i = 1; i <= 11; i++) {
+				for (let i = 1; i <= maxSection; i++) {
 					const code = '1' + ('0' + i).slice(-2);
 					if (classTime.indexOf(code) !== -1) pushSection(i);
 				}
@@ -494,12 +538,12 @@ export default {
 				const timeStr = weekDay >= 0 ? classTime.substring(1) : classTime;
 				for (let i = 0; i < timeStr.length; i += 2) {
 					const section = parseInt(timeStr.substr(i, 2));
-					if (section >= 1 && section <= 12) pushSection(section);
+					if (section >= 1 && section <= maxSection) pushSection(section);
 				}
 				if (sections.length === 0) {
 					for (let i = 0; i < timeStr.length; i++) {
 						const section = parseInt(timeStr.charAt(i));
-						if (section >= 1 && section <= 12) pushSection(section);
+						if (section >= 1 && section <= maxSection) pushSection(section);
 					}
 				}
 			}

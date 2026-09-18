@@ -4,7 +4,8 @@
  */
 const api = require('../../utils/api.js');
 const feature = require('../../utils/feature.js');
-const { getCourseColor, weekDays } = require('../../utils/common.js');
+const { getCourseColor, weekDays, timeSlots } = require('../../utils/common.js');
+const { loadScheduleTimes } = require('../../utils/schedule-time.js');
 
 Page({
     data: {
@@ -16,10 +17,13 @@ Page({
         weeks: ['当前周', '第1周', '第2周', '第3周', '第4周', '第5周', '第6周', '第7周', '第8周', '第9周', '第10周', '第11周', '第12周', '第13周', '第14周', '第15周', '第16周', '第17周', '第18周', '第19周', '第20周'],
         weekIndex: 0,           // 选中的周次索引
         loading: false,         // 加载状态
-        schedule: [],           // 课程表数据（二维数组，12行7列）
+        schedule: [],           // 课程表数据（二维数组，行数=节次上限，列数=7）
         courses: [],            // 课程列表（去重后）
         currentWeek: 1,         // 当前周次
-        courseColors: {}        // 课程颜色映射（课程名→颜色值）
+        courseColors: {},        // 课程颜色映射（课程名→颜色值）
+        sectionTimes: [],        // 节次时间（后台「课程时间配置」，索引即节次：1=第1节）
+        weekDates: [],            // 本周各星期对应的日期（如 "09-18"）
+        weekHeaders: weekDays.slice(1)  // 表头星期（周一~周日）
     },
 
     //页面加载
@@ -33,6 +37,8 @@ Page({
         // 检查功能开关
         this.checkFeature().then(canProceed => {
             if (canProceed) {
+                // 先用内置作息渲染，后台作息到达后再刷新
+                this.syncSectionTimes();
                 this.loadScheduleModes();
             }
         });
@@ -69,6 +75,8 @@ Page({
                 const currentMode = modes.length > 0 ? (modes[0].kbjcmsid || '') : '';
                 // 更新类别列表、选中索引、当前类别ID，取消加载状态
                 this.setData({ modes, modeIndex: 0, currentMode, loading: false });
+                // 先取该课程模式的后台作息，再查课程，保证节次时间与后台配置一致
+                this.loadScheduleTimes(currentMode);
                 // 如果有类别，自动加载该类别下的课程表
                 if (currentMode) this.loadSchedule();
             })
@@ -85,6 +93,8 @@ Page({
         const mode = this.data.modes[e.detail.value];
         // 更新选中索引和类别ID
         this.setData({ modeIndex: e.detail.value, currentMode: mode.kbjcmsid || '' });
+        // 不同课程模式可有各自的作息时间
+        this.loadScheduleTimes(this.data.currentMode);
         // 类别变化后重新加载课程表
         this.loadSchedule();
     },
@@ -115,9 +125,9 @@ Page({
         api.querySchedule(week, currentMode)
             .then(res => {
                 // 将原始数据交给processScheduleData处理，解构出课程表、课程列表、当前周次、颜色映射
-                const { schedule, courses, currentWeek, courseColors } = this.processScheduleData(res.data || []);
+                const { schedule, courses, currentWeek, courseColors, weekDates } = this.processScheduleData(res.data || []);
                 // 更新页面数据，取消加载状态
-                this.setData({ schedule, courses, currentWeek, courseColors, loading: false });
+                this.setData({ schedule, courses, currentWeek, courseColors, weekDates: weekDates || [], loading: false });
             })
             .catch(err => {
                 // 查询失败，取消加载状态并提示
@@ -128,14 +138,15 @@ Page({
 
     //处理课程表数据
     processScheduleData(data) {
-        // 初始化课程表二维数组（12行×7列），每个单元格默认无课程
-        const schedule = Array.from({ length: 12 }, () => Array.from({ length: 7 }, () => ({ hasCourse: false })));
+        // 行数至少 12 行，后台作息配置更多节次时按配置补齐（如第 12 节及以后）
+        const schedule = Array.from({ length: this.maxSection() }, () => Array.from({ length: 7 }, () => ({ hasCourse: false })));
         // 课程列表（可能有重复，后面去重）
         const courses = [];
         // 课程名→颜色的映射对象
         const courseColors = {};
         // 当前周次，默认第1周
         let currentWeek = 1;
+        let weekDates = [];
 
         // 如果有数据且包含courses字段
         if (data && data.length > 0 && data[0].courses) {
@@ -143,6 +154,16 @@ Page({
             const scheduleData = data[0];
             // 获取当前周次
             currentWeek = scheduleData.week || 1;
+
+            // 解析本周各星期对应的日期（与 uniapp 一致）
+            const dateByXq = {};
+            if (scheduleData.date && scheduleData.date.length) {
+                for (const d of scheduleData.date) {
+                    const xq = (d.xqmc || '').trim();
+                    if (xq) dateByXq[xq] = (d.mxrq || '').slice(-5);
+                }
+            }
+            weekDates = weekDays.slice(1).map(day => dateByXq[day.charAt(1)] || '');
 
             // 遍历每门课程
             for (const course of scheduleData.courses) {
@@ -178,9 +199,10 @@ Page({
                 };
 
                 // 将课程填入课程表二维数组对应位置
+                const maxSection = this.maxSection();
                 for (const section of sections) {
-                    // 节次在0-11范围内才填入
-                    if (section >= 0 && section < 12) {
+                    // 节次在有效范围内才填入（动态节次上限，避免第 12 节及以后被丢弃）
+                    if (section >= 0 && section < maxSection) {
                         schedule[section][weekDay] = {
                             hasCourse: true,           // 标记该位置有课程
                             courseName,                // 课程名称（用于单元格显示）
@@ -200,8 +222,8 @@ Page({
         // 合并同一门课在同一天的相邻节次（与 uniapp / 网页一致）
         const mergedCourses = this.mergeCourseSections(courses);
 
-        // 返回处理后的课程表、合并后课程列表、当前周次、颜色映射
-        return { schedule, courses: mergedCourses, currentWeek, courseColors };
+        // 返回处理后的课程表、合并后课程列表、当前周次、颜色映射、本周日期
+        return { schedule, courses: mergedCourses, currentWeek, courseColors, weekDates };
     },
 
     //合并同一门课在同一天的相邻节次（与 uniapp / 网页一致）
@@ -279,7 +301,9 @@ Page({
         }
 
         const sections = [];
-        const pushSection = n => { if (n >= 1 && n <= 12) sections.push(n - 1); };
+        // 节次上限按后台作息（至少 12 节），避免第 12 节及以后的课程被丢弃
+        const maxSection = this.maxSection();
+        const pushSection = n => { if (n >= 1 && n <= maxSection) sections.push(n - 1); };
 
         // 优先使用 weekNoteDetail（如 "1节,2节"）
         const weekNoteDetail = course.weekNoteDetail || '';
@@ -289,14 +313,14 @@ Page({
                 const p = part.trim();
                 if (p.length >= 2) {
                     const num = parseInt(p.slice(-2));
-                    if (num >= 1 && num <= 11) pushSection(num);
+                    if (num >= 1 && num <= maxSection) pushSection(num);
                 }
             }
         }
 
-        // 其次按 "1XX" 节次编码扫描 classTime（如 "105106" 表示第5、6节）
+        // 其次按 "1XX" 节次编码扫描 classTime（如 "105106" 表示第5、6节），与网页 getCourseTimeSlots 一致
         if (sections.length === 0) {
-            for (let i = 1; i <= 11; i++) {
+            for (let i = 1; i <= maxSection; i++) {
                 const code = '1' + ('0' + i).slice(-2);
                 if (classTime.indexOf(code) !== -1) pushSection(i);
             }
@@ -307,17 +331,55 @@ Page({
             const timeStr = weekDay >= 0 ? classTime.substring(1) : classTime;
             for (let i = 0; i < timeStr.length; i += 2) {
                 const section = parseInt(timeStr.substr(i, 2));
-                if (section >= 1 && section <= 12) pushSection(section);
+                if (section >= 1 && section <= maxSection) pushSection(section);
             }
             if (sections.length === 0) {
                 for (let i = 0; i < timeStr.length; i++) {
                     const section = parseInt(timeStr.charAt(i));
-                    if (section >= 1 && section <= 12) pushSection(section);
+                    if (section >= 1 && section <= maxSection) pushSection(section);
                 }
             }
         }
 
         return { weekDay, sections: [...new Set(sections)].sort((a, b) => a - b) };
+    },
+
+    // 课程表行数 / 节次上限：至少 12 节，后台作息配置更多时按配置
+    maxSection() {
+        return Math.max(12, this.sectionTotalCount());
+    },
+
+    // 取当前作息里最大的节次数（课程表默认 12 行，配置更多节次时按配置补齐）
+    sectionTotalCount() {
+        let max = 0;
+        Object.keys(timeSlots).forEach(key => {
+            const n = parseInt(key, 10);
+            if (n > max) max = n;
+        });
+        return max;
+    },
+
+    // 把作息同步到响应式数据，供模板渲染（后台配置到达后会自动刷新）
+    syncSectionTimes() {
+        const total = Math.max(12, this.sectionTotalCount());
+        const list = [];
+        for (let i = 1; i <= total; i++) {
+            const t = timeSlots[i];
+            list[i] = t && t.time ? t.time : '';
+        }
+        this.setData({ sectionTimes: list });
+    },
+
+    // 加载指定课程模式的后台作息（留空表示默认模式）
+    loadScheduleTimes(modeId) {
+        return loadScheduleTimes(modeId).then(() => {
+            this.syncSectionTimes();
+        });
+    },
+
+    // 取某行（节次）对应的作息时间文本
+    sectionTime(rowIndex) {
+        return this.data.sectionTimes[rowIndex + 1] || '';
     },
 
     //点击课程表单元格

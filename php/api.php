@@ -2,6 +2,7 @@
 $notLogin = true;
 include('Common/Core_brain.php');
 require_once __DIR__ . '/funsion/AccountCancellation.php';
+require_once __DIR__ . '/funsion/ScheduleTime.php';
 /** @var array $dbconfig */
 /** @var \lib\PdoHelper $DB */
 
@@ -2343,6 +2344,39 @@ switch($act) {
             jsonResponse(-1, $modeResult['msg'] ?? $modeResult['Msg'] ?? '获取课程表类别失败');
         }
     break;
+
+    // 课程时间（作息）：教务接口只返回节数，各节次具体时间由后台「课程时间配置」维护
+    case 'get_schedule_times':
+        $user = authenticateUser($DB);
+        if (!$user) {
+            jsonResponse(-2, '请先登录');
+        }
+
+        $modeId = isset($_GET['mode_id']) ? trim(daddslashes($_GET['mode_id'])) : '';
+        $cfg = scheduleTimeGetConfig($DB, $modeId);
+
+        $periods = [];
+        $index = 0;
+        foreach ($cfg['periods'] as $p) {
+            $index++;
+            $periods[] = [
+                'index' => $index,
+                'code'  => '1' . sprintf('%02d', $index),
+                'name'  => $p['name'],
+                'start' => $p['start'],
+                'end'   => $p['end'],
+                'time'  => $p['start'] . '-' . $p['end'],
+            ];
+        }
+
+        jsonResponse(0, '查询成功', [
+            'mode_id'    => $cfg['mode_id'],
+            'mode_name'  => $cfg['mode_name'],
+            'is_default' => $cfg['is_default'],
+            'total'      => count($periods),
+            'periods'    => $periods,
+        ]);
+    break;
     
     case 'get_notices':
         $page = isset($_GET['page']) ? intval($_GET['page']) : 1;
@@ -3174,11 +3208,11 @@ switch($act) {
                     if (isset($scheduleResult['code']) && $scheduleResult['code'] == 1) {
                         $scheduleData = $scheduleResult['data'] ?? [];
                         
-                        $timeSlots = [
-                            1 => '08:15-08:55', 2 => '09:05-09:45', 3 => '10:05-10:45', 4 => '10:55-11:35',
-                            5 => '14:30-15:10', 6 => '15:20-16:00', 7 => '16:15-16:55',
-                            8 => '18:50-19:30', 9 => '19:40-20:20', 10 => '20:30-21:10', 11 => '21:20-22:00'
-                        ];
+                        // 节次时间由后台「课程时间配置」维护（教务接口只返回节数，不返回具体时间）
+                        $timeSlots = [];
+                        foreach (scheduleTimePeriodsByCode(scheduleTimeGetPeriods($DB, ''), 11) as $code => $slot) {
+                            $timeSlots[intval(substr($code, 1))] = $slot['time'] !== '' ? $slot['time'] : '00:00-00:00';
+                        }
                         
                         $currentDay = intval(date('N'));
                         $currentMinutes = intval(date('H')) * 60 + intval(date('i'));
@@ -3218,12 +3252,12 @@ switch($act) {
                                 $sections = [];
                                 for ($i = 0; $i < strlen($timeStr); $i += 2) {
                                     $sec = intval(substr($timeStr, $i, 2));
-                                    if ($sec >= 1 && $sec <= 11) $sections[] = $sec;
+                                    if ($sec >= 1 && $sec <= scheduleTimeMaxPeriods()) $sections[] = $sec;
                                 }
                                 if (empty($sections)) {
                                     for ($i = 0; $i < strlen($timeStr); $i++) {
                                         $sec = intval($timeStr[$i]);
-                                        if ($sec >= 1 && $sec <= 11) $sections[] = $sec;
+                                        if ($sec >= 1 && $sec <= scheduleTimeMaxPeriods()) $sections[] = $sec;
                                     }
                                 }
                                 if (empty($sections)) continue;

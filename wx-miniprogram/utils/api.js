@@ -278,6 +278,21 @@ const getScheduleMode = () => {
   });
 };
 
+/**
+ * 获取课程时间配置（作息）：各节次具体时间由后台按课程模式维护
+ * @param {string} [modeId] 课程模式 ID（教务 kbjcmsid），留空表示使用「默认模式」
+ * @returns {Promise}
+ */
+const getScheduleTimes = (modeId = '') => {
+  const data = {};
+  if (modeId) data.mode_id = modeId;
+  return request({
+    act: 'get_schedule_times',
+    method: 'POST',
+    data
+  });
+};
+
 /* ==================== 宿舍相关接口 ==================== */
 
 /**
@@ -655,6 +670,7 @@ module.exports = {
   queryStudentInfo,
   getSemesterList,
   getScheduleMode,
+  getScheduleTimes,
   getDormAreas,
   getDormBuildings,
   getDormRooms,

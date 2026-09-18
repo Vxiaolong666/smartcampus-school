@@ -41,18 +41,18 @@
     <view wx:else class="schedule-wrapper">
       <view class="schedule-header">
         <view class="header-item">节次</view>
-        <view class="header-item">周一</view>
-        <view class="header-item">周二</view>
-        <view class="header-item">周三</view>
-        <view class="header-item">周四</view>
-        <view class="header-item">周五</view>
-        <view class="header-item">周六</view>
-        <view class="header-item">周日</view>
+        <view class="header-item" wx:for="{{weekDates}}" wx:key="index" wx:for-index="i">
+          <view>{{weekHeaders[i]}}</view>
+          <view class="header-date">{{item}}</view>
+        </view>
       </view>
 
       <view class="schedule-body">
         <view class="schedule-row" wx:for="{{schedule}}" wx:key="index" wx:for-index="rowIndex" wx:for-item="row">
-          <view class="row-label">第{{rowIndex + 1}}节</view>
+          <view class="row-label">
+            <view>第{{rowIndex + 1}}节</view>
+            <view class="row-time">{{sectionTime(rowIndex)}}</view>
+          </view>
           <view class="row-cells">
             <view 
               class="cell {{cell.hasCourse ? 'has-course' : ''}}" 

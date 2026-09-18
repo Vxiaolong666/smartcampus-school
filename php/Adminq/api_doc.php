@@ -768,6 +768,37 @@ wx.request({
     }
 }</code></pre>
                         </div>
+                        <div class="mb-4">
+                            <h5 class="text-primary">
+                                <span class="badge bg-primary me-2">GET</span>
+                                获取课程节次时间（课程时间配置）
+                            </h5>
+                            <p><strong>接口：</strong><code>?act=get_schedule_times</code></p>
+                            <p><strong>需要认证：</strong>是</p>
+                            <p><strong>说明：</strong>教务系统只返回「节数」（例如 classTime = 105106 表示第 5、6 节），不返回每节课的起止时间。本接口返回后台「课程时间配置」里按 <strong>课程模式</strong> 维护的节次时间；不传 <code>mode_id</code> 时返回「默认模式」的作息。</p>
+                            <p><strong>参数：</strong></p>
+                            <table class="table table-bordered table-sm">
+                                <thead><tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr></thead>
+                                <tbody>
+                                    <tr><td>mode_id</td><td>string</td><td>否</td><td>课程模式 ID（教务课程模式下拉的 kbjcmsid）；留空使用默认模式</td></tr>
+                                </tbody>
+                            </table>
+                            <p><strong>返回：</strong></p>
+                            <pre class="bg-light p-2 rounded"><code>{
+    "code": 0,
+    "msg": "查询成功",
+    "data": {
+        "mode_id": "",
+        "mode_name": "默认作息（标准）",
+        "is_default": 1,
+        "total": 11,
+        "periods": [
+            {"index": 1, "code": "101", "name": "第1节", "start": "08:15", "end": "08:55", "time": "08:15-08:55"},
+            {"index": 2, "code": "102", "name": "第2节", "start": "09:05", "end": "09:45", "time": "09:05-09:45"}
+        ]
+    }
+}</code></pre>
+                        </div>
                     </div>
                 </div>
                 

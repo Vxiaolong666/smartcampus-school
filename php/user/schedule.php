@@ -33,6 +33,7 @@ if (!$academicAccount) {
 }
 
 require_once('../funsion/AcademicSystem.php');
+require_once('../funsion/ScheduleTime.php');
 
 $week = isset($_GET['week']) ? $_GET['week'] : '';
 $kbjcmsid = isset($_GET['kbjcmsid']) ? $_GET['kbjcmsid'] : '';
@@ -74,19 +75,10 @@ if ($tokenResult['success']) {
 
 $days = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
 
-$timeSlots = [
-    ['name' => '第1节', 'time' => '08:15-08:55'],
-    ['name' => '第2节', 'time' => '09:05-09:45'],
-    ['name' => '第3节', 'time' => '10:05-10:45'],
-    ['name' => '第4节', 'time' => '10:55-11:35'],
-    ['name' => '第5节', 'time' => '14:30-15:10'],
-    ['name' => '第6节', 'time' => '15:20-16:00'],
-    ['name' => '第7节', 'time' => '16:15-16:55'],
-    ['name' => '第8节', 'time' => '18:50-19:30'],
-    ['name' => '第9节', 'time' => '19:40-20:20'],
-    ['name' => '第10节', 'time' => '20:30-21:10'],
-    ['name' => '第11节', 'time' => '21:20-22:00'],
-];
+// 节次时间改为后台「课程时间配置」按课程模式维护（教务接口只返回节数，不返回具体时间）
+// 行数取「后台配置节次数 / 数据中实际最大节次 / 默认 11 节」的最大值，保证第 12 节及以后的课程也能展示
+$maxSection = scheduleTimeMaxPeriods();
+$timeSlots = scheduleTimePeriodsToList(scheduleTimeGetPeriods($DB, $kbjcmsid));
 
 $courseColors = ['bg-primary', 'bg-success', 'bg-info', 'bg-warning', 'bg-danger', 'bg-purple', 'bg-pink', 'bg-indigo', 'bg-teal', 'bg-orange'];
 
@@ -100,16 +92,22 @@ function getCourseColorIndex($courseName) {
     return abs($hash) % 10;
 }
 
-function parseClassTime($classTime, $weekNoteDetail = '') {
+/**
+ * 解析课程节次，返回 0 基索引数组
+ * 兼容三种来源：weekNoteDetail（"101,102" / "第1,2节"）、
+ * classTime「1+两位节次」编码（105106 = 第5、6节，112 = 第12节）、
+ * classTime「星期1位 + 两位节次」（20506 = 周二第5、6节）
+ */
+function parseClassTime($classTime, $weekNoteDetail = '', $maxSection = 20) {
     $sections = [];
-    
+
     if (!empty($weekNoteDetail)) {
         $parts = explode(',', $weekNoteDetail);
         foreach ($parts as $part) {
             $part = trim($part);
             if (strlen($part) >= 2) {
                 $num = intval(substr($part, -2));
-                if ($num >= 1 && $num <= 11) {
+                if ($num >= 1 && $num <= $maxSection) {
                     $sections[] = $num - 1;
                 }
             }
@@ -118,31 +116,50 @@ function parseClassTime($classTime, $weekNoteDetail = '') {
             return array_unique($sections);
         }
     }
-    
+
     if (empty($classTime)) return $sections;
-    
-    preg_match_all('/10\d|0\d|\d+/', $classTime, $matches);
-    
-    if (!empty($matches[0])) {
-        foreach ($matches[0] as $m) {
-            $num = intval($m);
-            if ($num >= 1 && $num <= 11) {
-                $sections[] = $num - 1;
-            }
+
+    // 1) 「1 + 两位节次」编码（101=第1节 ... 112=第12节）
+    for ($i = 1; $i <= $maxSection; $i++) {
+        $code = '1' . sprintf('%02d', $i);
+        if (strpos($classTime, $code) !== false) {
+            $sections[] = $i - 1;
         }
     }
-    
+    if (!empty($sections)) {
+        return array_unique($sections);
+    }
+
+    // 2) 「星期(1位) + 两位节次」（如 20506 = 周二第5、6节）
+    $timeStr = $classTime;
+    if (strlen($timeStr) > 2 && strlen($timeStr) % 2 === 1) {
+        $timeStr = substr($timeStr, 1);
+    }
+    for ($i = 0; $i + 1 < strlen($timeStr); $i += 2) {
+        $num = intval(substr($timeStr, $i, 2));
+        if ($num >= 1 && $num <= $maxSection) {
+            $sections[] = $num - 1;
+        }
+    }
+    if (!empty($sections)) {
+        return array_unique($sections);
+    }
+
+    // 3) 兜底：按数字片段解析（兼容单节次写法）
+    preg_match_all('/\d+/', $classTime, $matches);
+    foreach ($matches[0] as $m) {
+        $num = intval($m);
+        if ($num >= 1 && $num <= $maxSection) {
+            $sections[] = $num - 1;
+        }
+    }
+
     return array_unique($sections);
 }
 
-$grid = [];
-for ($i = 0; $i < 11; $i++) {
-    $grid[$i] = [];
-    for ($d = 0; $d <= 7; $d++) {
-        $grid[$i][$d] = [];
-    }
-}
-
+// 先解析课程与所在节次，再按实际数据决定课程表行数
+$parsedCourses = [];
+$maxRowIndex = -1;
 $aiCourses = [];
 if ($schedule && !empty($schedule['courses'])) {
     $courses = $schedule['courses'];
@@ -161,12 +178,11 @@ if ($schedule && !empty($schedule['courses'])) {
         
         $classTime = $course['classTime'] ?? '';
         $weekNoteDetail = $course['weekNoteDetail'] ?? '';
-        $sections = parseClassTime($classTime, $weekNoteDetail);
+        $sections = parseClassTime($classTime, $weekNoteDetail, $maxSection);
         
+        $parsedCourses[] = ['course' => $course, 'day' => $day, 'sections' => $sections];
         if (!empty($sections)) {
-            foreach ($sections as $s) {
-                $grid[$s][$day][] = $course;
-            }
+            $maxRowIndex = max($maxRowIndex, max($sections));
         }
         
         $aiCourses[] = [
@@ -179,6 +195,28 @@ if ($schedule && !empty($schedule['courses'])) {
             'credit' => $course['credit'] ?? '',
             'nature' => $course['courseNature'] ?? '',
         ];
+    }
+}
+
+// 行数 = max(后台配置节次数, 数据中最大节次 + 1, 11 节)，后台未配置的节次补占位行
+$rowCount = max(count($timeSlots), $maxRowIndex + 1, 11);
+for ($i = count($timeSlots); $i < $rowCount; $i++) {
+    $timeSlots[] = ['name' => '第' . ($i + 1) . '节', 'time' => ''];
+}
+
+$grid = [];
+for ($i = 0; $i < $rowCount; $i++) {
+    $grid[$i] = [];
+    for ($d = 0; $d <= 7; $d++) {
+        $grid[$i][$d] = [];
+    }
+}
+
+foreach ($parsedCourses as $item) {
+    foreach ($item['sections'] as $s) {
+        if (isset($grid[$s])) {
+            $grid[$s][$item['day']][] = $item['course'];
+        }
     }
 }
 ?>
