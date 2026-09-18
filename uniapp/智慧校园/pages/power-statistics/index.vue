@@ -134,7 +134,12 @@
 					</view>
 				</view>
 
-				<button class="ai-btn" @click="aiAnalyze">AI 智能分析</button>
+				<view class="ai-analyze-wrap">
+					<view class="ai-analyze-btn" :class="{ 'ai-loading': aiLoading }" @click="aiAnalyze">
+						<text v-if="!aiLoading">AI 智能分析</text>
+						<text v-else>分析中…</text>
+					</view>
+				</view>
 
 				<view class="chart-section">
 					<view class="section-header">
@@ -272,6 +277,12 @@
 					</view>
 				</scroll-view>
 			</view>
+		</view>
+
+		<!-- 右侧浮动 AI 分析按钮（圆形） -->
+		<view class="ai-fab" :class="{ 'ai-loading': aiLoading }" @click="aiAnalyze">
+			<text class="ai-fab-icon">AI</text>
+			<text class="ai-fab-label">分析</text>
 		</view>
 	</view>
 </template>
@@ -1377,24 +1388,10 @@ page {
 	color: #948eb3;
 }
 
-.ai-btn {
-	width: 100%;
-	background: linear-gradient(135deg, #13c2c2 0%, #1890ff 100%);
-	color: white;
-	font-size: 28rpx;
-	height: 96rpx;
-	line-height: 96rpx;
-	padding: 0;
-	border-radius: 12rpx;
-	margin: 0 0 20rpx;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	box-shadow: 0 10rpx 24rpx rgba(19, 194, 194, 0.25);
-}
-
-.ai-btn::after {
-	border: none;
+/* AI 分析按钮与浮动按钮样式已统一到 App.vue 全局（.ai-analyze-wrap / .ai-analyze-btn / .ai-fab） */
+/* 本页需与下方「用电量趋势」区块保持间距 */
+.ai-analyze-wrap {
+	margin-bottom: 30rpx;
 }
 
 .ai-mask {

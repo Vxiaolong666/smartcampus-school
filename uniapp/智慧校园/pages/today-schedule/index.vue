@@ -356,6 +356,12 @@
 				</scroll-view>
 			</view>
 		</view>
+
+		<!-- 右侧浮动 AI 分析按钮（圆形，tabBar 页面抬高避免被标签栏遮挡） -->
+		<view class="ai-fab ai-fab--tab" :class="{ 'ai-loading': aiLoading }" @click="aiAnalyze">
+			<text class="ai-fab-icon">AI</text>
+			<text class="ai-fab-label">分析</text>
+		</view>
 	</view>
 </template>
 
