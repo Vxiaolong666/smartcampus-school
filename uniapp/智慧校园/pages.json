@@ -145,6 +145,12 @@
 			}
 		},
 		{
+			"path": "pages/cancel-account/index",
+			"style": {
+				"navigationBarTitleText": "账号注销"
+			}
+		},
+		{
 			"path": "pages/power-fee-batch/index",
 			"style": {
 				"navigationBarTitleText": "批量查询"

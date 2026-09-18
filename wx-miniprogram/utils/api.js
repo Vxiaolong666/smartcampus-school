@@ -1,6 +1,7 @@
 
-const API_BASE_URL = 'https://mc.xzwmc.com/csgocs/api.php';
-
+const API_BASE_URL = 'http://127.0.0.12/api.php';
+//https://mc.xzwmc.com/csgocs/api.php
+//http://127.0.0.12/api.php
 /**
  * 响应状态码约定：
  - code === 0：请求成功，resolve返回完整响应数据
@@ -516,6 +517,56 @@ const getFeatureSettings = (keys) => {
   });
 };
 
+/* ==================== 账号注销相关接口 ==================== */
+
+/**
+ * 获取注销配置与当前注销状态
+ * @returns {Promise}
+ */
+const getCancelConfig = () => {
+  return request({
+    act: 'get_cancel_config',
+    method: 'GET'
+  });
+};
+
+/**
+ * 发送注销邮箱验证码
+ * @returns {Promise}
+ */
+const sendCancelCode = () => {
+  return request({
+    act: 'send_cancel_code',
+    method: 'POST'
+  });
+};
+
+/**
+ * 注销第三步「下一步」身份核验（密码 / 邮箱验证码）
+ * @param {Object} data - { password, email_code }
+ * @returns {Promise} 成功后 data.pass 为核验凭据
+ */
+const verifyCancelIdentity = (data) => {
+  return request({
+    act: 'verify_cancel_identity',
+    method: 'POST',
+    data: data || {}
+  });
+};
+
+/**
+ * 提交注销申请
+ * @param {Object} data - { agree, confirm_text, pass, password, email_code }
+ * @returns {Promise}
+ */
+const cancelAccount = (data) => {
+  return request({
+    act: 'cancel_account',
+    method: 'POST',
+    data: data || {}
+  });
+};
+
 /* ==================== 本地存储工具方法 ==================== */
 
 /**
@@ -609,5 +660,9 @@ module.exports = {
   saveAcademicPushSettings,
   getAcademicPushLogs,
   getFeatureSettings,
-  getGlanceData
+  getGlanceData,
+  getCancelConfig,
+  sendCancelCode,
+  verifyCancelIdentity,
+  cancelAccount
 };

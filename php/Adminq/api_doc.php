@@ -1322,7 +1322,7 @@ wx.request({
                             <i class="fa fa-info-circle me-2"></i>
                             账号注销为用户端（Web）流程，接口位于 <code>{站点}/user/ajax.php</code>，依赖登录态（Session）。是否开启、身份验证方式（密码 / 邮件验证码 / 人机验证组合）、冷静期开关与天数，均由后台「注销管理」配置决定。
                         </div>
-                        <p><strong>流程：</strong>阅读并同意《用户注销服务协议》→ 风险告知 → 身份核验（按后台配置）→ 提交注销申请 → 启用冷静期时进入冷静期（期间登录即自动撤销）→ 冷静期到期由定时任务 <code>cron_account_cancel.php</code> 正式注销。</p>
+                        <p><strong>流程：</strong>阅读并同意《用户注销服务协议》→ 风险告知 → 身份核验（按后台配置；<strong>点击「下一步」即完成核验</strong>，通过后才可进入下一步，并签发 30 分钟一次性核验凭据）→ 提交注销申请（仅校验核验凭据 + 确认短语）→ 启用冷静期时进入冷静期（期间登录即自动撤销）→ 冷静期到期由定时任务 <code>cron_account_cancel.php</code> 正式注销。</p>
 
                         <h5 class="text-primary mt-4">1. 发送邮箱验证码</h5>
                         <p><strong>接口：</strong><code>/user/ajax.php?act=send_cancel_code</code>（POST）</p>
@@ -1333,17 +1333,35 @@ wx.request({
     "msg": "验证码已发送至您的邮箱"
 }</code></pre>
 
-                        <h5 class="text-primary mt-4">2. 提交注销申请</h5>
+                        <h5 class="text-primary mt-4">2. 身份核验（第三步「下一步」）</h5>
+                        <p><strong>接口：</strong><code>/user/ajax.php?act=verify_cancel_identity</code>（POST）</p>
+                        <p>说明：点击注销流程第三步的「下一步」时调用，完成密码 / 邮箱验证码 / 人机验证核验；<strong>核验通过才允许进入第四步</strong>，通过后服务端签发 30 分钟有效的一次性核验凭据（Web 端存于会话），后续提交无需重复输入。</p>
+                        <table class="table table-bordered table-sm">
+                            <thead><tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr></thead>
+                            <tbody>
+                                <tr><td>password</td><td>string</td><td>条件</td><td>验证方式含密码时必填（明文，服务端 MD5 后比对）</td></tr>
+                                <tr><td>email_code</td><td>string</td><td>条件</td><td>验证方式含邮件验证码时必填（校验通过即作废）</td></tr>
+                                <tr><td>tc_ticket / tc_randstr</td><td>string</td><td>否*</td><td>腾讯滑块票据</td></tr>
+                                <tr><td>captcha</td><td>string</td><td>否*</td><td>图形验证码（滑块不可用时；与 tc_ticket 二者至少一个）</td></tr>
+                            </tbody>
+                        </table>
+                        <p><strong>返回：</strong></p>
+                        <pre class="bg-light p-2 rounded"><code>{
+    "code": 0,
+    "msg": "身份核验通过"
+}</code></pre>
+                        <p>失败返回 <code>code: -1</code>，提示 <code>密码错误</code> / <code>邮箱验证码错误或已失效</code> / <code>请先完成安全验证</code>。</p>
+
+                        <h5 class="text-primary mt-4">3. 提交注销申请</h5>
                         <p><strong>接口：</strong><code>/user/ajax.php?act=cancel_account</code>（POST）</p>
                         <table class="table table-bordered table-sm">
                             <thead><tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr></thead>
                             <tbody>
                                 <tr><td>agree</td><td>int</td><td>是</td><td>固定为 1，表示已同意《用户注销服务协议》</td></tr>
-                                <tr><td>confirm_text</td><td>string</td><td>是</td><td>固定为"注销账户"或当前用户名</td></tr>
-                                <tr><td>password</td><td>string</td><td>条件</td><td>验证方式含密码时必填（明文，服务端 MD5 后比对）</td></tr>
-                                <tr><td>email_code</td><td>string</td><td>条件</td><td>验证方式含邮件验证码时必填</td></tr>
-                                <tr><td>tc_ticket / tc_randstr</td><td>string</td><td>否*</td><td>腾讯滑块票据</td></tr>
-                                <tr><td>captcha</td><td>string</td><td>否*</td><td>图形验证码（滑块不可用时；与 tc_ticket 二者至少一个）</td></tr>
+                                <tr><td>confirm_text</td><td>string</td><td>是</td><td>确认短语，须等于"我已确认注销后用户数据无法找回并确认注销"</td></tr>
+                                <tr><td>password / email_code</td><td>string</td><td>否</td><td><strong>兜底参数</strong>：仅当无第三步核验凭据（旧流程）时才现场核验</td></tr>
+                                <tr><td>tc_ticket / tc_randstr</td><td>string</td><td>否</td><td><strong>兜底参数</strong>：同上</td></tr>
+                                <tr><td>captcha</td><td>string</td><td>否</td><td><strong>兜底参数</strong>：同上</td></tr>
                             </tbody>
                         </table>
                         <p><strong>返回（启用冷静期）：</strong></p>
@@ -1359,7 +1377,9 @@ wx.request({
     "immediate": 1
 }</code></pre>
 
-                        <h5 class="text-primary mt-4">3. 查询注销状态</h5>
+                        <p><strong>说明：</strong>默认仅校验第三步签发的核验凭据（30 分钟有效、一次性）；凭据过期返回 <code>code: -3</code>「身份核验已超时，请返回上一步重新核验」，前端应退回第三步重新核验。</p>
+
+                        <h5 class="text-primary mt-4">4. 查询注销状态</h5>
                         <p><strong>接口：</strong><code>/user/ajax.php?act=cancellation_status</code>（POST）</p>
                         <p><strong>返回：</strong></p>
                         <pre class="bg-light p-2 rounded"><code>{
@@ -1377,6 +1397,18 @@ wx.request({
                         <div class="alert alert-warning mt-3 mb-0">
                             <strong>注意：</strong>冷静期内没有独立的"撤销"接口——用户在冷静期内<strong>重新登录即自动撤销</strong>注销；冷静期到期后由定时任务执行正式注销，届时账号及个人数据将被删除。
                         </div>
+
+                        <h5 class="text-primary mt-4">5. App / 客户端接口（api.php，Token 鉴权）</h5>
+                        <p>供小程序 / App 调用，需在请求头携带 <code>Authorization: Bearer {token}</code>：</p>
+                        <table class="table table-bordered table-sm">
+                            <thead><tr><th>接口</th><th>方法</th><th>参数</th><th>说明</th></tr></thead>
+                            <tbody>
+                                <tr><td><code>api.php?act=get_cancel_config</code></td><td>GET</td><td>-</td><td>返回注销开关、验证方式、冷静期、协议全文与当前注销状态</td></tr>
+                                <tr><td><code>api.php?act=send_cancel_code</code></td><td>POST</td><td>-</td><td>发送邮箱验证码（60s 冷却，10 分钟有效）</td></tr>
+                                <tr><td><code>api.php?act=verify_cancel_identity</code></td><td>POST</td><td>password、email_code</td><td>第三步「下一步」核验身份；成功后返回 <code>pass</code> 核验凭据（30 分钟、一次性）</td></tr>
+                                <tr><td><code>api.php?act=cancel_account</code></td><td>POST</td><td>agree、confirm_text、<strong>pass</strong></td><td>提交注销申请（App 端不含人机验证；以第三步签发的核验凭据 + 确认短语核验。旧客户端可不传 pass，改传 password/email_code 现场核验）</td></tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 

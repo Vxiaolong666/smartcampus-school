@@ -80,6 +80,120 @@ function cancelGetConfig()
 }
 
 /**
+ * 统计注销将删除的用户数据（用于风险告知展示，与 Web 端保持一致）
+ *
+ * @param object $DB     PdoHelper 实例
+ * @param int    $userId 用户 ID
+ * @return array{dorm_count:int,academic_bound:int,academic_student_id:string,oauth_count:int,sub_count:int,push_count:int}
+ */
+function cancelGetUserDataSummary($DB, $userId)
+{
+    $userId = intval($userId);
+    $academic = $DB->getRow("SELECT * FROM nteam_academic_accounts WHERE user_id='$userId'");
+    return [
+        'dorm_count'          => (int) $DB->getColumn("SELECT COUNT(*) FROM nteam_dormitory_bindings WHERE user_id='$userId'"),
+        'academic_bound'      => $academic ? 1 : 0,
+        'academic_student_id' => ($academic && isset($academic['student_id'])) ? (string) $academic['student_id'] : '',
+        'oauth_count'         => (int) $DB->getColumn("SELECT COUNT(*) FROM nteam_user_oauth WHERE user_id='$userId'"),
+        'sub_count'           => (int) $DB->getColumn("SELECT COUNT(*) FROM nteam_subscriptions WHERE user_id='$userId'"),
+        'push_count'          => (int) $DB->getColumn("SELECT COUNT(*) FROM nteam_push_settings WHERE user_id='$userId'"),
+    ];
+}
+
+/**
+ * 校验注销身份核验项（密码 / 邮箱验证码）
+ *
+ * 通过返回 true，否则返回错误信息字符串。
+ * 邮箱验证码同时兼容两种存放位置：Web 端存于会话，App 端存于 nteam_tokens。
+ *
+ * @param bool $consume 校验通过后是否立即消费验证码（防止重复使用）
+ * @return true|string
+ */
+function cancelVerifyIdentity($DB, $user, $cfg, $password = '', $emailCode = '', $consume = false)
+{
+    $userId = intval($user['id']);
+    $mode = isset($cfg['verify_mode']) ? (string) $cfg['verify_mode'] : 'password';
+
+    if (strpos($mode, 'password') !== false) {
+        if (md5((string) $password) !== (string) $user['password']) {
+            return '密码错误';
+        }
+    }
+
+    if (strpos($mode, 'email') !== false) {
+        $code = trim((string) $emailCode);
+        if ($code === '') {
+            return '请输入邮箱验证码';
+        }
+        $ok = false;
+        // Web 端：会话中的验证码
+        if (!empty($_SESSION['cancel_code']) && !empty($_SESSION['cancel_code_time'])
+            && (time() - intval($_SESSION['cancel_code_time'])) <= 600
+            && hash_equals((string) $_SESSION['cancel_code'], $code)) {
+            $ok = true;
+            if ($consume) {
+                unset($_SESSION['cancel_code'], $_SESSION['cancel_code_time'], $_SESSION['cancel_code_email']);
+            }
+        }
+        // App 端：数据库中的验证码
+        if (!$ok) {
+            $now = date('Y-m-d H:i:s');
+            $tk = $DB->getRow("SELECT * FROM nteam_tokens WHERE user_id='$userId' AND token_type='cancel_verify' AND used=0 AND expire_time > '$now' ORDER BY id DESC LIMIT 1");
+            if ($tk && hash_equals((string) $tk['token'], $code)) {
+                $ok = true;
+                if ($consume) {
+                    $DB->exec("UPDATE nteam_tokens SET used=1 WHERE id='" . intval($tk['id']) . "'");
+                }
+            }
+        }
+        if (!$ok) {
+            return '邮箱验证码错误或已失效';
+        }
+    }
+
+    return true;
+}
+
+/**
+ * 签发身份核验凭据（第三步核验通过后签发，提交注销时凭此免重复核验）
+ *
+ * @param int    $ttlSeconds 有效期（秒），默认 30 分钟
+ * @return string 凭据字符串
+ */
+function cancelIssueVerifyPass($DB, $userId, $email = '', $ttlSeconds = 1800)
+{
+    $userId  = intval($userId);
+    $pass    = bin2hex(random_bytes(16));
+    $now     = date('Y-m-d H:i:s');
+    $expire  = date('Y-m-d H:i:s', time() + intval($ttlSeconds));
+    $email   = addslashes((string) $email);
+    $DB->exec("DELETE FROM nteam_tokens WHERE user_id='$userId' AND token_type='cancel_pass'");
+    $DB->exec("INSERT INTO nteam_tokens (user_id, token_type, token, email, expire_time, used, create_time) VALUES ('$userId', 'cancel_pass', '$pass', '$email', '$expire', 0, '$now')");
+    return $pass;
+}
+
+/**
+ * 校验身份核验凭据是否有效（默认校验后即消费，防止重放）
+ */
+function cancelCheckVerifyPass($DB, $userId, $pass, $consume = true)
+{
+    $userId = intval($userId);
+    $pass   = (string) $pass;
+    if ($pass === '') {
+        return false;
+    }
+    $now = date('Y-m-d H:i:s');
+    $tk = $DB->getRow("SELECT * FROM nteam_tokens WHERE user_id='$userId' AND token_type='cancel_pass' AND used=0 AND expire_time > '$now' ORDER BY id DESC LIMIT 1");
+    if (!$tk || !hash_equals((string) $tk['token'], $pass)) {
+        return false;
+    }
+    if ($consume) {
+        $DB->exec("UPDATE nteam_tokens SET used=1 WHERE id='" . intval($tk['id']) . "'");
+    }
+    return true;
+}
+
+/**
  * 默认《用户注销服务协议》模板（Markdown 格式，可在后台编辑）
  */
 function cancelDefaultAgreement()

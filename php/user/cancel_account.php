@@ -20,12 +20,13 @@ $cfg = cancelGetConfig();
 $needPwd   = strpos($cfg['verify_mode'], 'password') !== false;
 $needEmail = strpos($cfg['verify_mode'], 'email') !== false;
 
-// 统计将删除的数据
-$dormCount   = (int)$DB->getColumn("SELECT COUNT(*) FROM nteam_dormitory_bindings WHERE user_id='$userId'");
-$academicRow = $DB->getRow("SELECT * FROM nteam_academic_accounts WHERE user_id='$userId'");
-$oauthCount  = (int)$DB->getColumn("SELECT COUNT(*) FROM nteam_user_oauth WHERE user_id='$userId'");
-$subCount    = (int)$DB->getColumn("SELECT COUNT(*) FROM nteam_subscriptions WHERE user_id='$userId'");
-$pushCount   = (int)$DB->getColumn("SELECT COUNT(*) FROM nteam_push_settings WHERE user_id='$userId'");
+// 统计将删除的数据（与 App 端共用 cancelGetUserDataSummary，保证口径一致）
+$summary     = cancelGetUserDataSummary($DB, $userId);
+$dormCount   = $summary['dorm_count'];
+$academicRow = $summary['academic_bound'] ? ['student_id' => $summary['academic_student_id']] : null;
+$oauthCount  = $summary['oauth_count'];
+$subCount    = $summary['sub_count'];
+$pushCount   = $summary['push_count'];
 
 $title = '注销账户';
 include('./head.php');
@@ -310,6 +311,8 @@ var AGREEMENT_MD = <?php echo json_encode($cfg['agreement'], JSON_UNESCAPED_UNIC
 var currentStep = 1;
 var TOTAL_STEPS = 4;
 var sendTimer = null;
+var identityPassed = false; // 第三步是否已通过服务端身份核验
+var verifying = false;      // 第三步核验请求进行中
 
 // 渲染《用户注销服务协议》（Markdown → HTML，并做安全过滤）
 function renderAgreement() {
@@ -370,6 +373,12 @@ function goNext() {
         return;
     }
     if (currentStep === 3) {
+        // 已核验通过则直接进入下一步，否则先由服务端核验身份
+        if (identityPassed) {
+            currentStep++;
+            renderSteps(true);
+            return;
+        }
         if (needPwd && $.trim($('#password').val()) === '') {
             layer.alert('请输入登录密码', {icon: 2});
             return;
@@ -378,11 +387,60 @@ function goNext() {
             layer.alert('请输入邮箱验证码', {icon: 2});
             return;
         }
+        if (!isCaptchaDone()) {
+            layer.alert('请先完成安全验证', {icon: 2});
+            return;
+        }
+        verifyIdentity();
+        return;
     }
     if (currentStep < TOTAL_STEPS) {
         currentStep++;
         renderSteps(true);
     }
+}
+
+// 第三步「下一步」：先核验身份，通过后才进入第四步
+function verifyIdentity() {
+    if (verifying) { return; }
+    verifying = true;
+    $('#nextBtn').prop('disabled', true);
+    var ii = layer.load(2, {shade: [0.1, '#fff']});
+    $.ajax({
+        type: 'POST',
+        url: 'ajax.php?act=verify_cancel_identity',
+        data: {
+            password: $('#password').val() || '',
+            email_code: $.trim($('#emailCode').val() || ''),
+            tc_ticket: $('#tc_ticket').val() || '',
+            tc_randstr: $('#tc_randstr').val() || '',
+            captcha: $.trim($('#captcha').val() || '')
+        },
+        dataType: 'json',
+        success: function (res) {
+            layer.close(ii);
+            verifying = false;
+            if (res.code == 0) {
+                identityPassed = true;
+                currentStep++;
+                renderSteps(true);
+            } else {
+                // 图形验证码为一次性，失败后需刷新
+                if ($.trim($('#captcha').val() || '') !== '') {
+                    refreshCaptcha();
+                    $('#captcha').val('');
+                }
+                layer.alert(res.msg || '身份核验失败', {icon: 2});
+                updateNextState();
+            }
+        },
+        error: function () {
+            layer.close(ii);
+            verifying = false;
+            layer.alert('网络错误，请稍后重试', {icon: 2});
+            updateNextState();
+        }
+    });
 }
 
 function goPrev() {
@@ -414,12 +472,12 @@ function updateNextState() {
     $('#nextBtn').prop('disabled', !ok);
 }
 
-// 控制「提交注销申请」是否可点击（确认短语正确且各项核验已完成）
+// 控制「提交注销申请」是否可点击（身份已核验通过且确认短语正确）
 function updateSubmitState() {
     var ok = true;
     if (!$('#agreeAgreement').is(':checked')) { ok = false; }
     if (!$('#agreeRisk').is(':checked')) { ok = false; }
-    if (!isCaptchaDone()) { ok = false; }
+    if (!identityPassed) { ok = false; }
     if ($.trim($('#confirmText').val()) !== CONFIRM_PHRASE) { ok = false; }
     $('#submitBtn').prop('disabled', !ok);
 }
@@ -526,10 +584,8 @@ $('#submitBtn').on('click', function () {
         layer.alert('请先勾选"我已阅读并知晓上述后果"', {icon: 2});
         return false;
     }
-    var tcTicket = $('#tc_ticket').val() || '';
-    var captcha = $('#captcha').val() || '';
-    if (tcTicket.length < 1 && captcha.length < 1) {
-        layer.alert('请先完成安全验证', {icon: 2});
+    if (!identityPassed) {
+        layer.alert('请先完成身份核验', {icon: 2});
         return false;
     }
     if ($.trim($('#confirmText').val()) !== CONFIRM_PHRASE) {
@@ -550,12 +606,7 @@ $('#submitBtn').on('click', function () {
             url: 'ajax.php?act=cancel_account',
             data: {
                 agree: 1,
-                password: $('#password').val() || '',
-                email_code: $('#emailCode').val() || '',
-                confirm_text: $.trim($('#confirmText').val()),
-                tc_ticket: tcTicket,
-                tc_randstr: $('#tc_randstr').val() || '',
-                captcha: captcha
+                confirm_text: $.trim($('#confirmText').val())
             },
             dataType: 'json',
             success: function (res) {
@@ -566,9 +617,11 @@ $('#submitBtn').on('click', function () {
                     });
                 } else {
                     btn.prop('disabled', false);
-                    if (captcha.length > 0) {
-                        refreshCaptcha();
-                        $('#captcha').val('');
+                    if (res.code == -3) {
+                        // 核验凭据已失效：退回第三步重新核验
+                        identityPassed = false;
+                        currentStep = 3;
+                        renderSteps(true);
                     }
                     layer.alert(res.msg, {icon: 2});
                 }

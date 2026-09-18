@@ -126,9 +126,16 @@ switch($act) {
             jsonResponse(-1, '密码错误');
         }
         
+        $ip = $Gets->ip();
+
+        // 冷静期处理：冷静期内登录即自动撤销注销；已到期则拒绝登录
+        $cancelState = cancelHandleLogin($DB, $userData, $ip);
+        if ($cancelState === 'expired') {
+            jsonResponse(-1, '该账号已进入注销流程，无法登录');
+        }
+
         $token = generateToken($userData['id'], $DB);
         
-        $ip = $Gets->ip();
         $DB->exec("UPDATE nteam_users SET last_login_time=NOW(), last_login_ip='$ip' WHERE id='{$userData['id']}'");
         
         jsonResponse(0, '登录成功', [
@@ -136,7 +143,8 @@ switch($act) {
             'user_id' => (int)$userData['id'],
             'username' => $userData['username'],
             'email' => $userData['email'],
-            'qq' => $userData['qq']
+            'qq' => $userData['qq'],
+            'cancel_revoked' => ($cancelState === 'revoked') ? 1 : 0
         ]);
     break;
     
@@ -181,9 +189,16 @@ switch($act) {
             jsonResponse(-1, '该账号已被封禁');
         }
         
+        $ip = $Gets->ip();
+
+        // 冷静期处理：冷静期内登录即自动撤销注销；已到期则拒绝登录
+        $cancelState = cancelHandleLogin($DB, $userData, $ip);
+        if ($cancelState === 'expired') {
+            jsonResponse(-1, '该账号已进入注销流程，无法登录');
+        }
+
         $token = generateToken($userData['id'], $DB);
         
-        $ip = $Gets->ip();
         $DB->exec("UPDATE nteam_users SET last_login_time=NOW(), last_login_ip='$ip' WHERE id='{$userData['id']}'");
         
         jsonResponse(0, '登录成功', [
@@ -191,7 +206,8 @@ switch($act) {
             'user_id' => (int)$userData['id'],
             'username' => $userData['username'],
             'email' => $userData['email'],
-            'qq' => $userData['qq']
+            'qq' => $userData['qq'],
+            'cancel_revoked' => ($cancelState === 'revoked') ? 1 : 0
         ]);
     break;
     
@@ -549,7 +565,182 @@ switch($act) {
         
         jsonResponse(0, 'success', $userData);
     break;
-    
+
+    /* ==================== 账号注销 ==================== */
+
+    case 'get_cancel_config':
+        $user = authenticateUser($DB);
+        if (!$user) {
+            jsonResponse(-2, '请先登录');
+        }
+        $cfg = cancelGetConfig();
+        $userId = intval($user['user_id']);
+        $row = $DB->getRow("SELECT is_cancelling, cancel_time, cancel_expire_time FROM nteam_users WHERE id='$userId'");
+        $remain = 0;
+        if ($row && !empty($row['is_cancelling']) && !empty($row['cancel_expire_time'])) {
+            $remain = max(0, (int)ceil((strtotime($row['cancel_expire_time']) - time()) / 86400));
+        }
+        jsonResponse(0, 'success', [
+            'enabled'        => $cfg['enable'],
+            'verify_mode'    => $cfg['verify_mode'],
+            'need_password'  => strpos($cfg['verify_mode'], 'password') !== false,
+            'need_email'     => strpos($cfg['verify_mode'], 'email') !== false,
+            'cooling_enable' => $cfg['cooling_enable'],
+            'cooling_days'   => $cfg['cooling_days'],
+            'agreement'      => $cfg['agreement'],
+            'is_cancelling'  => $row ? intval($row['is_cancelling']) : 0,
+            'cancel_time'    => $row ? $row['cancel_time'] : null,
+            'expire_time'    => $row ? $row['cancel_expire_time'] : null,
+            'remain_days'    => $remain,
+            'confirm_phrase' => '我已确认注销后用户数据无法找回并确认注销',
+            'summary'        => cancelGetUserDataSummary($DB, $userId)
+        ]);
+    break;
+
+    case 'send_cancel_code':
+        $user = authenticateUser($DB);
+        if (!$user) {
+            jsonResponse(-2, '请先登录');
+        }
+        $cfg = cancelGetConfig();
+        if ($cfg['enable'] !== 1) {
+            jsonResponse(-1, '注销功能未开启');
+        }
+        if (strpos($cfg['verify_mode'], 'email') === false) {
+            jsonResponse(-1, '当前验证方式无需邮件验证码');
+        }
+        $userId = intval($user['user_id']);
+        $row = $DB->getRow("SELECT * FROM nteam_users WHERE id='$userId'");
+        if (!$row) {
+            jsonResponse(-2, '请先登录');
+        }
+        // 60 秒发送冷却
+        $last = $DB->getRow("SELECT * FROM nteam_tokens WHERE user_id='$userId' AND token_type='cancel_verify' ORDER BY id DESC LIMIT 1");
+        if ($last && (time() - strtotime($last['create_time'])) < 60) {
+            $left = 60 - (time() - strtotime($last['create_time']));
+            jsonResponse(-1, '请勿频繁发送，请 ' . $left . ' 秒后重试');
+        }
+        if (empty($row['email'])) {
+            jsonResponse(-1, '账号未绑定邮箱，无法发送验证码');
+        }
+        $code = sprintf('%06d', random_int(0, 999999));
+        $expireTime = date('Y-m-d H:i:s', strtotime('+10 minutes'));
+        $now = date('Y-m-d H:i:s');
+        $emailEsc = addslashes($row['email']);
+        $DB->exec("DELETE FROM nteam_tokens WHERE user_id='$userId' AND token_type='cancel_verify' AND used=0");
+        $DB->exec("INSERT INTO nteam_tokens (user_id, token_type, token, email, expire_time, used, create_time) VALUES ('$userId', 'cancel_verify', '$code', '$emailEsc', '$expireTime', 0, '$now')");
+
+        $siteName = conf('Name');
+        $mailContent = '<html><head><meta charset="UTF-8"></head><body style="font-family:Arial,sans-serif;line-height:1.6;color:#333;">'
+            . '<div style="max-width:600px;margin:0 auto;padding:20px;border:1px solid #ddd;border-radius:5px;">'
+            . '<h2 style="color:#dc3545;border-bottom:2px solid #dc3545;padding-bottom:10px;">账号注销邮箱验证码</h2>'
+            . '<p>您好，<strong>' . htmlspecialchars($row['username']) . '</strong>：</p>'
+            . '<p>您正在申请注销账号，本次验证码为：</p>'
+            . '<p style="font-size:28px;font-weight:bold;letter-spacing:6px;color:#dc3545;">' . $code . '</p>'
+            . '<p>验证码 10 分钟内有效，请勿泄露给他人。如非本人操作，请忽略本邮件。</p>'
+            . '<p style="color:#999;font-size:12px;">—— ' . htmlspecialchars($siteName) . '</p>'
+            . '</div></body></html>';
+        $res = cancelSendMail($row['email'], '账号注销验证码 - ' . $siteName, $mailContent);
+        if ($res !== true) {
+            jsonResponse(-1, '验证码发送失败，请稍后重试');
+        }
+        jsonResponse(0, '验证码已发送至您的邮箱');
+    break;
+
+    // 第三步「下一步」即完成身份核验（密码 / 邮箱验证码）
+    case 'verify_cancel_identity':
+        $user = authenticateUser($DB);
+        if (!$user) {
+            jsonResponse(-2, '请先登录');
+        }
+        $cfg = cancelGetConfig();
+        if ($cfg['enable'] !== 1) {
+            jsonResponse(-1, '注销功能未开启');
+        }
+        $userId = intval($user['user_id']);
+        $row = $DB->getRow("SELECT * FROM nteam_users WHERE id='$userId'");
+        if (!$row) {
+            jsonResponse(-2, '请先登录');
+        }
+        if (!empty($row['is_cancelling']) && intval($row['is_cancelling']) === 1) {
+            jsonResponse(-1, '账号已处于冷静期中');
+        }
+        $verify = cancelVerifyIdentity($DB, $row, $cfg, isset($_POST['password']) ? $_POST['password'] : '', isset($_POST['email_code']) ? $_POST['email_code'] : '', true);
+        if ($verify !== true) {
+            jsonResponse(-1, $verify);
+        }
+        $pass = cancelIssueVerifyPass($DB, $userId, isset($row['email']) ? $row['email'] : '');
+        jsonResponse(0, '身份核验通过', ['pass' => $pass]);
+    break;
+
+    case 'cancel_account':
+        $user = authenticateUser($DB);
+        if (!$user) {
+            jsonResponse(-2, '请先登录');
+        }
+        $cfg = cancelGetConfig();
+        if ($cfg['enable'] !== 1) {
+            jsonResponse(-1, '注销功能未开启');
+        }
+        $userId = intval($user['user_id']);
+        $row = $DB->getRow("SELECT * FROM nteam_users WHERE id='$userId'");
+        if (!$row) {
+            jsonResponse(-2, '请先登录');
+        }
+        if (!empty($row['is_cancelling']) && intval($row['is_cancelling']) === 1) {
+            jsonResponse(-1, '账号已处于冷静期中');
+        }
+        if (intval(isset($_POST['agree']) ? $_POST['agree'] : 0) !== 1) {
+            jsonResponse(-1, '请先阅读并同意《用户注销服务协议》');
+        }
+        $confirmText = isset($_POST['confirm_text']) ? trim($_POST['confirm_text']) : '';
+        if ($confirmText !== '我已确认注销后用户数据无法找回并确认注销') {
+            jsonResponse(-1, '确认短语不正确');
+        }
+        // 身份核验：以第三步核验通过后签发的凭据为准（30 分钟内有效、一次性）
+        $pass = isset($_POST['pass']) ? (string)$_POST['pass'] : '';
+        if ($pass !== '') {
+            // 仅校验不消费：注销成功后再清理，避免中途失败导致用户需重新核验
+            if (!cancelCheckVerifyPass($DB, $userId, $pass, false)) {
+                jsonResponse(-3, '身份核验已超时，请返回上一步重新核验');
+            }
+        } else {
+            // 兜底：兼容未经过第三步核验的旧版本客户端
+            $verify = cancelVerifyIdentity($DB, $row, $cfg, isset($_POST['password']) ? $_POST['password'] : '', isset($_POST['email_code']) ? $_POST['email_code'] : '', true);
+            if ($verify !== true) {
+                jsonResponse(-1, $verify);
+            }
+        }
+        $ip = $Gets->ip();
+
+        if ($cfg['cooling_enable'] !== 1) {
+            // 未启用冷静期：立即注销
+            $auditId = cancelCreateAudit($DB, $row, $cfg, $ip, 'pending', null);
+            if ($cfg['mail_deleted'] === 1) {
+                cancelSendDeleteMail($row);
+            }
+            $del = deleteUserAccount($DB, $userId, $row);
+            if (!$del['success']) {
+                $DB->exec("UPDATE nteam_account_deletions SET status='failed' WHERE id='" . intval($auditId) . "'");
+                jsonResponse(-1, '注销失败[' . $del['error'] . ']');
+            }
+            $DB->exec("UPDATE nteam_account_deletions SET status='deleted', delete_time=NOW() WHERE id='" . intval($auditId) . "'");
+            jsonResponse(0, '账号已注销', ['immediate' => 1]);
+        }
+
+        // 启用冷静期
+        $days = intval($cfg['cooling_days']);
+        $expire = date('Y-m-d H:i:s', strtotime("+{$days} days"));
+        $DB->exec("UPDATE nteam_users SET is_cancelling=1, cancel_time=NOW(), cancel_expire_time='$expire' WHERE id='$userId'");
+        cancelCreateAudit($DB, $row, $cfg, $ip, 'pending', $expire);
+        if ($cfg['mail_submit'] === 1) {
+            cancelSendSubmitMail($row, $expire, $days);
+        }
+        // 使当前 API 令牌与本次核验凭据失效（客户端需重新登录；重新登录会自动撤销注销）
+        $DB->exec("DELETE FROM nteam_tokens WHERE user_id='$userId' AND token_type IN ('api_access','cancel_pass')");
+        jsonResponse(0, '注销申请已提交，账号将在 ' . substr($expire, 0, 10) . ' 正式注销，期间登录可撤销', ['expire_time' => $expire]);
+    break;
+
     case 'update_profile':
         $user = authenticateUser($DB);
         if (!$user) {

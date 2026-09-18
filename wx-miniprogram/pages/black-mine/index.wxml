@@ -120,6 +120,12 @@
               <text class="status-text {{wxBound ? 'status-bound' : 'status-unbound'}}">{{wxBound ? '已绑定' : '未绑定'}}</text>
               <image class="item-right" src="/assets/wxmp-right.svg" mode="widthFix"></image>
             </view>
+
+            <view class="item-item" bind:tap="handleCancelAccount">
+              <image class="item-logo" src="/assets/icon_cvoieudado/a-199_zhuye.svg" mode="widthFix"></image>
+              <view class="item-text">账号注销</view>
+              <image class="item-right" src="/assets/wxmp-right.svg" mode="widthFix"></image>
+            </view>
           </view>
         </view>
       </block>

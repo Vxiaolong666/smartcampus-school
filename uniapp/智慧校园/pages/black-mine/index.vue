@@ -120,6 +120,12 @@
 								<text class="status-text" :class="wxBound ? 'status-bound' : 'status-unbound'">{{ wxBound ? '已绑定' : '未绑定' }}</text>
 								<image class="item-right" src="/static/assets/wxmp-right.svg" mode="widthFix"></image>
 							</view>
+
+							<view class="item-item" @click="handleCancelAccount">
+								<image class="item-logo" src="/static/assets/icon_cvoieudado/a-199_zhuye.svg" mode="widthFix"></image>
+								<view class="item-text">账号注销</view>
+								<image class="item-right" src="/static/assets/wxmp-right.svg" mode="widthFix"></image>
+							</view>
 						</view>
 					</view>
 				</block>
@@ -394,6 +400,12 @@ export default {
 		handleWxBind() {
 			uni.navigateTo({
 				url: '/pages/wx-bind/index'
+			});
+		},
+
+		handleCancelAccount() {
+			uni.navigateTo({
+				url: '/pages/cancel-account/index'
 			});
 		},
 

@@ -1426,6 +1426,49 @@ switch($act){
         ]));
     break;
 
+    // 第三步「下一步」即完成身份核验（密码 / 邮箱验证码 / 人机验证）
+    case 'verify_cancel_identity':
+        if(!isset($_SESSION['userId'])){
+            exit('{"code":-1,"msg":"请先登录"}');
+        }
+        $cfg = cancelGetConfig();
+        if ($cfg['enable'] !== 1) {
+            exit('{"code":-1,"msg":"注销功能未开启"}');
+        }
+        $userId = intval($_SESSION['userId']);
+        $user = $DB->getRow("SELECT * FROM nteam_users WHERE id='$userId'");
+        if (!$user) {
+            exit('{"code":-1,"msg":"请先登录"}');
+        }
+        if (!empty($user['is_cancelling']) && intval($user['is_cancelling']) === 1) {
+            exit('{"code":-1,"msg":"账号已处于冷静期中"}');
+        }
+        // 人机验证
+        $tcTicket = isset($_POST['tc_ticket']) ? addslashes($_POST['tc_ticket']) : '';
+        $tcRandstr = isset($_POST['tc_randstr']) ? addslashes($_POST['tc_randstr']) : '';
+        $captcha = isset($_POST['captcha']) ? strtoupper(addslashes($_POST['captcha'])) : '';
+        $captchaValid = false;
+        if (!empty($tcTicket) && !empty($tcRandstr)) {
+            $captchaValid = true;
+        } elseif (!empty($captcha)) {
+            if (isset($_SESSION['captcha']) && strtoupper($_SESSION['captcha']) === $captcha) {
+                $captchaValid = true;
+                unset($_SESSION['captcha']);
+            }
+        }
+        if (!$captchaValid) {
+            exit('{"code":-1,"msg":"请先完成安全验证"}');
+        }
+        // 密码 / 邮箱验证码核验（通过后消费验证码，避免重复使用）
+        $verify = cancelVerifyIdentity($DB, $user, $cfg, isset($_POST['password']) ? $_POST['password'] : '', isset($_POST['email_code']) ? $_POST['email_code'] : '', true);
+        if ($verify !== true) {
+            exit('{"code":-1,"msg":"' . $verify . '"}');
+        }
+        // 签发核验凭据，第四步提交时凭此免重复核验
+        $_SESSION['cancel_pass'] = cancelIssueVerifyPass($DB, $userId, isset($user['email']) ? $user['email'] : '');
+        exit('{"code":0,"msg":"身份核验通过"}');
+    break;
+
     case 'cancel_account':
         if(!isset($_SESSION['userId'])){
             exit('{"code":-1,"msg":"请先登录"}');
@@ -1450,39 +1493,35 @@ switch($act){
         if ($confirmText !== '我已确认注销后用户数据无法找回并确认注销') {
             exit('{"code":-1,"msg":"确认短语不正确"}');
         }
-        $tcTicket = isset($_POST['tc_ticket']) ? addslashes($_POST['tc_ticket']) : '';
-        $tcRandstr = isset($_POST['tc_randstr']) ? addslashes($_POST['tc_randstr']) : '';
-        $captcha = isset($_POST['captcha']) ? strtoupper(addslashes($_POST['captcha'])) : '';
-        $captchaValid = false;
-        if (!empty($tcTicket) && !empty($tcRandstr)) {
-            $captchaValid = true;
-        } elseif (!empty($captcha)) {
-            if (isset($_SESSION['captcha']) && strtoupper($_SESSION['captcha']) === $captcha) {
+        // 身份核验：以第三步核验通过后签发的凭据为准（30 分钟内有效、一次性）
+        $sessPass = isset($_SESSION['cancel_pass']) ? (string)$_SESSION['cancel_pass'] : '';
+        if ($sessPass !== '') {
+            // 仅校验不消费：待注销流程成功后再清理，避免中途失败导致用户需重新核验
+            if (!cancelCheckVerifyPass($DB, $userId, $sessPass, false)) {
+                unset($_SESSION['cancel_pass']);
+                exit('{"code":-3,"msg":"身份核验已超时，请返回上一步重新核验"}');
+            }
+        } else {
+            // 兜底：未经过第三步核验的旧流程，仍按配置现场核验
+            $tcTicket = isset($_POST['tc_ticket']) ? addslashes($_POST['tc_ticket']) : '';
+            $tcRandstr = isset($_POST['tc_randstr']) ? addslashes($_POST['tc_randstr']) : '';
+            $captcha = isset($_POST['captcha']) ? strtoupper(addslashes($_POST['captcha'])) : '';
+            $captchaValid = false;
+            if (!empty($tcTicket) && !empty($tcRandstr)) {
                 $captchaValid = true;
-                unset($_SESSION['captcha']);
+            } elseif (!empty($captcha)) {
+                if (isset($_SESSION['captcha']) && strtoupper($_SESSION['captcha']) === $captcha) {
+                    $captchaValid = true;
+                    unset($_SESSION['captcha']);
+                }
             }
-        }
-        if (!$captchaValid) {
-            exit('{"code":-1,"msg":"请先完成安全验证"}');
-        }
-        $mode = $cfg['verify_mode'];
-        if (strpos($mode, 'password') !== false) {
-            $password = isset($_POST['password']) ? md5($_POST['password']) : '';
-            if ($password !== $user['password']) {
-                exit('{"code":-1,"msg":"密码错误"}');
+            if (!$captchaValid) {
+                exit('{"code":-1,"msg":"请先完成安全验证"}');
             }
-        }
-        if (strpos($mode, 'email') !== false) {
-            $emailCode = isset($_POST['email_code']) ? trim($_POST['email_code']) : '';
-            $codeOk = !empty($_SESSION['cancel_code'])
-                && !empty($_SESSION['cancel_code_time'])
-                && (time() - intval($_SESSION['cancel_code_time'])) <= 600
-                && $emailCode !== ''
-                && hash_equals((string)$_SESSION['cancel_code'], (string)$emailCode);
-            if (!$codeOk) {
-                exit('{"code":-1,"msg":"邮箱验证码错误或已失效"}');
+            $verify = cancelVerifyIdentity($DB, $user, $cfg, isset($_POST['password']) ? $_POST['password'] : '', isset($_POST['email_code']) ? $_POST['email_code'] : '', true);
+            if ($verify !== true) {
+                exit('{"code":-1,"msg":"' . $verify . '"}');
             }
-            unset($_SESSION['cancel_code'], $_SESSION['cancel_code_time'], $_SESSION['cancel_code_email']);
         }
         $ip = $Gets->ip();
 
@@ -1498,7 +1537,7 @@ switch($act){
                 exit('{"code":-1,"msg":"注销失败['.$del['error'].']"}');
             }
             $DB->exec("UPDATE nteam_account_deletions SET status='deleted', delete_time=NOW() WHERE id='".intval($auditId)."'");
-            unset($_SESSION['userId'], $_SESSION['userName'], $_SESSION['userEmail'], $_SESSION['userQq']);
+            unset($_SESSION['cancel_pass'], $_SESSION['userId'], $_SESSION['userName'], $_SESSION['userEmail'], $_SESSION['userQq']);
             exit('{"code":0,"msg":"账号已注销","immediate":1}');
         }
 
@@ -1510,7 +1549,9 @@ switch($act){
         if ($cfg['mail_submit'] === 1) {
             cancelSendSubmitMail($user, $expire, $days);
         }
-        unset($_SESSION['userId'], $_SESSION['userName'], $_SESSION['userEmail'], $_SESSION['userQq']);
+        // 注销申请已提交：清理本次核验凭据
+        $DB->exec("DELETE FROM nteam_tokens WHERE user_id='$userId' AND token_type='cancel_pass'");
+        unset($_SESSION['cancel_pass'], $_SESSION['userId'], $_SESSION['userName'], $_SESSION['userEmail'], $_SESSION['userQq']);
         exit('{"code":0,"msg":"注销申请已提交，账号将在 '.substr($expire, 0, 10).' 正式注销，期间登录可撤销","expire_time":"'.$expire.'"}');
     break;
 

@@ -505,6 +505,38 @@ const getFeatureSettings = (keys) => {
   });
 };
 
+/* ==================== 账号注销相关接口 ==================== */
+
+const getCancelConfig = () => {
+  return request({
+    act: 'get_cancel_config',
+    method: 'GET'
+  });
+};
+
+const sendCancelCode = () => {
+  return request({
+    act: 'send_cancel_code',
+    method: 'POST'
+  });
+};
+
+const verifyCancelIdentity = (data) => {
+  return request({
+    act: 'verify_cancel_identity',
+    method: 'POST',
+    data: data || {}
+  });
+};
+
+const cancelAccount = (data) => {
+  return request({
+    act: 'cancel_account',
+    method: 'POST',
+    data: data || {}
+  });
+};
+
 /* ==================== 本地存储工具方法 ==================== */
 
 const isLoggedIn = () => {
@@ -578,5 +610,9 @@ export default {
   getAcademicPushLogs,
   getFeatureSettings,
   getGlanceData,
-  getSubscriptionHistory
+  getSubscriptionHistory,
+  getCancelConfig,
+  sendCancelCode,
+  verifyCancelIdentity,
+  cancelAccount
 };

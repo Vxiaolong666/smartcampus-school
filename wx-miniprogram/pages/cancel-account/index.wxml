@@ -1,0 +1,155 @@
+<view class="container">
+  <top-menu showBack="{{true}}">
+    <view class="nav-title">账号注销</view>
+  </top-menu>
+
+  <view class="background-wrapper">
+    <image class="background" src="/assets/wxmp-banner.jpg" mode="aspectFill" />
+    <view class="background-mask"></view>
+  </view>
+
+  <view class="content-wrapper">
+    <!-- 加载中 -->
+    <view wx:if="{{loading}}" class="state-box">
+      <text class="state-text">加载中…</text>
+    </view>
+
+    <!-- 未开启 -->
+    <view wx:elif="{{!enabled}}" class="state-box">
+      <text class="state-text">管理员未开启账号注销功能</text>
+    </view>
+
+    <block wx:else>
+      <!-- 已在冷静期 -->
+      <view wx:if="{{isCancelling}}" class="state-box">
+        <text class="state-text">您的账号已提交注销申请，将于 {{expireTimeText}} 正式注销。</text>
+        <text class="state-tip">如需撤销，重新登录即可自动撤销。</text>
+      </view>
+
+      <block wx:else>
+        <!-- 步骤指示器 -->
+        <view class="steps">
+          <view class="step" wx:for="{{steps}}" wx:key="index">
+            <view class="step-dot {{item.dotClass}}">
+              <text wx:if="{{item.done}}" class="dot-check">✓</text>
+              <text wx:else class="dot-num">{{index + 1}}</text>
+            </view>
+            <view class="step-label {{item.labelClass}}">{{item.label}}</view>
+            <view wx:if="{{index < steps.length - 1}}" class="step-line {{item.lineDone ? 'line-done' : ''}}"></view>
+          </view>
+        </view>
+
+        <view class="form-card">
+          <!-- 步骤1：阅读协议 -->
+          <block wx:if="{{currentStep === 1}}">
+            <view class="card-title">阅读并同意《用户注销服务协议》</view>
+            <scroll-view scroll-y="{{true}}" class="agreement-box">
+              <rich-text wx:if="{{agreementHtml}}" nodes="{{agreementHtml}}" class="agreement-text"></rich-text>
+              <text wx:else class="agreement-text">暂无协议内容</text>
+            </scroll-view>
+            <view class="check-row" bind:tap="toggleAgreement">
+              <view class="check-box {{agreeAgreement ? 'checked' : ''}}">
+                <text wx:if="{{agreeAgreement}}" class="check-icon">✓</text>
+              </view>
+              <text class="check-text">我已完整阅读并同意《用户注销服务协议》</text>
+            </view>
+          </block>
+
+          <!-- 步骤2：风险告知 -->
+          <block wx:elif="{{currentStep === 2}}">
+            <view class="card-title">注销风险告知</view>
+            <view class="alert alert-danger">
+              <text wx:if="{{coolingEnable}}">提交后进入 {{coolingDays}} 天冷静期，到期后账号及以下数据将被永久删除且无法恢复；冷静期内登录账号即可撤销。</text>
+              <text wx:else>提交后账号及以下数据将被立即永久删除且无法恢复。</text>
+            </view>
+            <view class="risk-list">
+              <text class="risk-title">注销后将删除以下数据：</text>
+              <text class="risk-item">· 账号基本资料（用户名、邮箱、昵称、头像、积分、等级、微信绑定等）</text>
+              <text class="risk-item">· 宿舍绑定：<text class="risk-value">{{summary.dorm_count}}</text> 个</text>
+              <text class="risk-item">· 教务账号绑定：<text class="risk-value">{{summary.academic_bound ? summary.academic_student_id : '未绑定'}}</text></text>
+              <text class="risk-item">· 第三方登录绑定：<text class="risk-value">{{summary.oauth_count}}</text> 个</text>
+              <text class="risk-item">· 微信订阅记录：<text class="risk-value">{{summary.sub_count}}</text> 条；推送设置：<text class="risk-value">{{summary.push_count}}</text> 条</text>
+              <text class="risk-item">· 成绩/课程/电费等各类推送记录与日志</text>
+            </view>
+            <view class="check-row" bind:tap="toggleRisk">
+              <view class="check-box {{agreeRisk ? 'checked' : ''}}">
+                <text wx:if="{{agreeRisk}}" class="check-icon">✓</text>
+              </view>
+              <text class="check-text">我已阅读并知晓上述后果，确认自愿注销</text>
+            </view>
+          </block>
+
+          <!-- 步骤3：身份核验 -->
+          <block wx:elif="{{currentStep === 3}}">
+            <view class="card-title">身份核验</view>
+
+            <view wx:if="{{needPassword}}" class="form-item">
+              <view class="form-label">登录密码</view>
+              <input
+                class="form-input"
+                password
+                placeholder="请输入当前登录密码"
+                value="{{password}}"
+                bindinput="onPasswordInput"
+              />
+            </view>
+
+            <view wx:if="{{needEmail}}" class="form-item">
+              <view class="form-label">邮箱验证码</view>
+              <view class="code-row">
+                <input
+                  class="form-input code-input"
+                  type="number"
+                  placeholder="请输入邮箱验证码"
+                  maxlength="6"
+                  value="{{emailCode}}"
+                  bindinput="onEmailCodeInput"
+                />
+                <button
+                  class="code-btn"
+                  disabled="{{sending || countdown > 0}}"
+                  bindtap="handleSendCode"
+                >{{countdown > 0 ? countdown + 's' : (sending ? '发送中' : '发送验证码')}}</button>
+              </view>
+              <text class="form-tip">验证码将发送至您的注册邮箱</text>
+            </view>
+          </block>
+
+          <!-- 步骤4：确认提交 -->
+          <block wx:else>
+            <view class="card-title">最终确认</view>
+            <view class="alert alert-warning">
+              <text wx:if="{{coolingEnable}}">确认提交后，账号将进入 {{coolingDays}} 天冷静期；冷静期内登录即可撤销。</text>
+              <text wx:else>确认提交后，账号及全部个人数据将被立即永久删除。</text>
+            </view>
+            <view class="form-label">请手动输入以下确认短语：</view>
+            <view class="phrase-box">
+              <text class="phrase-text" user-select="{{false}}">{{confirmPhrase}}</text>
+            </view>
+            <input
+              class="form-input phrase-input"
+              placeholder="请手动输入上方短语"
+              value="{{confirmText}}"
+              bindinput="onConfirmTextInput"
+            />
+            <text class="form-tip">为确保系本人操作，请手动输入上方短语。</text>
+          </block>
+
+          <!-- 导航按钮 -->
+          <view class="nav-buttons">
+            <button wx:if="{{currentStep === 1}}" class="btn btn-ghost" bindtap="goCancel">取消</button>
+            <button wx:else class="btn btn-ghost" bindtap="goPrev">上一步</button>
+            <button wx:if="{{currentStep < 4}}" class="btn btn-primary" disabled="{{!nextEnabled}}" bindtap="goNext">下一步</button>
+            <button
+              wx:else
+              class="btn btn-danger"
+              disabled="{{!submitEnabled || submitting}}"
+              loading="{{submitting}}"
+              bindtap="handleSubmit"
+            >提交注销申请</button>
+          </view>
+        </view>
+      </block>
+    </block>
+  </view>
+</view>

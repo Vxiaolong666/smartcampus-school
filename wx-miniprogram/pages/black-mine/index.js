@@ -218,6 +218,13 @@ Page({
         });
     },
 
+    //跳转到账号注销页
+    handleCancelAccount() {
+        wx.navigateTo({
+            url: '/pages/cancel-account/index',
+        });
+    },
+
     //跳转到教务绑定页
     handleAcademic() {
         wx.navigateTo({

@@ -141,6 +141,19 @@ export default {
 					api.setToken(res.data.token);
 					api.setUserInfoCache(res.data);
 
+					// 冷静期内登录已自动撤销注销，给出提示
+					if (res.data && parseInt(res.data.cancel_revoked) === 1) {
+						uni.showModal({
+							title: '提示',
+							content: '您此前提交的账号注销申请已自动撤销，账号已恢复正常。',
+							showCancel: false,
+							success: () => {
+								uni.switchTab({ url: '/pages/white-home/index' });
+							}
+						});
+						return;
+					}
+
 					uni.showToast({ title: '登录成功', icon: 'success' });
 
 					setTimeout(() => {
@@ -175,6 +188,19 @@ export default {
 
 				api.setToken(res.data.token);
 				api.setUserInfoCache(res.data);
+
+				// 冷静期内登录已自动撤销注销，给出提示
+				if (res.data && parseInt(res.data.cancel_revoked) === 1) {
+					uni.showModal({
+						title: '提示',
+						content: '您此前提交的账号注销申请已自动撤销，账号已恢复正常。',
+						showCancel: false,
+						success: () => {
+							uni.switchTab({ url: '/pages/white-home/index' });
+						}
+					});
+					return;
+				}
 
 				uni.showToast({ title: '登录成功', icon: 'success' });
 

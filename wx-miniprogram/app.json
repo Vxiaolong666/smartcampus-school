@@ -27,7 +27,8 @@
     "pages/about/index",
     "pages/power-fee-batch/index",
     "pages/push-test/index",
-    "pages/maintenance/index"
+    "pages/maintenance/index",
+    "pages/cancel-account/index"
   ],
   "sitemapLocation": "sitemap.json",
   "tabBar": {
