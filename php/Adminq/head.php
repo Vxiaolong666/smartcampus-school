@@ -471,17 +471,17 @@ include('../Common/Core_brain.php');
                                             </a>
                                         </li>
                                         <?php if($adminData['adminRank']==1){?>
-                                            <li class="nav-main-heading">Function</li>
-                                            <li class="nav-main-item">
-                                                <a class="nav-main-link" href="alist.php">
-                                                    <i class="nav-main-link-icon fa fa-user-shield"></i>
-                                                    <span class="nav-main-link-name"><b>管理员管理</b></span>
-                                                </a>
-                                            </li>
+                                            <li class="nav-main-heading">Users</li>
                                             <li class="nav-main-item">
                                                 <a class="nav-main-link" href="ulist.php">
                                                     <i class="nav-main-link-icon fa fa-users"></i>
                                                     <span class="nav-main-link-name"><b>用户管理</b></span>
+                                                </a>
+                                            </li>
+                                            <li class="nav-main-item">
+                                                <a class="nav-main-link" href="alist.php">
+                                                    <i class="nav-main-link-icon fa fa-user-shield"></i>
+                                                    <span class="nav-main-link-name"><b>管理员管理</b></span>
                                                 </a>
                                             </li>
                                             <li class="nav-main-item">
@@ -496,55 +496,7 @@ include('../Common/Core_brain.php');
                                                     <span class="nav-main-link-name"><b>宿舍绑定管理</b></span>
                                                 </a>
                                             </li>
-                                            <li class="nav-main-item">
-                                                <a class="nav-main-link" href="announcements.php">
-                                                    <i class="nav-main-link-icon fa fa-bullhorn"></i>
-                                                    <span class="nav-main-link-name"><b>公告管理</b></span>
-                                                </a>
-                                            </li>
-                                            <li class="nav-main-item">
-                                                <a class="nav-main-link" href="feature_settings.php">
-                                                    <i class="nav-main-link-icon fa fa-toggle-on"></i>
-                                                    <span class="nav-main-link-name"><b>功能设置</b></span>
-                                                </a>
-                                            </li>
-                                            <li class="nav-main-item">
-                                                <a class="nav-main-link" href="oauth_config.php">
-                                                    <i class="nav-main-link-icon fa fa-link"></i>
-                                                    <span class="nav-main-link-name"><b>聚合登录配置</b></span>
-                                                </a>
-                                            </li>
-                                            <li class="nav-main-item">
-                                                <a class="nav-main-link" href="cancel_config.php">
-                                                    <i class="nav-main-link-icon fa fa-user-slash"></i>
-                                                    <span class="nav-main-link-name"><b>注销管理</b></span>
-                                                </a>
-                                            </li>
-                                            <li class="nav-main-heading">Build</li>
-                                            <li class="nav-main-item">
-                                                <a class="nav-main-link" href="set.php">
-                                                    <i class="nav-main-link-icon fa fa-cogs"></i>
-                                                    <span class="nav-main-link-name"><b>网站配置</b></span>
-                                                </a>
-                                            </li>
-                                            <li class="nav-main-item">
-                                                <a class="nav-main-link" href="home_config.php">
-                                                    <i class="nav-main-link-icon fa fa-house-chimney"></i>
-                                                    <span class="nav-main-link-name"><b>首页配置</b></span>
-                                                </a>
-                                            </li>
-                                            <li class="nav-main-item">
-                                                <a class="nav-main-link" href="smtp.php">
-                                                    <i class="nav-main-link-icon fa fa-envelope-open"></i>
-                                                    <span class="nav-main-link-name"><b>邮箱配置</b></span>
-                                                </a>
-                                            </li>
-                                            <li class="nav-main-item">
-                                                <a class="nav-main-link" href="wx_config.php">
-                                                    <i class="nav-main-link-icon fab fa-weixin"></i>
-                                                    <span class="nav-main-link-name"><b>小程序配置</b></span>
-                                                </a>
-                                            </li>
+                                            <li class="nav-main-heading">Push</li>
                                             <li class="nav-main-item">
                                                 <a class="nav-main-link" href="wx_templates.php">
                                                     <i class="nav-main-link-icon fa fa-file-alt"></i>
@@ -575,6 +527,63 @@ include('../Common/Core_brain.php');
                                                     <span class="nav-main-link-name"><b>定时任务配置</b></span>
                                                 </a>
                                             </li>
+                                            <li class="nav-main-heading">Content</li>
+                                            <li class="nav-main-item">
+                                                <a class="nav-main-link" href="feature_settings.php">
+                                                    <i class="nav-main-link-icon fa fa-toggle-on"></i>
+                                                    <span class="nav-main-link-name"><b>功能设置</b></span>
+                                                </a>
+                                            </li>
+                                            <li class="nav-main-item">
+                                                <a class="nav-main-link" href="announcements.php">
+                                                    <i class="nav-main-link-icon fa fa-bullhorn"></i>
+                                                    <span class="nav-main-link-name"><b>公告管理</b></span>
+                                                </a>
+                                            </li>
+                                            <li class="nav-main-item">
+                                                <a class="nav-main-link" href="home_config.php">
+                                                    <i class="nav-main-link-icon fa fa-house-chimney"></i>
+                                                    <span class="nav-main-link-name"><b>首页配置</b></span>
+                                                </a>
+                                            </li>
+                                            <li class="nav-main-heading">Settings</li>
+                                            <li class="nav-main-item">
+                                                <a class="nav-main-link" href="set.php">
+                                                    <i class="nav-main-link-icon fa fa-cogs"></i>
+                                                    <span class="nav-main-link-name"><b>网站配置</b></span>
+                                                </a>
+                                            </li>
+                                            <li class="nav-main-item">
+                                                <a class="nav-main-link" href="smtp.php">
+                                                    <i class="nav-main-link-icon fa fa-envelope-open"></i>
+                                                    <span class="nav-main-link-name"><b>邮箱配置</b></span>
+                                                </a>
+                                            </li>
+                                            <li class="nav-main-item">
+                                                <a class="nav-main-link" href="wx_config.php">
+                                                    <i class="nav-main-link-icon fab fa-weixin"></i>
+                                                    <span class="nav-main-link-name"><b>小程序配置</b></span>
+                                                </a>
+                                            </li>
+                                            <li class="nav-main-item">
+                                                <a class="nav-main-link" href="oauth_config.php">
+                                                    <i class="nav-main-link-icon fa fa-link"></i>
+                                                    <span class="nav-main-link-name"><b>聚合登录配置</b></span>
+                                                </a>
+                                            </li>
+                                            <li class="nav-main-item">
+                                                <a class="nav-main-link" href="cancel_config.php">
+                                                    <i class="nav-main-link-icon fa fa-user-slash"></i>
+                                                    <span class="nav-main-link-name"><b>注销管理</b></span>
+                                                </a>
+                                            </li>
+                                            <li class="nav-main-item">
+                                                <a class="nav-main-link" href="ai_config.php">
+                                                    <i class="nav-main-link-icon fa fa-robot"></i>
+                                                    <span class="nav-main-link-name"><b>AI 配置</b></span>
+                                                </a>
+                                            </li>
+                                            <li class="nav-main-heading">Logs</li>
                                             <li class="nav-main-item">
                                                 <a class="nav-main-link" href="mail_log.php">
                                                     <i class="nav-main-link-icon fa fa-history"></i>
@@ -591,12 +600,6 @@ include('../Common/Core_brain.php');
                                                 <a class="nav-main-link" href="api_doc.php">
                                                     <i class="nav-main-link-icon fa fa-code"></i>
                                                     <span class="nav-main-link-name"><b>API文档</b></span>
-                                                </a>
-                                            </li>
-                                            <li class="nav-main-item">
-                                                <a class="nav-main-link" href="ai_config.php">
-                                                    <i class="nav-main-link-icon fa fa-robot"></i>
-                                                    <span class="nav-main-link-name"><b>AI 配置</b></span>
                                                 </a>
                                             </li>
                                             <?php } ?>

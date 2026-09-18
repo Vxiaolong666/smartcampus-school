@@ -234,10 +234,10 @@
 				"selectedIconPath": "static/assets/tab_expand_2.png"
 			},
 			{
-				"text": "AI",
+				"text": "AI助手",
 				"pagePath": "pages/ai-chat/index",
-				"iconPath": "static/assets/tabbar/Minimal_flat_line_icon_of_a_ch_2026-09-09T11-39-05.png",
-				"selectedIconPath": "static/assets/tabbar/Minimal_flat_line_icon_of_a_ch_2026-09-09T11-39-09.png"
+				"iconPath": "static/assets/tab_home_1.png",
+				"selectedIconPath": "static/assets/tab_home_2.png"
 			},
 			{
 				"text": "我的",

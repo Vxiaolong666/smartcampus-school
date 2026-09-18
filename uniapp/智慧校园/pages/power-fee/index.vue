@@ -101,12 +101,6 @@
 					<view class="empty-text">选择宿舍后点击查询</view>
 				</view>
 
-				<view v-if="results.length > 0" class="ai-analyze-wrap">
-					<view class="ai-analyze-btn" :class="{ 'ai-loading': aiLoading }" @click="aiAnalyze">
-						<text v-if="!aiLoading">AI 智能分析</text>
-						<text v-else>分析中…</text>
-					</view>
-				</view>
 				</block>
 
 			<block v-else>
@@ -140,6 +134,14 @@
 						<view class="tips-dot arrears"></view>
 						<view class="tips-text">已欠费：余额小于等于0度</view>
 					</view>
+				</view>
+			</view>
+
+			<!-- AI 分析按钮：置于「电费查询结果说明」卡片下方 -->
+			<view v-if="results.length > 0" class="ai-analyze-wrap">
+				<view class="ai-analyze-btn" :class="{ 'ai-loading': aiLoading }" @click="aiAnalyze">
+					<text v-if="!aiLoading">AI 智能分析</text>
+					<text v-else>分析中…</text>
 				</view>
 			</view>
 		</view>
