@@ -1432,28 +1432,7 @@ page {
 	color: #948eb3;
 }
 
-.ai-action {
-	margin: 24rpx 0 8rpx;
-}
-
-.ai-btn {
-	width: 100%;
-	background: linear-gradient(135deg, #13c2c2 0%, #1890ff 100%);
-	color: white;
-	font-size: 28rpx;
-	height: 96rpx;
-	line-height: 96rpx;
-	padding: 0;
-	border-radius: 12rpx;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	box-shadow: 0 10rpx 24rpx rgba(19, 194, 194, 0.25);
-}
-
-.ai-btn::after {
-	border: none;
-}
+/* AI 分析按钮与浮动按钮样式已统一到 App.vue 全局（.ai-analyze-wrap / .ai-analyze-btn / .ai-fab） */
 
 .ai-mask {
 	position: fixed;
