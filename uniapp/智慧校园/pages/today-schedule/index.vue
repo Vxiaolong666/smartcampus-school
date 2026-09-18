@@ -331,8 +331,11 @@
 				</view>
 			</view>
 
-			<view v-if="dayCourses.length > 0" class="ai-action">
-				<button class="ai-btn" @click="aiAnalyze">AI 智能分析今日安排</button>
+			<view v-if="dayCourses.length > 0" class="ai-analyze-wrap">
+				<view class="ai-analyze-btn" :class="{ 'ai-loading': aiLoading }" @click="aiAnalyze">
+					<text v-if="!aiLoading">AI 智能分析今日安排</text>
+					<text v-else>分析中…</text>
+				</view>
 			</view>
 		</view>
 

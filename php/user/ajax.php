@@ -1426,6 +1426,64 @@ switch($act){
         ]));
     break;
 
+    // 删除消息推送日志：传 id 删除单条；scope=expired 仅清理过期（5 天前）记录
+    case 'delete_push_logs':
+        if(!isset($_SESSION['userId'])){
+            exit('{"code":-1,"msg":"请先登录"}');
+        }
+        $userId = intval($_SESSION['userId']);
+        $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
+        $scope = isset($_POST['scope']) ? daddslashes($_POST['scope']) : '';
+        if ($id > 0) {
+            $deleted = $DB->exec("DELETE FROM nteam_push_logs WHERE id='$id' AND user_id='$userId'");
+            if ($deleted === false) {
+                exit('{"code":-1,"msg":"删除失败['.$DB->error().']"}');
+            }
+            if (intval($deleted) < 1) {
+                exit('{"code":-1,"msg":"记录不存在或已删除"}');
+            }
+            exit('{"code":0,"msg":"已删除该条日志","deleted":1}');
+        }
+        if ($scope === 'expired') {
+            $deleted = $DB->exec("DELETE FROM nteam_push_logs WHERE user_id='$userId' AND created_at < DATE_SUB(NOW(), INTERVAL 5 DAY)");
+            if ($deleted === false) {
+                exit('{"code":-1,"msg":"删除失败['.$DB->error().']"}');
+            }
+            $deleted = intval($deleted);
+            exit('{"code":0,"msg":"已清理 '.$deleted.' 条过期日志","deleted":'.$deleted.'}');
+        }
+        exit('{"code":-1,"msg":"参数错误"}');
+    break;
+
+    // 删除订阅记录：传 id 删除单条；scope=expired 仅清理过期（5 天前）记录
+    case 'delete_subscription_logs':
+        if(!isset($_SESSION['userId'])){
+            exit('{"code":-1,"msg":"请先登录"}');
+        }
+        $userId = intval($_SESSION['userId']);
+        $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
+        $scope = isset($_POST['scope']) ? daddslashes($_POST['scope']) : '';
+        if ($id > 0) {
+            $deleted = $DB->exec("DELETE FROM nteam_subscription_logs WHERE id='$id' AND user_id='$userId'");
+            if ($deleted === false) {
+                exit('{"code":-1,"msg":"删除失败['.$DB->error().']"}');
+            }
+            if (intval($deleted) < 1) {
+                exit('{"code":-1,"msg":"记录不存在或已删除"}');
+            }
+            exit('{"code":0,"msg":"已删除该条记录","deleted":1}');
+        }
+        if ($scope === 'expired') {
+            $deleted = $DB->exec("DELETE FROM nteam_subscription_logs WHERE user_id='$userId' AND created_at < DATE_SUB(NOW(), INTERVAL 5 DAY)");
+            if ($deleted === false) {
+                exit('{"code":-1,"msg":"删除失败['.$DB->error().']"}');
+            }
+            $deleted = intval($deleted);
+            exit('{"code":0,"msg":"已清理 '.$deleted.' 条过期记录","deleted":'.$deleted.'}');
+        }
+        exit('{"code":-1,"msg":"参数错误"}');
+    break;
+
     // 第三步「下一步」即完成身份核验（密码 / 邮箱验证码 / 人机验证）
     case 'verify_cancel_identity':
         if(!isset($_SESSION['userId'])){

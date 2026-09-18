@@ -107,6 +107,11 @@
 			</view>
 		</view>
 
+		<!-- 右侧浮动 AI 分析按钮（圆形） -->
+		<view class="ai-fab" :class="{ 'ai-loading': aiLoading }" @click="aiAnalyze">
+			<text class="ai-fab-icon">AI</text>
+			<text class="ai-fab-label">分析</text>
+		</view>
 	</view>
 </template>
 
@@ -616,24 +621,7 @@ page {
 	margin-top: 8rpx;
 }
 
-.ai-analyze-wrap {
-	display: flex;
-	justify-content: center;
-	margin-top: 30rpx;
-}
-
-.ai-analyze-btn {
-	background: linear-gradient(135deg, #13c2c2, #1890ff);
-	color: white;
-	font-size: 28rpx;
-	padding: 20rpx 60rpx;
-	border-radius: 40rpx;
-	box-shadow: 0 10rpx 30rpx rgba(19, 194, 194, 0.3);
-}
-
-.ai-analyze-btn.ai-loading {
-	opacity: 0.7;
-}
+/* AI 分析按钮与浮动按钮样式已统一到 App.vue 全局（.ai-analyze-wrap / .ai-analyze-btn / .ai-fab） */
 
 .ai-mask {
 	position: fixed;

@@ -118,6 +118,11 @@ $sceneTypeNames = [
                 <h3 class="block-title">
                     <i class="fa fa-history me-2"></i>订阅记录
                 </h3>
+                <div class="block-options">
+                    <button type="button" class="btn btn-sm btn-alt-secondary" onclick="cleanExpiredSubscriptionLogs()">
+                        <i class="fa fa-clock-rotate-left me-1"></i>清理过期
+                    </button>
+                </div>
             </div>
             <div class="block-content block-content-full">
                 <div class="row g-2 mb-3">
@@ -157,6 +162,11 @@ $sceneTypeNames = [
                 <h3 class="block-title">
                     <i class="fa fa-bell me-2"></i>消息推送日志
                 </h3>
+                <div class="block-options">
+                    <button type="button" class="btn btn-sm btn-alt-secondary" onclick="cleanExpiredPushLogs()">
+                        <i class="fa fa-clock-rotate-left me-1"></i>清理过期
+                    </button>
+                </div>
             </div>
             <div class="block-content block-content-full">
                 <div class="row g-2 mb-3">
@@ -228,7 +238,7 @@ function loadSubscriptionLogs() {
     });
     $.get('../api.php?' + qs, function(res) {
         if (res.code == 0 && res.data && res.data.list && res.data.list.length > 0) {
-            var html = '<div class="table-responsive"><table class="table table-bordered table-striped table-vcenter"><thead><tr><th>模板名称</th><th class="text-center">操作</th><th class="text-center d-none d-sm-table-cell">时间</th></tr></thead><tbody>';
+            var html = '<div class="table-responsive"><table class="table table-bordered table-striped table-vcenter"><thead><tr><th>模板名称</th><th class="text-center">操作</th><th class="text-center d-none d-sm-table-cell">时间</th><th class="text-center">删除</th></tr></thead><tbody>';
             res.data.list.forEach(function(log) {
                 html += '<tr>';
                 html += '<td>' + escapeHtml(log.template_name || '未知模板') + '<div class="d-sm-none mt-1 small text-muted">' + escapeHtml(log.created_at) + '</div></td>';
@@ -244,11 +254,16 @@ function loadSubscriptionLogs() {
                 }
                 html += '<td class="text-center">' + actionBadge + '</td>';
                 html += '<td class="text-center d-none d-sm-table-cell">' + escapeHtml(log.created_at) + '</td>';
+                html += '<td class="text-center"><button type="button" class="btn btn-sm btn-alt-danger" title="删除该条记录" onclick="deleteSubscriptionLog(' + intVal(log.id) + ')"><i class="fa fa-trash"></i></button></td>';
                 html += '</tr>';
             });
             html += '</tbody></table></div>';
             $('#subscription-logs').html(html);
             renderPager('#subscription-pager', res.data);
+        } else if (subState.page > 1) {
+            // 当前页已无数据（如刚删除完），自动回退一页
+            subState.page = subState.page - 1;
+            loadSubscriptionLogs();
         } else {
             $('#subscription-logs').html('<div class="text-center text-muted py-4">暂无订阅记录</div>');
             $('#subscription-pager').html('');
@@ -305,7 +320,9 @@ function loadPushLogs() {
                     contentHtml + errorHtml +
                     '<div class="d-flex justify-content-between align-items-center mt-2 small text-muted gap-2">' +
                     '<span class="text-nowrap">' + typeBadge + ' <span class="ms-1">' + escapeHtml(log.notify_type || '') + '</span></span>' +
-                    '<span class="text-nowrap">' + timeText + '</span>' +
+                    '<span class="d-flex align-items-center gap-2 text-nowrap">' + timeText +
+                    '<button type="button" class="btn btn-sm btn-alt-danger py-0 px-2" title="删除该条日志" onclick="deletePushLog(' + intVal(log.id) + ')"><i class="fa fa-trash"></i></button>' +
+                    '</span>' +
                     '</div>' +
                     '</div>';
 
@@ -315,17 +332,22 @@ function loadPushLogs() {
                     '<td class="text-center">' + typeBadge + ' <div class="small text-muted mt-1">' + escapeHtml(log.notify_type || '') + '</div></td>' +
                     '<td class="text-center">' + statusBadge + '</td>' +
                     '<td class="text-center">' + timeText + '</td>' +
+                    '<td class="text-center"><button type="button" class="btn btn-sm btn-alt-danger" title="删除该条日志" onclick="deletePushLog(' + intVal(log.id) + ')"><i class="fa fa-trash"></i></button></td>' +
                     '</tr>';
             });
 
             var html =
                 '<div class="d-md-none">' + cards + '</div>' +
                 '<div class="d-none d-md-block table-responsive"><table class="table table-bordered table-striped table-vcenter"><thead><tr>' +
-                '<th>标题</th><th class="text-center">类型</th><th class="text-center">状态</th><th class="text-center">时间</th></tr></thead><tbody>' +
+                '<th>标题</th><th class="text-center">类型</th><th class="text-center">状态</th><th class="text-center">时间</th><th class="text-center">删除</th></tr></thead><tbody>' +
                 tableRows +
                 '</tbody></table></div>';
             $('#push-logs').html(html);
             renderPager('#push-pager', res.data);
+        } else if (pushState.page > 1) {
+            // 当前页已无数据（如刚删除完），自动回退一页
+            pushState.page = pushState.page - 1;
+            loadPushLogs();
         } else {
             $('#push-logs').html('<div class="text-center text-muted py-4">暂无消息推送记录</div>');
             $('#push-pager').html('');
@@ -334,6 +356,63 @@ function loadPushLogs() {
         $('#push-logs').html('<div class="text-center text-muted py-4">加载失败，请刷新重试</div>');
         $('#push-pager').html('');
     });
+}
+
+// 通用删除请求：二次确认 → loading → 提交 → 回调刷新
+function sendDeleteRequest(tip, url, data, onDone) {
+    layer.confirm(tip, {btn: ['确定', '取消'], icon: 3}, function() {
+        var ii = layer.load(2, {shade: [0.1, '#fff']});
+        $.post(url, data, function(res) {
+            layer.close(ii);
+            if (res.code == 0) {
+                layer.msg(res.msg || '删除成功', {icon: 1});
+                if (typeof onDone === 'function') {
+                    onDone();
+                }
+            } else {
+                layer.alert(res.msg || '删除失败', {icon: 2});
+            }
+        }, 'json').fail(function() {
+            layer.close(ii);
+            layer.alert('网络错误，请稍后重试', {icon: 2});
+        });
+    });
+}
+
+// 清理过期的消息推送日志（5 天前）
+function cleanExpiredPushLogs() {
+    sendDeleteRequest('确定要清理 5 天前的消息推送日志吗？此操作不可恢复。',
+        'ajax.php?act=delete_push_logs', {scope: 'expired'}, function() {
+            pushState.page = 1;
+            loadPushLogs();
+        });
+}
+
+// 删除单条消息推送日志
+function deletePushLog(id) {
+    if (!id) { return; }
+    sendDeleteRequest('确定要删除这条消息推送日志吗？',
+        'ajax.php?act=delete_push_logs', {id: id}, function() {
+            loadPushLogs();
+        });
+}
+
+// 清理过期的订阅记录（5 天前）
+function cleanExpiredSubscriptionLogs() {
+    sendDeleteRequest('确定要清理 5 天前的订阅记录吗？此操作不可恢复。',
+        'ajax.php?act=delete_subscription_logs', {scope: 'expired'}, function() {
+            subState.page = 1;
+            loadSubscriptionLogs();
+        });
+}
+
+// 删除单条订阅记录
+function deleteSubscriptionLog(id) {
+    if (!id) { return; }
+    sendDeleteRequest('确定要删除这条订阅记录吗？',
+        'ajax.php?act=delete_subscription_logs', {id: id}, function() {
+            loadSubscriptionLogs();
+        });
 }
 
 function renderPager(container, data) {

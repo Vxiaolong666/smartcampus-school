@@ -40,16 +40,41 @@ $grades = null;
 $error = null;
 $semesters = [];
 $token = null;
+$configSemester = '';   // 后台配置的默认学期（推送学期）
 
 $tokenResult = AcademicSystem::getValidToken($DB, $userId, $academicAccount['student_id'], $academicAccount['password']);
 
 if ($tokenResult['success']) {
     $token = $tokenResult['token'];
-    
+
+    // 后台「成绩推送」配置的默认学期（Adminq/academic_push_config.php → 推送学期）
+    $cfgRow = $DB->getRow("SELECT grade_semester FROM nteam_academic_push_config WHERE id = 1");
+    $configSemester = ($cfgRow && !empty($cfgRow['grade_semester'])) ? $cfgRow['grade_semester'] : '';
+
     $semesterResult = AcademicSystem::getSemesterList($token);
     if (isset($semesterResult['code']) && $semesterResult['code'] == 1) {
         $semesters = $semesterResult['data'];
-        
+
+        // 默认学期解析顺序（与 uniapp / api.php?act=query_grade 保持一致）：
+        // 1) 后台「推送学期」配置  2) 教务系统当前学期（isdqxq=1）  3) 学期列表第一项
+        if (empty($semester) && $configSemester !== '') {
+            $semester = $configSemester;
+        }
+
+        // 配置的学期不在当前学期列表中（如已被归档）时回退，避免下拉框显示与实际查询不一致
+        if ($semester !== '' && !empty($semesters)) {
+            $semesterExists = false;
+            foreach ($semesters as $s) {
+                if (isset($s['semesterId']) && $s['semesterId'] == $semester) {
+                    $semesterExists = true;
+                    break;
+                }
+            }
+            if (!$semesterExists) {
+                $semester = '';
+            }
+        }
+
         if (empty($semester)) {
             foreach ($semesters as $s) {
                 if (isset($s['isdqxq']) && $s['isdqxq'] == '1') {
@@ -152,7 +177,7 @@ function calculateGpa($score) {
                                 <select name="semester" class="form-select" onchange="this.form.submit()">
                                     <?php foreach($semesters as $s): ?>
                                     <option value="<?php echo $s['semesterId']; ?>" <?php echo $semester == $s['semesterId'] ? 'selected' : ''; ?>>
-                                        <?php echo htmlspecialchars($s['semesterName']); ?>
+                                        <?php echo htmlspecialchars($s['semesterName']); ?><?php echo ($configSemester !== '' && $configSemester == $s['semesterId']) ? '（默认）' : ''; ?>
                                     </option>
                                     <?php endforeach; ?>
                                 </select>

@@ -114,4 +114,82 @@
 	.ai-modal-handle {
 		touch-action: none;
 	}
+
+	/* ===== AI 智能分析：页内触发按钮（全站统一样式，与「成绩查询」页一致） ===== */
+	.ai-analyze-wrap {
+		display: flex;
+		justify-content: center;
+		margin-top: 30rpx;
+	}
+
+	.ai-analyze-btn {
+		background: linear-gradient(135deg, #13c2c2, #1890ff);
+		color: #ffffff;
+		font-size: 28rpx;
+		padding: 20rpx 60rpx;
+		border-radius: 40rpx;
+		box-shadow: 0 10rpx 30rpx rgba(19, 194, 194, 0.3);
+	}
+
+	.ai-analyze-btn.ai-loading {
+		opacity: 0.7;
+	}
+
+	/* ===== AI 智能分析：右侧浮动圆形触发按钮（各 AI 页面通用） ===== */
+	.ai-fab {
+		position: fixed;
+		right: 28rpx;
+		bottom: 160rpx;
+		width: 104rpx;
+		height: 104rpx;
+		border-radius: 50%;
+		background: linear-gradient(135deg, #13c2c2, #1890ff);
+		box-shadow: 0 12rpx 30rpx rgba(19, 194, 194, 0.45);
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		z-index: 90;
+		animation: aiFabPulse 2.4s ease-out infinite;
+	}
+
+	/* tabBar 页面（如今日课程）需再抬高，避免被底部标签栏遮挡 */
+	.ai-fab--tab {
+		bottom: 250rpx;
+	}
+
+	.ai-fab-icon {
+		color: #ffffff;
+		font-size: 32rpx;
+		font-weight: bold;
+		line-height: 1.05;
+	}
+
+	.ai-fab-label {
+		color: #ffffff;
+		font-size: 20rpx;
+		line-height: 1.05;
+		opacity: 0.92;
+	}
+
+	.ai-fab:active {
+		transform: scale(0.92);
+	}
+
+	.ai-fab.ai-loading {
+		opacity: 0.75;
+	}
+
+	/* 呼吸光圈，提示「可点击生成 AI 分析」 */
+	@keyframes aiFabPulse {
+		0% {
+			box-shadow: 0 12rpx 30rpx rgba(19, 194, 194, 0.45), 0 0 0 0 rgba(19, 194, 194, 0.4);
+		}
+		70% {
+			box-shadow: 0 12rpx 30rpx rgba(19, 194, 194, 0.45), 0 0 0 20rpx rgba(19, 194, 194, 0);
+		}
+		100% {
+			box-shadow: 0 12rpx 30rpx rgba(19, 194, 194, 0.45), 0 0 0 0 rgba(19, 194, 194, 0);
+		}
+	}
 </style>

@@ -52,6 +52,7 @@ $dormitories = DormitorySystem::getUserDormitories($DB, $userId);
                             }
                             ?>
                             <option value="<?php echo $dorm['id']; ?>" 
+                                    <?php echo $dorm['is_default'] == 1 ? 'selected' : ''; ?>
                                     data-room-num="<?php echo $dorm['room_num']; ?>"
                                     data-school-area-no="<?php echo $dorm['school_area_no'] ?? ''; ?>"
                                     data-building-no="<?php echo $dorm['building_no'] ?? ''; ?>">
@@ -383,6 +384,15 @@ function aiAnalyzePower() {
         }
     });
 }
+
+// 已设置默认宿舍时，进入页面即自动查询该宿舍电费（无需手动点击「查询电费」）
+// 注意：用顶层执行（而非 $(function(){})），以保证 pjax 局部刷新后同样生效
+(function() {
+    var $select = $('#dormSelect');
+    if ($select.length && $select.val()) {
+        queryPowerFee();
+    }
+})();
 </script>
 
 <!-- AI 智能电费分析 弹窗 -->
