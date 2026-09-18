@@ -1,0 +1,196 @@
+<view class="page-container">
+  <top-menu showBack="{{false}}">
+    <view class="nav-title">AI 助手</view>
+    <view slot="right" class="nav-action" bindtap="clearChat">
+      <text class="action-text">清空</text>
+    </view>
+  </top-menu>
+
+  <view class="background-wrapper">
+    <image class="background" src="/assets/wxmp-banner.jpg" mode="aspectFill" />
+    <view class="background-mask"></view>
+  </view>
+
+  <view class="content-wrapper">
+    <scroll-view
+      class="chat-body"
+      scroll-y
+      scroll-into-view="{{scrollTarget}}"
+      scroll-with-animation
+    >
+      <!-- 欢迎区（未开始对话时显示） -->
+      <view wx:if="{{!hasConversation}}" class="welcome">
+        <view class="welcome-avatar">AI</view>
+        <view class="welcome-text">
+          <view class="welcome-title">你好，我是智能助手</view>
+          <view class="welcome-sub">我可以帮助你解决使用中遇到的问题~</view>
+        </view>
+      </view>
+
+      <!-- 推荐问题 -->
+      <view wx:if="{{!hasConversation}}" class="suggest">
+        <view class="suggest-label">你可以这样问我：</view>
+        <view
+          class="suggest-chip"
+          wx:for="{{suggestions}}"
+          wx:key="*this"
+          data-q="{{item}}"
+          bindtap="onSuggestTap"
+        >{{item}}</view>
+      </view>
+
+      <!-- 消息列表 -->
+      <block wx:for="{{messages}}" wx:key="_uid" wx:for-item="m">
+        <block wx:if="{{m.role !== 'system'}}">
+          <view
+            id="msg-{{m._uid}}"
+            class="msg-row {{m.role === 'user' ? 'is-user' : 'is-ai'}}"
+          >
+            <!-- 用户消息 -->
+            <block wx:if="{{m.role === 'user'}}">
+              <view class="msg-col">
+                <view class="bubble bubble-user {{editingUid === m._uid ? 'editing' : ''}}">
+                  <view wx:if="{{editingUid === m._uid}}" class="edit-card">
+                    <textarea
+                      class="edit-area"
+                      value="{{editText}}"
+                      auto-height
+                      maxlength="-1"
+                      bindinput="onEditInput"
+                    ></textarea>
+                    <view class="edit-actions">
+                      <view class="edit-btn edit-btn-cancel" catchtap="cancelEdit">取消</view>
+                      <view class="edit-btn edit-btn-save" catchtap="confirmEdit" data-uid="{{m._uid}}">发送</view>
+                    </view>
+                  </view>
+                  <text wx:else class="bubble-text">{{m.content}}</text>
+                </view>
+                <view class="msg-actions" wx:if="{{editingUid !== m._uid}}">
+                  <view class="act-btn" catchtap="copyText" data-uid="{{m._uid}}">
+                    <image class="act-icon" src="/assets/wxmp-copy.svg" mode="aspectFit" />
+                  </view>
+                  <view class="act-btn" catchtap="startEdit" data-uid="{{m._uid}}">
+                    <image class="act-icon" src="/assets/wxmp-edit.svg" mode="aspectFit" />
+                  </view>
+                </view>
+              </view>
+            </block>
+
+            <!-- AI 消息 -->
+            <block wx:else>
+              <view class="msg-avatar ai-avatar">AI</view>
+              <view class="msg-col">
+                <view class="ai-name">智能助手</view>
+
+                <!-- 思考过程框 -->
+                <view
+                  wx:if="{{m.thinkState}}"
+                  class="think-box {{m.thinkOpen ? 'open' : ''}}"
+                  data-state="{{m.thinkState}}"
+                  data-uid="{{m._uid}}"
+                  bindtap="toggleThink"
+                >
+                  <view class="think-head">
+                    <view class="think-icon {{m.thinkState === 'thinking' ? 'spinning' : ''}}">AI</view>
+                    <text class="think-text">{{m.thinkState === 'thinking' ? '正在思考' : '思考已完成'}}</text>
+                    <view wx:if="{{m.thinkState === 'thinking'}}" class="think-dots">
+                      <view class="dot"></view>
+                      <view class="dot"></view>
+                      <view class="dot"></view>
+                    </view>
+                    <text wx:if="{{m.thinkState === 'done'}}" class="think-caret">›</text>
+                  </view>
+                  <view wx:if="{{m.thinkState === 'done' && m.thinkOpen}}" class="think-body">
+                    已完成对本问题的思考（用时 {{m.thinkSeconds}} 秒）。
+                  </view>
+                </view>
+
+                <!-- 回复气泡 -->
+                <view wx:if="{{m.content}}" class="bubble bubble-ai">
+                  <rich-text nodes="{{m.contentHtml}}" class="msg-content"></rich-text>
+                </view>
+                <view wx:if="{{m.canceled}}" class="canceled-tip">已取消回答</view>
+
+                <!-- 气泡操作 -->
+                <view class="msg-actions" wx:if="{{!m.generating}}">
+                  <block wx:if="{{m.versions.length > 1}}">
+                    <view class="act-btn {{m.verIdx <= 0 ? 'disabled' : ''}}" catchtap="switchVersion" data-uid="{{m._uid}}" data-dir="-1">
+                      <image class="act-icon" src="/assets/wxmp-arrow-left.svg" mode="aspectFit" />
+                    </view>
+                    <text class="ver-indicator">{{m.verIdx + 1}}/{{m.versions.length}}</text>
+                    <view class="act-btn {{m.verIdx >= m.versions.length - 1 ? 'disabled' : ''}}" catchtap="switchVersion" data-uid="{{m._uid}}" data-dir="1">
+                      <image class="act-icon" src="/assets/wxmp-arrow-right.svg" mode="aspectFit" />
+                    </view>
+                  </block>
+                  <view class="act-btn" catchtap="regen" data-uid="{{m._uid}}">
+                    <image class="act-icon" src="/assets/wxmp-regenerate.svg" mode="aspectFit" />
+                  </view>
+                  <view class="act-btn" catchtap="copyText" data-uid="{{m._uid}}">
+                    <image class="act-icon" src="/assets/wxmp-copy.svg" mode="aspectFit" />
+                  </view>
+                </view>
+                <view class="msg-actions" wx:else>
+                  <view class="act-btn" catchtap="stop">
+                    <image class="act-icon" src="/assets/wxmp-stop.svg" mode="aspectFit" />
+                  </view>
+                </view>
+              </view>
+            </block>
+          </view>
+        </block>
+      </block>
+
+      <view class="chat-body-tail" id="msg-tail"></view>
+    </scroll-view>
+
+    <!-- 输入区 -->
+    <view class="chat-input">
+      <view class="input-box">
+        <textarea
+          class="msg-input"
+          value="{{inputText}}"
+          placeholder="问问 AI 关于课程、成绩、用电…"
+          auto-height
+          maxlength="-1"
+          adjust-position="{{true}}"
+          confirm-type="send"
+          bindinput="onInput"
+          bindconfirm="send"
+        ></textarea>
+        <view class="aic-toolbar">
+          <view class="toolbar-left">
+            <view class="aic-pill {{showModelMenu ? 'active' : ''}}" catchtap="openModelMenu">
+              <text class="pill-text">{{currentModel || '默认模型'}}</text>
+              <text class="aic-caret">▾</text>
+            </view>
+            <view class="aic-pill {{deepThink ? 'active' : ''}}" catchtap="toggleDeep">
+              <text>深度思考</text>
+            </view>
+          </view>
+        </view>
+      </view>
+      <button
+        class="send-btn {{!streaming && !inputText ? 'disabled' : ''}}"
+        bindtap="onSendBtnTap"
+      >
+        <image wx:if="{{!streaming}}" class="send-icon" src="/assets/wxmp-send-white.svg" mode="aspectFit" />
+        <view wx:else class="send-stop"></view>
+      </button>
+
+      <!-- 模型选择菜单 -->
+      <view wx:if="{{showModelMenu}}" class="model-mask" bindtap="closeModelMenu">
+        <view class="model-menu" style="bottom: {{modelMenuBottom}}" catchtap="noop">
+          <view
+            class="model-item {{m === currentModel ? 'active' : ''}}"
+            wx:for="{{models}}"
+            wx:key="*this"
+            wx:for-item="m"
+            data-m="{{m}}"
+            catchtap="selectModel"
+          >{{m}}</view>
+          <view wx:if="{{!models.length}}" class="model-item active">默认模型</view>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

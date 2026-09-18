@@ -304,6 +304,167 @@ const getBanners = () => {
   });
 };
 
+/**
+ * 获取当前 AI 提供方支持的模型列表（供对话页下拉选择）
+ * @returns {Promise} data: {models:[], default:''}
+ */
+const getAiModels = () => {
+  return request({
+    act: 'ai_models',
+    method: 'GET'
+  });
+};
+
+// NDJSON 行解析器：把字符串流按行拆分（内部缓冲跨块残行），逐行回调
+const createNdjsonParser = (handleLine) => {
+  let buf = '';
+  return {
+    push(text) {
+      buf += text || '';
+      const parts = buf.split('\n');
+      buf = parts.pop() || '';
+      parts.forEach((ln) => {
+        const t = ln.trim();
+        if (t) handleLine(t);
+      });
+    },
+    end() {
+      const t = buf.trim();
+      if (t) handleLine(t);
+      buf = '';
+    }
+  };
+};
+
+// UTF-8 字节流解码器：处理跨块截断的多字节字符（onChunkReceived 场景）
+const createUtf8Decoder = () => {
+  let carry = [];
+  return (chunk, final) => {
+    const u8 = chunk instanceof Uint8Array ? chunk : new Uint8Array(chunk || 0);
+    if (typeof TextDecoder !== 'undefined') {
+      try { return new TextDecoder('utf-8').decode(u8, { stream: !final }); } catch (e) { /* 回退手动解码 */ }
+    }
+    const bytes = carry.concat(Array.prototype.slice.call(u8));
+    let out = '';
+    let i = 0;
+    while (i < bytes.length) {
+      const b = bytes[i];
+      let len = 0;
+      if (b < 0x80) len = 1;
+      else if ((b & 0xE0) === 0xC0) len = 2;
+      else if ((b & 0xF0) === 0xE0) len = 3;
+      else if ((b & 0xF8) === 0xF0) len = 4;
+      else { out += '\uFFFD'; i += 1; continue; }
+      if (i + len > bytes.length) {
+        if (final) { out += '\uFFFD'; i = bytes.length; }
+        break; // 等待后续分块
+      }
+      let cp = b & (len === 1 ? 0x7F : len === 2 ? 0x1F : len === 3 ? 0x0F : 0x07);
+      let ok = true;
+      for (let j = 1; j < len; j++) {
+        if ((bytes[i + j] & 0xC0) !== 0x80) { ok = false; break; }
+        cp = (cp << 6) | (bytes[i + j] & 0x3F);
+      }
+      if (!ok) { out += '\uFFFD'; i += 1; continue; }
+      out += String.fromCodePoint(cp);
+      i += len;
+    }
+    carry = bytes.slice(i);
+    return out;
+  };
+};
+
+/**
+ * AI 对话（真流式）
+ * - POST api.php?act=ai_chat，NDJSON 行协议：每行 {content:"增量"} / {error:"..."} / {done:true}
+ * - 微信小程序：enableChunked 分块接收逐行解析；低版本基础库自动回退整包解析
+ * @param {Object}   opts
+ * @param {Array}    opts.messages OpenAI 格式消息数组（system 角色会被后端丢弃）
+ * @param {string}   [opts.model] 模型名（来自 ai_models 接口）
+ * @param {Function} opts.onChunk 收到增量文本时回调(delta:string)
+ * @param {Function} [opts.onDone] 结束时回调（成功/失败/中断都会触发一次）
+ * @param {Function} [opts.onError] 出错时回调(msg:string)
+ * @returns {Promise} promise.abort() 可中断当前流
+ */
+const aiChatStream = (opts) => {
+  const { messages, model, onChunk, onDone, onError } = opts || {};
+  const token = wx.getStorageSync('api_token');
+  const url = API_BASE_URL + '?act=ai_chat';
+  const body = 'messages=' + encodeURIComponent(JSON.stringify(messages || [])) +
+    (model ? '&model=' + encodeURIComponent(model) : '');
+
+  let aborted = false;
+  let done = false;
+  let promise_abort = null;
+
+  const promise = new Promise((resolve) => {
+    const finish = () => {
+      if (done) return;
+      done = true;
+      try { onDone && onDone(); } catch (e) {}
+      resolve();
+    };
+    const fail = (msg) => {
+      if (!aborted && !done) {
+        try { onError && onError(msg); } catch (e) {}
+      }
+      finish();
+    };
+    const parser = createNdjsonParser((line) => {
+      if (done) return;
+      let obj = null;
+      try { obj = JSON.parse(line); } catch (e) { return; }
+      if (!obj || typeof obj !== 'object') return;
+      if (obj.error) { fail(obj.error); return; }
+      if (obj.done) { finish(); return; }
+      if (typeof obj.content === 'string' && obj.content) {
+        try { onChunk && onChunk(obj.content); } catch (e) {}
+      }
+    });
+
+    let gotChunks = false;
+    const task = wx.request({
+      url,
+      method: 'POST',
+      data: body,
+      timeout: 300000,
+      header: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': token ? 'Bearer ' + token : ''
+      },
+      enableChunked: true,
+      success: (res) => {
+        // 分块接收不可用时回退整包解析
+        if (!gotChunks && res && res.data) {
+          parser.push(typeof res.data === 'string' ? res.data : JSON.stringify(res.data));
+        }
+        parser.end();
+        finish();
+      },
+      fail: () => {
+        if (aborted) finish(); else fail('网络请求失败');
+      }
+    });
+
+    if (task && typeof task.onChunkReceived === 'function') {
+      const byteDec = createUtf8Decoder();
+      task.onChunkReceived((res) => {
+        if (done) return;
+        gotChunks = true;
+        try { parser.push(byteDec(res.data || new ArrayBuffer(0), false)); } catch (e) {}
+      });
+    }
+
+    promise_abort = () => { aborted = true; try { task && task.abort(); } catch (e) {} };
+  });
+
+  promise.abort = () => {
+    aborted = true;
+    if (promise_abort) promise_abort(); else finish();
+  };
+  return promise;
+};
+
 // 文件基础地址：由 API 地址自动推导（api.php 所在目录），更换部署域名时只需改 API_BASE_URL
 const API_FILE_BASE = API_BASE_URL.replace(/\/api\.php(\?.*)?$/i, '');
 
@@ -736,9 +897,11 @@ module.exports = {
   getScheduleMode,
   getScheduleTimes,
   getBanners,
+  getAiModels,
   getFileUrl,
   toApiPath,
   uploadAvatar,
+  aiChatStream,
   getDormAreas,
   getDormBuildings,
   getDormRooms,
