@@ -255,6 +255,8 @@ export default {
 		this.loadRandomPoem();
 		this.loadFeatureSettings();
 		this.loadBanners();
+		// App 启动后首页加载时自动检查版本更新（免登录，与「关于我们-检查更新」逻辑一致）
+		this.checkAppUpdate();
 
 		if (!api.isLoggedIn()) {
 			uni.redirectTo({
@@ -357,6 +359,43 @@ export default {
 		checkLoginStatus() {
 			this.isLoggedIn = api.isLoggedIn();
 			this.apiUserInfo = api.getUserInfoCache() || {};
+		},
+
+		// App 启动后首页加载时自动检查版本更新（仅打包环境；免登录接口）
+		checkAppUpdate() {
+			// #ifdef APP-PLUS
+			const app = getApp();
+			if (app) {
+				if (app.globalData && app.globalData.appUpdateChecked) return;
+				if (!app.globalData) app.globalData = {};
+				app.globalData.appUpdateChecked = true;
+			}
+			try {
+				const clientCode = parseInt(plus.runtime.versionCode, 10) || 0;
+				let platform = 'all';
+				try {
+					const p = uni.getSystemInfoSync().platform;
+					if (p === 'android') platform = 'android';
+					else if (p === 'ios') platform = 'ios';
+				} catch (e) {}
+				api.getAppVersion({ version_code: clientCode, platform }).then((res) => {
+					const d = (res && res.data) || {};
+					if (!d.has_update) return;
+					const force = parseInt(d.force_update, 10) === 1;
+					uni.showModal({
+						title: '发现新版本 v' + d.version,
+						content: (d.changelog || '修复了一些问题，体验更流畅') + '\n\n建议尽快更新以获得更好体验',
+						confirmText: '立即更新',
+						showCancel: !force,
+						success: (r) => {
+							if (r.confirm && d.download_url) {
+								plus.runtime.openURL(d.download_url);
+							}
+						}
+					});
+				}).catch(() => {});
+			} catch (e) {}
+			// #endif
 		},
 
 		async loadNotices() {

@@ -753,6 +753,32 @@ const oauthLoginPoll = (ticket) => {
   });
 };
 
+/* ==================== App 版本更新相关接口 ==================== */
+
+/**
+ * 检查 App 更新（免登录）
+ * @param {Object} params { version_code:number, platform:'all'|'android'|'ios'|'harmony' }
+ * @returns {Promise} data: { has_update, force_update, version, version_code, download_url, changelog }
+ */
+const getAppVersion = (params) => {
+  return request({
+    act: 'get_app_version',
+    method: 'GET',
+    data: params || {}
+  });
+};
+
+/**
+ * 获取 App 更新日志列表（免登录）
+ * @returns {Promise} data: [{ version, version_code, changelog, created_at }]
+ */
+const getAppVersionLog = () => {
+  return request({
+    act: 'get_app_version_log',
+    method: 'GET'
+  });
+};
+
 /* ==================== 本地存储工具方法 ==================== */
 
 const isLoggedIn = () => {
@@ -845,5 +871,7 @@ export default {
   unbindOauth,
   getOauthChannels,
   getOauthLoginUrl,
-  oauthLoginPoll
+  oauthLoginPoll,
+  getAppVersion,
+  getAppVersionLog
 };

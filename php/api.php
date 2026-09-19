@@ -3558,6 +3558,83 @@ switch($act) {
         jsonResponse(0, 'success', $glanceData);
     break;
     
+    // ===== App 版本更新：检查更新（免登录） =====
+    case 'get_app_version':
+        $clientCode = intval($_GET['version_code'] ?? 0);
+        $platform = addslashes($_GET['platform'] ?? 'all');
+        if (!in_array($platform, array('all', 'android', 'ios', 'harmony'))) {
+            $platform = 'all';
+        }
+
+        // 全局开关：默认关闭，需在后台「版本管理」开启
+        $enabled = false;
+        try {
+            $cfg = $DB->getRow("SELECT app_update_enabled FROM nteam_config WHERE id=1");
+            if ($cfg !== null && isset($cfg['app_update_enabled']) && intval($cfg['app_update_enabled']) === 1) {
+                $enabled = true;
+            }
+        } catch (Exception $e) {}
+
+        $data = array(
+            'has_update'   => false,
+            'force_update' => 0,
+            'version'      => '',
+            'version_code' => 0,
+            'download_url' => '',
+            'changelog'    => ''
+        );
+
+        if ($enabled) {
+            $tableReady = false;
+            try {
+                $chk = $DB->query("SHOW TABLES LIKE 'nteam_app_versions'");
+                $tableReady = $chk && $chk->fetch();
+            } catch (Exception $e) {}
+
+            if ($tableReady) {
+                $row = $DB->getRow("SELECT * FROM nteam_app_versions WHERE status=1 AND platform IN ('all','$platform') ORDER BY version_code DESC LIMIT 1");
+                if ($row && intval($row['version_code']) > $clientCode) {
+                    $data = array(
+                        'has_update'   => true,
+                        'force_update' => intval($row['force_update']),
+                        'version'      => $row['version'],
+                        'version_code' => intval($row['version_code']),
+                        'download_url' => $row['download_url'],
+                        'changelog'    => $row['changelog'] ?? ''
+                    );
+                }
+            }
+        }
+
+        jsonResponse(0, 'success', $data);
+    break;
+
+    // ===== App 版本更新：更新日志列表（免登录） =====
+    case 'get_app_version_log':
+        $list = array();
+        $tableReady = false;
+        try {
+            $chk = $DB->query("SHOW TABLES LIKE 'nteam_app_versions'");
+            $tableReady = $chk && $chk->fetch();
+        } catch (Exception $e) {}
+
+        if ($tableReady) {
+            $rows = $DB->query("SELECT version, version_code, platform, download_url, changelog, created_at FROM nteam_app_versions WHERE status=1 ORDER BY version_code DESC LIMIT 20")->fetchAll();
+            foreach ($rows as $r) {
+                $list[] = array(
+                    'version'      => $r['version'],
+                    'version_code' => intval($r['version_code']),
+                    'platform'     => $r['platform'] ?? 'all',
+                    'download_url' => $r['download_url'] ?? '',
+                    'changelog'    => $r['changelog'] ?? '',
+                    'created_at'   => $r['created_at']
+                );
+            }
+        }
+
+        jsonResponse(0, 'success', $list);
+    break;
+
     default:
         jsonResponse(-3, '无效的接口');
 }

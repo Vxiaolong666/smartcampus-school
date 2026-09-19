@@ -145,6 +145,12 @@
 			}
 		},
 		{
+			"path": "pages/version-log/index",
+			"style": {
+				"navigationBarTitleText": "更新日志"
+			}
+		},
+		{
 			"path": "pages/cancel-account/index",
 			"style": {
 				"navigationBarTitleText": "账号注销"

@@ -89,7 +89,7 @@
 						<view class="action-btn action-primary" @click="onContact">联系客服</view>
 						<view class="action-btn action-plain" @click="onRecheck">重新检测</view>
 					</view>
-					<view class="footer-text">感谢您的耐心等待和支持！</view>
+					<view class="footer-text">感谢您的耐心等待</view>
 				</view>
 			</view>
 		</view>

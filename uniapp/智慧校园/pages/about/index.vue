@@ -60,7 +60,21 @@
 				</view>
 
 				<view class="about-footer">
-					<text class="footer-text">版本 1.0.0</text>
+					<text class="footer-text">版本 {{currentVersion}}</text>
+				</view>
+			</view>
+
+			<view class="menu-card">
+				<view class="menu-title">版本服务</view>
+				<view class="menu-item" @click="checkUpdate(false)">
+					<image class="menu-icon" src="/static/assets/wxmp-about.svg" mode="widthFix"></image>
+					<view class="menu-text">检查更新</view>
+					<image class="menu-arrow" src="/static/assets/wxmp-right.svg" mode="widthFix"></image>
+				</view>
+				<view class="menu-item" @click="goVersionLog">
+					<image class="menu-icon" src="/static/assets/wxmp-read.svg" mode="widthFix"></image>
+					<view class="menu-text">更新日志</view>
+					<image class="menu-arrow" src="/static/assets/wxmp-right.svg" mode="widthFix"></image>
 				</view>
 			</view>
 		</view>
@@ -68,9 +82,94 @@
 </template>
 
 <script>
+/**
+ * 关于我们
+ * 底部新增「版本服务」：检查更新 + 更新日志（参考教务绑定页下方操作按钮样式）
+ */
+import api from '../../utils/api.js';
+
 export default {
 	data() {
-		return {};
+		return {
+			currentVersion: '1.3.25',
+			currentVersionCode: 1001
+		};
+	},
+
+	onLoad() {
+		this.initVersion();
+	},
+
+	methods: {
+		// 优先读取 App 实际版本号，H5/开发时回退到内置常量
+		initVersion() {
+			// #ifdef APP-PLUS
+			try {
+				const vn = plus.runtime.version;
+				const vc = plus.runtime.versionCode;
+				if (vn) this.currentVersion = vn;
+				if (vc) this.currentVersionCode = parseInt(vc, 10) || this.currentVersionCode;
+			} catch (e) {}
+			// #endif
+		},
+
+		// 当前平台：android / ios / 其它归 all
+		getPlatform() {
+			try {
+				const platform = uni.getSystemInfoSync().platform;
+				if (platform === 'android') return 'android';
+				if (platform === 'ios') return 'ios';
+			} catch (e) {}
+			return 'all';
+		},
+
+		// 检查更新；auto=true 时（App 启动）无更新不提示
+		checkUpdate(auto = false) {
+			uni.showLoading({ title: '检查中...' });
+			api.getAppVersion({ version_code: this.currentVersionCode, platform: this.getPlatform() })
+				.then(res => {
+					const d = (res && res.data) || {};
+					if (d.has_update) {
+						this.showUpdateModal(d);
+					} else if (!auto) {
+						uni.showToast({ title: '已是最新版本', icon: 'none' });
+					}
+				})
+				.catch(() => {
+					if (!auto) uni.showToast({ title: '检查失败', icon: 'none' });
+				})
+				.finally(() => {
+					uni.hideLoading();
+				});
+		},
+
+		showUpdateModal(d) {
+			const force = parseInt(d.force_update, 10) === 1;
+			uni.showModal({
+				title: '发现新版本 v' + d.version,
+				content: (d.changelog || '修复了一些问题，体验更流畅') + '\n\n建议尽快更新以获得更好体验',
+				confirmText: '立即更新',
+				showCancel: !force,
+				success: (r) => {
+					if (r.confirm && d.download_url) {
+						this.openUrl(d.download_url);
+					}
+				}
+			});
+		},
+
+		openUrl(url) {
+			// #ifdef APP-PLUS
+			plus.runtime.openURL(url);
+			// #endif
+			// #ifndef APP-PLUS
+			try { window.open(url, '_blank'); } catch (e) {}
+			// #endif
+		},
+
+		goVersionLog() {
+			uni.navigateTo({ url: '/pages/version-log/index' });
+		}
 	}
 };
 </script>
@@ -217,5 +316,49 @@ page {
 .footer-text {
 	font-size: 22rpx;
 	color: #948eb3;
+}
+
+.menu-card {
+	background: white;
+	border-radius: 30rpx;
+	margin-top: 30rpx;
+	padding: 30rpx 0;
+	box-shadow: 0 20rpx 60rpx rgba(0, 0, 0, 0.08);
+}
+
+.menu-title {
+	font-size: 28rpx;
+	color: #948eb3;
+	padding: 0 40rpx 20rpx;
+	font-weight: bold;
+}
+
+.menu-item {
+	display: flex;
+	align-items: center;
+	padding: 30rpx 40rpx;
+	border-bottom: 2rpx solid #f7f8fc;
+}
+
+.menu-item:last-child {
+	border-bottom: none;
+}
+
+.menu-icon {
+	width: 44rpx;
+	height: 44rpx;
+}
+
+.menu-text {
+	flex: 1;
+	font-size: 30rpx;
+	color: #48416f;
+	margin-left: 24rpx;
+}
+
+.menu-arrow {
+	width: 28rpx;
+	height: 28rpx;
+	opacity: 0.5;
 }
 </style>

@@ -88,7 +88,7 @@
           <button class="action-btn action-primary" open-type="contact">联系客服</button>
           <button class="action-btn action-plain" bindtap="onRecheck">重新检测</button>
         </view>
-        <view class="footer-text">感谢您的耐心等待和支持！</view>
+        <view class="footer-text">感谢您的耐心等待</view>
       </view>
     </view>
   </view>

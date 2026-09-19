@@ -1439,6 +1439,50 @@ switch($act){
         }
     break;
 
+    case 'app_version_save':
+        if(!$isLogin)exit('{"code":0,"msg":"未登录"}');
+        if($adminData['adminRank']!=1){exit('{"code":-1,"msg":"您的账号没有权限使用此功能！"}');}
+        $id = intval($_POST['id'] ?? 0);
+        $version = addslashes(trim($_POST['version'] ?? ''));
+        $version_code = intval($_POST['version_code'] ?? 0);
+        $platform = addslashes($_POST['platform'] ?? 'all');
+        $force_update = isset($_POST['force_update']) ? 1 : 0;
+        $download_url = addslashes(trim($_POST['download_url'] ?? ''));
+        $changelog = addslashes(trim($_POST['changelog'] ?? ''));
+        $status = intval($_POST['status'] ?? 1);
+
+        if ($version == '' || $version_code <= 0 || $download_url == '') {
+            exit('{"code":-1,"msg":"请填写版本号、版本数字和下载地址"}');
+        }
+        if (!in_array($platform, array('all','android','ios','harmony'))) {
+            $platform = 'all';
+        }
+
+        if ($id > 0) {
+            $sql = "UPDATE nteam_app_versions SET `version`='$version', `version_code`='$version_code', `platform`='$platform', `force_update`='$force_update', `download_url`='$download_url', `changelog`='$changelog', `status`='$status' WHERE `id`='$id'";
+            if ($DB->exec($sql) === false) exit('{"code":-1,"msg":"修改失败['.$DB->error().']"}');
+            $DB->query("insert into `nteam_log` (`adminUser`,`type`,`data`,`ip`,`city`) values ('" . $_SESSION['adminUser'] . "','修改了App版本".$version."', NOW(), '".$ip."', '')");
+            exit('{"code":0,"msg":"修改成功！"}');
+        } else {
+            $sql = "INSERT INTO nteam_app_versions (`version`,`version_code`,`platform`,`force_update`,`download_url`,`changelog`,`status`) VALUES ('$version','$version_code','$platform','$force_update','$download_url','$changelog','$status')";
+            if ($DB->exec($sql) === false) exit('{"code":-1,"msg":"添加失败['.$DB->error().']"}');
+            $DB->query("insert into `nteam_log` (`adminUser`,`type`,`data`,`ip`,`city`) values ('" . $_SESSION['adminUser'] . "','新增了App版本".$version."', NOW(), '".$ip."', '')");
+            exit('{"code":0,"msg":"添加成功！"}');
+        }
+    break;
+
+    case 'app_version_del':
+        if(!$isLogin)exit('{"code":0,"msg":"未登录"}');
+        if($adminData['adminRank']!=1){exit('{"code":-1,"msg":"您的账号没有权限使用此功能！"}');}
+        $id = intval($_POST['id'] ?? 0);
+        if ($id <= 0) exit('{"code":-1,"msg":"参数错误"}');
+        if ($DB->exec("DELETE FROM nteam_app_versions WHERE `id`='$id'") === false) {
+            exit('{"code":-1,"msg":"删除失败['.$DB->error().']"}');
+        }
+        $DB->query("insert into `nteam_log` (`adminUser`,`type`,`data`,`ip`,`city`) values ('" . $_SESSION['adminUser'] . "','删除了App版本(ID:{$id})', NOW(), '".$ip."', '')");
+        exit('{"code":0,"msg":"删除成功！"}');
+    break;
+
     default:
         exit('{"code":-4,"msg":"No Act"}');
     break;
