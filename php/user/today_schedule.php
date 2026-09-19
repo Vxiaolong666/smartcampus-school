@@ -852,7 +852,7 @@ function aiAnalyzeToday() {
         cacheKey: function () { return 'schedule_today:' + JSON.stringify(window.__todayData); },
         validate: function () {
             if (!window.__todayData || !window.__todayData.courses || !window.__todayData.courses.length) {
-                alert('今日暂无课程，无法分析');
+                layer.msg('今日暂无课程，无法分析', {icon: 0, time: 2000});
                 return false;
             }
             return true;

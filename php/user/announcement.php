@@ -37,14 +37,12 @@ include('./head.php');
             <div class="block-content block-content-full">
                 <div class="row justify-content-center">
                     <div class="col-lg-8">
-                        <nav aria-label="breadcrumb" class="mb-3">
-                            <ol class="breadcrumb">
-                                <li class="breadcrumb-item"><a href="index.php">首页</a></li>
-                                <li class="breadcrumb-item"><a href="announcements.php">公告列表</a></li>
-                                <li class="breadcrumb-item active"><?php echo htmlspecialchars($announcement['title']); ?></li>
-                            </ol>
-                        </nav>
-                        
+                        <div class="d-flex mb-3">
+                            <a href="announcements.php" class="btn btn-alt-secondary btn-sm">
+                                <i class="fa fa-arrow-left me-1"></i>返回列表
+                            </a>
+                        </div>
+
                         <article>
                             <header class="mb-4">
                                 <h1 class="h2 mb-3">
@@ -68,12 +66,6 @@ include('./head.php');
                                 </div>
                             </header>
                             
-                            <?php if($displayImage): ?>
-                            <div class="mb-4">
-                                <img src="<?php echo htmlspecialchars($displayImage); ?>" alt="<?php echo htmlspecialchars($announcement['title']); ?>" class="img-fluid rounded" style="max-height: 400px; width: 100%; object-fit: cover;">
-                            </div>
-                            <?php endif; ?>
-
                             <!-- AI 智能总结（页面加载自动异步生成，优先复用历史缓存；样式与 uniapp 浅色主题统一） -->
                             <div class="ai-summary-card" id="aiSummaryCard">
                                 <div class="ai-summary-head">
@@ -94,18 +86,16 @@ include('./head.php');
                                 <div class="ai-summary-foot">本卡片由 AI 阅读公告后生成，可能存在疏漏，请以公告正文为准。</div>
                             </div>
 
+                            <?php if($displayImage): ?>
+                            <div class="mb-4">
+                                <img src="<?php echo htmlspecialchars($displayImage); ?>" alt="<?php echo htmlspecialchars($announcement['title']); ?>" class="img-fluid rounded" style="max-height: 400px; width: 100%; object-fit: cover;">
+                            </div>
+                            <?php endif; ?>
+
                             <div class="content markdown-body" id="announcementContent">
                                 <?php echo htmlspecialchars($announcement['content']); ?>
                             </div>
                         </article>
-                        
-                        <hr class="my-4">
-                        
-                        <div class="d-flex justify-content-between">
-                            <a href="announcements.php" class="btn btn-alt-secondary">
-                                <i class="fa fa-arrow-left me-1"></i>返回列表
-                            </a>
-                        </div>
                     </div>
                 </div>
             </div>
