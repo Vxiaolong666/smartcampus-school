@@ -256,4 +256,64 @@ class AiHelper
         }
         return ['success' => true, 'models' => $models, 'default' => $cfg['model']];
     }
+
+    /**
+     * 带历史缓存的 AI 分析：优先命中缓存（相同用户 + 业务类型 + 数据指纹），
+     * 命中则直接返回，避免重复消耗 AI 额度；未命中才真正调用模型并写回缓存。
+     * 与成绩分析（nteam_ai_grade_analysis）思路一致，统一复用同一张缓存表。
+     * @param \lib\PdoHelper $DB
+     * @param int    $userId
+     * @param string $bizType  业务类型标识（如 power_query / power_statistics / schedule_semester / schedule_today）
+     * @param string $dataHash 数据指纹（如 md5(json)），用于判断数据是否变化
+     * @param array  $messages OpenAI 格式消息
+     * @return array{success:bool,content?:string,cached?:int,msg?:string}
+     */
+    public static function analyzeCached($DB, $userId, $bizType, $dataHash, array $messages)
+    {
+        $DB->exec("CREATE TABLE IF NOT EXISTS nteam_ai_analysis_cache (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            biz_type VARCHAR(64) NOT NULL DEFAULT '',
+            data_hash VARCHAR(64) NOT NULL DEFAULT '',
+            content MEDIUMTEXT NOT NULL,
+            created_at DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL,
+            UNIQUE KEY uniq_user_biz_hash (user_id, biz_type, data_hash)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        $userId   = intval($userId);
+        $bizType  = strval($bizType);
+        $dataHash = strval($dataHash);
+
+        $cached = $DB->getRow(
+            "SELECT content FROM nteam_ai_analysis_cache WHERE user_id=? AND biz_type=? AND data_hash=?",
+            [$userId, $bizType, $dataHash]
+        );
+        if ($cached && trim($cached['content']) !== '' && $cached['content'] !== '暂无分析结果') {
+            return ['success' => true, 'content' => $cached['content'], 'cached' => 1];
+        }
+
+        $result = self::chat($messages);
+        if (!$result['success']) {
+            return $result;
+        }
+        $content = isset($result['content']) ? trim($result['content']) : '';
+        if ($content === '') {
+            return ['success' => false, 'msg' => '分析结果为空，请重试'];
+        }
+
+        $now = date('Y-m-d H:i:s');
+        if ($cached) {
+            $DB->exec(
+                "UPDATE nteam_ai_analysis_cache SET content=?, data_hash=?, updated_at=? WHERE user_id=? AND biz_type=? AND data_hash=?",
+                [$content, $dataHash, $now, $userId, $bizType, $dataHash]
+            );
+        } else {
+            $DB->exec(
+                "INSERT INTO nteam_ai_analysis_cache (user_id, biz_type, data_hash, content, created_at, updated_at) VALUES (?,?,?,?,?,?)",
+                [$userId, $bizType, $dataHash, $content, $now, $now]
+            );
+        }
+        return ['success' => true, 'content' => $content, 'cached' => 0];
+    }
 }

@@ -101,8 +101,8 @@ function jsonResponse($code, $msg, $data = null) {
 }
 
 /**
- * 站点文件完整 URL：api.php 所在目录即站点根（或子目录部署时自动带前缀），
- * 根据当前请求自动推导域名与路径，前端与部署域名解耦，更换域名无需改代码。
+ * 站点文件完整 URL：根据当前请求路径自动推导部署目录（兼容二级目录部署，如 /csgocs），
+ * 与域名、部署路径完全解耦，更换域名或迁移子目录均无需改动代码。
  * 已是完整 http(s) 地址或空值时原样返回。
  */
 function apiFileUrl($path) {
@@ -111,8 +111,32 @@ function apiFileUrl($path) {
     if (preg_match('#^https?://#i', $path)) return $path;
     $scheme = (!empty($_SERVER['HTTPS']) && strtolower($_SERVER['HTTPS']) !== 'off') ? 'https' : 'http';
     $host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : 'localhost';
-    $baseDir = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/')), '/');
+    $baseDir = apiBaseDir();
     return $scheme . '://' . $host . $baseDir . $path;
+}
+
+/**
+ * 推导当前应用对外可访问的基路径（含可能的二级目录）。
+ * 部分服务器环境下 $_SERVER['SCRIPT_NAME'] 不会包含二级目录，
+ * 导致以此推导的地址缺失子路径（如 /csgocs）。因此优先以浏览器
+ * 实际请求路径（REQUEST_URI）为准，确保生成的地址与访问地址一致。
+ */
+function apiBaseDir() {
+    static $baseDir = null;
+    if ($baseDir !== null) return $baseDir;
+
+    $scriptName = isset($_SERVER['SCRIPT_NAME']) ? $_SERVER['SCRIPT_NAME'] : '/api.php';
+    $reqUri = isset($_SERVER['REQUEST_URI']) ? parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) : '';
+
+    if (!empty($reqUri) && basename($reqUri) === basename($scriptName)) {
+        // 实际请求路径包含脚本名，其目录即为对外基路径（正确反映二级目录）
+        $baseDir = rtrim(dirname($reqUri), '/');
+        return $baseDir;
+    }
+
+    // 回退：使用 SCRIPT_NAME 推导
+    $baseDir = rtrim(dirname($scriptName), '/');
+    return $baseDir;
 }
 
 switch($act) {
@@ -1869,6 +1893,7 @@ switch($act) {
         if (!$user) {
             jsonResponse(-2, '请先登录');
         }
+        $userId = intval($user['user_id']);
 
         $raw = isset($_POST['data']) ? $_POST['data'] : '';
         $data = json_decode($raw, true);
@@ -1945,15 +1970,13 @@ switch($act) {
             ['role' => 'user', 'content' => $prompt],
         ];
         $ai = new \lib\AiHelper();
-        $result = $ai->chat($messages);
+        $dataHash = md5($raw);
+        $bizType = ($type === 'statistics') ? 'power_statistics' : 'power_query';
+        $result = $ai->analyzeCached($DB, $userId, $bizType, $dataHash, $messages);
         if (!$result['success']) {
             jsonResponse(-1, $result['msg']);
         }
-        $content = isset($result['content']) ? trim($result['content']) : '';
-        if ($content === '') {
-            jsonResponse(-1, '分析结果为空，请重试');
-        }
-        jsonResponse(0, 'ok', ['content' => $content, 'cached' => 0]);
+        jsonResponse(0, 'ok', ['content' => $result['content'], 'cached' => intval($result['cached'] ?? 0)]);
     break;
 
     case 'ai_analyze_schedule':
@@ -1961,6 +1984,7 @@ switch($act) {
         if (!$user) {
             jsonResponse(-2, '请先登录');
         }
+        $userId = intval($user['user_id']);
 
         $raw = isset($_POST['data']) ? $_POST['data'] : '';
         $data = json_decode($raw, true);
@@ -2027,15 +2051,13 @@ switch($act) {
             ['role' => 'user', 'content' => $prompt],
         ];
         $ai = new \lib\AiHelper();
-        $result = $ai->chat($messages);
+        $dataHash = md5($raw);
+        $bizType = ($type === 'semester') ? 'schedule_semester' : 'schedule_today';
+        $result = $ai->analyzeCached($DB, $userId, $bizType, $dataHash, $messages);
         if (!$result['success']) {
             jsonResponse(-1, $result['msg']);
         }
-        $content = isset($result['content']) ? trim($result['content']) : '';
-        if ($content === '') {
-            jsonResponse(-1, '分析结果为空，请重试');
-        }
-        jsonResponse(0, 'ok', ['content' => $content, 'cached' => 0]);
+        jsonResponse(0, 'ok', ['content' => $result['content'], 'cached' => intval($result['cached'] ?? 0)]);
     break;
 
     case 'query_grade':
@@ -2443,7 +2465,40 @@ switch($act) {
         
         jsonResponse(0, 'success', $notice);
     break;
-    
+
+    case 'ai_analyze_announcement':
+        $id = intval($_GET['id'] ?? ($_POST['id'] ?? 0));
+        if ($id <= 0) {
+            jsonResponse(-1, '参数错误');
+        }
+        $notice = $DB->getRow("SELECT id, title, content, author, create_time FROM nteam_announcements WHERE id='$id' AND is_published=1");
+        if (!$notice) {
+            jsonResponse(-1, '通知不存在或已下线');
+        }
+        $plain = trim(preg_replace('/\s+/', ' ', strip_tags($notice['content'])));
+        if ($plain === '') {
+            jsonResponse(-1, '通知内容为空，无法总结');
+        }
+        // 与网页端 user/ajax.php 共用同一缓存键，避免重复消耗 AI 额度
+        $dataHash = md5($id . '|' . $plain);
+        $prompt = "请用简洁清晰、条理分明的中文，对以下校园通知进行要点总结：先一句话概述主题，再以要点形式列出核心信息，最后标注学生需要特别注意或按时办理的事项。\n\n"
+            . "标题：" . $notice['title'] . "\n"
+            . "发布时间：" . $notice['create_time'] . "\n"
+            . "正文：\n" . $plain;
+        $messages = [
+            ['role' => 'system', 'content' => '你是一位专业、贴心的校园信息助手，擅长把冗长的通知提炼为清晰的要点总结。'],
+            ['role' => 'user', 'content' => $prompt],
+        ];
+        $ai = new \lib\AiHelper();
+        $authUser = authenticateUser($DB);
+        $userId = $authUser ? intval($authUser['user_id']) : 0;
+        $result = $ai->analyzeCached($DB, $userId, 'announcement_summary', $dataHash, $messages);
+        if (!$result['success']) {
+            jsonResponse(-1, $result['msg']);
+        }
+        jsonResponse(0, 'ok', ['content' => $result['content'], 'cached' => intval($result['cached'] ?? 0)]);
+    break;
+
     case 'get_openid':
         $code = isset($_POST['code']) ? trim($_POST['code']) : '';
         

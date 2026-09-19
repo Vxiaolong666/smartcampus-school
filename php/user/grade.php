@@ -362,6 +362,12 @@ function calculateGpa($score) {
     </div>
 </div>
 
+<!-- 右侧浮动 AI 分析按钮（与 uniapp 端一致） -->
+<div class="ai-fab" title="AI 智能分析成绩" onclick="aiAnalyzeGrades()">
+    <span class="ai-fab-icon">AI</span>
+    <span class="ai-fab-label">分析</span>
+</div>
+
 <!-- AI 智能分析成绩 弹窗 -->
 <div class="modal fade" id="aiModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -379,31 +385,19 @@ function calculateGpa($score) {
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script>
 function aiAnalyzeGrades() {
-    if (!window.__gradeData || !window.__gradeData.achievement || !window.__gradeData.achievement.length) {
-        alert('暂无可分析的成绩数据');
-        return;
-    }
-    var modal = (window.bootstrap && bootstrap.Modal) ? new bootstrap.Modal(document.getElementById('aiModal')) : null;
-    if (modal) { modal.show(); } else { $('#aiModal').modal('show'); }
-    $('#aiResult').html('<div class="text-center text-muted py-4"><i class="fa fa-spinner fa-spin me-2"></i>AI 正在分析，请稍候…</div>');
-    $.ajax({
+    AiAnalyze.run({
         url: 'ajax.php?act=ai_analyze_grades',
-        type: 'POST',
-        data: { data: JSON.stringify(window.__gradeData) },
-        dataType: 'json',
-        success: function(res) {
-            if (res.code == 0) {
-                if (window.marked) {
-                    $('#aiResult').html('<div class="markdown-body">'+window.marked.parse(res.content)+'</div>');
-                } else {
-                    $('#aiResult').text(res.content);
-                }
-            } else {
-                $('#aiResult').html('<div class="alert alert-danger">'+(res.msg||'分析失败')+'</div>');
+        modalId: 'aiModal',
+        resultId: 'aiResult',
+        fabSel: '.ai-fab',
+        payload: function () { return { data: JSON.stringify(window.__gradeData) }; },
+        cacheKey: function () { return 'grades:' + JSON.stringify(window.__gradeData); },
+        validate: function () {
+            if (!window.__gradeData || !window.__gradeData.achievement || !window.__gradeData.achievement.length) {
+                alert('暂无可分析的成绩数据');
+                return false;
             }
-        },
-        error: function() {
-            $('#aiResult').html('<div class="alert alert-danger">请求失败，请稍后重试</div>');
+            return true;
         }
     });
 }

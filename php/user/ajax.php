@@ -1208,6 +1208,7 @@ switch($act){
         if (!isset($_SESSION['userId'])) {
             exit(json_encode(['code' => -1, 'msg' => '请先登录']));
         }
+        $userId = intval($_SESSION['userId']);
         $raw = isset($_POST['data']) ? $_POST['data'] : '';
         $data = json_decode($raw, true);
         if (!is_array($data) || empty($data['type'])) {
@@ -1279,15 +1280,13 @@ switch($act){
             ['role' => 'user', 'content' => $prompt],
         ];
         $ai = new \lib\AiHelper();
-        $result = $ai->chat($messages);
+        $dataHash = md5($raw);
+        $bizType = ($type === 'statistics') ? 'power_statistics' : 'power_query';
+        $result = $ai->analyzeCached($DB, $userId, $bizType, $dataHash, $messages);
         if (!$result['success']) {
             exit(json_encode(['code' => -1, 'msg' => $result['msg']]));
         }
-        $content = isset($result['content']) ? trim($result['content']) : '';
-        if ($content === '') {
-            exit(json_encode(['code' => -1, 'msg' => '分析结果为空，请重试']));
-        }
-        exit(json_encode(['code' => 0, 'msg' => 'ok', 'content' => $content, 'cached' => 0]));
+        exit(json_encode(['code' => 0, 'msg' => 'ok', 'content' => $result['content'], 'cached' => intval($result['cached'] ?? 0)]));
     break;
 
     case 'get_oauth_channels':
@@ -1617,6 +1616,7 @@ switch($act){
         if (!isset($_SESSION['userId'])) {
             exit(json_encode(['code' => -1, 'msg' => '请先登录']));
         }
+        $userId = intval($_SESSION['userId']);
         $raw = isset($_POST['data']) ? $_POST['data'] : '';
         $data = json_decode($raw, true);
         if (!is_array($data) || empty($data['type'])) {
@@ -1686,15 +1686,44 @@ switch($act){
             ['role' => 'user', 'content' => $prompt],
         ];
         $ai = new \lib\AiHelper();
-        $result = $ai->chat($messages);
+        $dataHash = md5($raw);
+        $bizType = ($type === 'semester') ? 'schedule_semester' : 'schedule_today';
+        $result = $ai->analyzeCached($DB, $userId, $bizType, $dataHash, $messages);
         if (!$result['success']) {
             exit(json_encode(['code' => -1, 'msg' => $result['msg']]));
         }
-        $content = isset($result['content']) ? trim($result['content']) : '';
-        if ($content === '') {
-            exit(json_encode(['code' => -1, 'msg' => '分析结果为空，请重试']));
+        exit(json_encode(['code' => 0, 'msg' => 'ok', 'content' => $result['content'], 'cached' => intval($result['cached'] ?? 0)]));
+    break;
+
+    case 'ai_analyze_announcement':
+        $userId = isset($_SESSION['userId']) ? intval($_SESSION['userId']) : 0;
+        $aid = isset($_POST['id']) ? intval($_POST['id']) : 0;
+        if ($aid <= 0) {
+            exit(json_encode(['code' => -1, 'msg' => '参数错误']));
         }
-        exit(json_encode(['code' => 0, 'msg' => 'ok', 'content' => $content]));
+        $row = $DB->getRow("SELECT id, title, content, author, create_time FROM nteam_announcements WHERE id='$aid' AND is_published=1");
+        if (!$row) {
+            exit(json_encode(['code' => -1, 'msg' => '公告不存在或已下线']));
+        }
+        $plain = trim(preg_replace('/\s+/', ' ', strip_tags($row['content'])));
+        if ($plain === '') {
+            exit(json_encode(['code' => -1, 'msg' => '公告内容为空，无法总结']));
+        }
+        $dataHash = md5($aid . '|' . $plain);
+        $prompt = "请用简洁清晰、条理分明的中文，对以下校园公告进行要点总结：先一句话概述主题，再以要点形式列出核心信息，最后标注学生需要特别注意或按时办理的事项。\n\n"
+            . "标题：" . $row['title'] . "\n"
+            . "发布时间：" . $row['create_time'] . "\n"
+            . "正文：\n" . $plain;
+        $messages = [
+            ['role' => 'system', 'content' => '你是一位专业、贴心的校园信息助手，擅长把冗长的公告提炼为清晰的要点总结。'],
+            ['role' => 'user', 'content' => $prompt],
+        ];
+        $ai = new \lib\AiHelper();
+        $result = $ai->analyzeCached($DB, $userId, 'announcement_summary', $dataHash, $messages);
+        if (!$result['success']) {
+            exit(json_encode(['code' => -1, 'msg' => $result['msg']]));
+        }
+        exit(json_encode(['code' => 0, 'msg' => 'ok', 'content' => $result['content'], 'cached' => intval($result['cached'] ?? 0)]));
     break;
 
     default:

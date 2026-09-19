@@ -806,6 +806,12 @@ setInterval(updateTime, 1000);
 <?php endif; ?>
 </script>
 
+<!-- 右侧浮动 AI 分析按钮（与 uniapp 端一致） -->
+<div class="ai-fab" title="AI 智能分析今日课程" onclick="aiAnalyzeToday()">
+    <span class="ai-fab-icon">AI</span>
+    <span class="ai-fab-label">分析</span>
+</div>
+
 <!-- AI 智能分析今日课程 弹窗 -->
 <div class="modal fade" id="aiModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -828,38 +834,28 @@ window.__todayData = {
     courses: <?php echo json_encode($aiTodayCourses, JSON_UNESCAPED_UNICODE); ?>
 };
 function aiAnalyzeToday() {
-    if (!window.__todayData || !window.__todayData.courses || !window.__todayData.courses.length) {
-        alert('今日暂无课程，无法分析');
-        return;
-    }
-    var modal = (window.bootstrap && bootstrap.Modal) ? new bootstrap.Modal(document.getElementById('aiModal')) : null;
-    if (modal) { modal.show(); } else { $('#aiModal').modal('show'); }
-    $('#aiResult').html('<div class="text-center text-muted py-4"><i class="fa fa-spinner fa-spin me-2"></i>AI 正在分析，请稍候…</div>');
-    $.ajax({
+    AiAnalyze.run({
         url: 'ajax.php?act=ai_analyze_schedule',
-        type: 'POST',
-        data: {
-            data: JSON.stringify({
-                type: 'today',
-                dayName: window.__todayData.dayName,
-                date: window.__todayData.date,
-                courses: window.__todayData.courses
-            })
+        modalId: 'aiModal',
+        resultId: 'aiResult',
+        fabSel: '.ai-fab',
+        payload: function () {
+            return {
+                data: JSON.stringify({
+                    type: 'today',
+                    dayName: window.__todayData.dayName,
+                    date: window.__todayData.date,
+                    courses: window.__todayData.courses
+                })
+            };
         },
-        dataType: 'json',
-        success: function(res) {
-            if (res.code == 0) {
-                if (window.marked) {
-                    $('#aiResult').html('<div class="markdown-body">' + window.marked.parse(res.content) + '</div>');
-                } else {
-                    $('#aiResult').text(res.content);
-                }
-            } else {
-                $('#aiResult').html('<div class="alert alert-danger">' + (res.msg || '分析失败') + '</div>');
+        cacheKey: function () { return 'schedule_today:' + JSON.stringify(window.__todayData); },
+        validate: function () {
+            if (!window.__todayData || !window.__todayData.courses || !window.__todayData.courses.length) {
+                alert('今日暂无课程，无法分析');
+                return false;
             }
-        },
-        error: function() {
-            $('#aiResult').html('<div class="alert alert-danger">请求失败，请稍后重试</div>');
+            return true;
         }
     });
 }

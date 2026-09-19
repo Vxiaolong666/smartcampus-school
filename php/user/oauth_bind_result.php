@@ -102,19 +102,46 @@ $siteName  = conf('Name');
     </div>
     <script src="https://res.wx.qq.com/open/js/jweixin-1.6.0.js"></script>
     <script>
-        // 小程序 web-view 内可直接返回；其余环境使用浏览器后退
+        // 返回 App：根据运行环境选择最合适的返回方式
+        // 1) uniapp App（HTML5+ 引擎）：通过父 webview 执行 uni.navigateBack 关闭 web-view 页
+        // 2) 微信小程序 web-view：wx.miniProgram.navigateBack
+        // 3) 普通浏览器 / H5：关闭窗口或后退
         function backToApp() {
+            // uniapp App 平台（5+ 引擎）：当前页面由 <web-view> 组件以子 webview 形式承载，
+            // 在其父 webview（即 uniapp 页面）中执行 uni.navigateBack 即可关闭 web-view 并返回上一页
+            if (typeof plus !== 'undefined' && plus.webview && plus.webview.currentWebview) {
+                try {
+                    var wv = plus.webview.currentWebview();
+                    var p = wv.parent();
+                    if (p) {
+                        if (typeof p.evalJS === 'function') {
+                            p.evalJS('uni.navigateBack()');
+                            return;
+                        }
+                        // 兜底：直接关闭承载 web-view 的 uniapp 页面（避免误关启动根 webview）
+                        var launch = (typeof plus.webview.getLaunchWebview === 'function') ? plus.webview.getLaunchWebview() : null;
+                        if (p !== launch && typeof plus.webview.close === 'function') {
+                            plus.webview.close(p);
+                            return;
+                        }
+                    }
+                } catch (e) {}
+            }
+            // 微信小程序 web-view 环境
             try {
                 if (window.wx && window.wx.miniProgram && typeof window.wx.miniProgram.navigateBack === 'function') {
                     window.wx.miniProgram.navigateBack();
                     return;
                 }
             } catch (e) {}
-            if (window.history.length > 1) {
-                window.history.back();
-                return;
-            }
-            window.close();
+            // 普通浏览器 / H5
+            try {
+                if (window.history.length > 1) {
+                    window.history.back();
+                    return;
+                }
+            } catch (e) {}
+            try { window.close(); } catch (e) {}
         }
     </script>
 </body>

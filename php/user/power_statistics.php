@@ -647,6 +647,12 @@ $(document).ready(function() {
 });
 </script>
 
+<!-- 右侧浮动 AI 分析按钮（与 uniapp 端一致） -->
+<div class="ai-fab" title="AI 智能分析用电" onclick="aiAnalyzePower()">
+    <span class="ai-fab-icon">AI</span>
+    <span class="ai-fab-label">分析</span>
+</div>
+
 <!-- AI 智能用电分析 弹窗 -->
 <div class="modal fade" id="aiPowerModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -664,58 +670,48 @@ $(document).ready(function() {
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script>
 function aiAnalyzePower() {
-    var d = window.__powerStatsData;
-    if (!d) {
-        layer.msg('请先加载统计数据后再使用 AI 分析', {icon: 0});
-        return;
-    }
-    var roomText = $('#roomSelect option:selected').text() || '';
-    var payload = {
-        type: 'statistics',
-        dormitory: roomText,
-        stats: {
-            healthText: d.health_text,
-            yesterdayUsage: d.yesterday_usage,
-            yesterdayCost: d.yesterday_cost,
-            dailyAvgUsage: d.daily_avg_usage,
-            dailyAvgCost: d.daily_avg_cost,
-            latestBalance: d.latest_balance,
-            estimatedDays: d.estimated_days
-        },
-        recentTrend: (d.recent_trend || []).map(function(p) {
-            return { label: p.time || p.date || '', usage: p.usage };
-        }),
-        records: (d.records || []).slice(0, 20).map(function(r) {
-            return {
-                time: r.record_time || r.created_at || '',
-                balance: r.balance,
-                usage: parseFloat(r.usage_kwh) || 0,
-                cost: parseFloat(r.usage_cost) || 0
-            };
-        })
-    };
-
-    var modal = (window.bootstrap && bootstrap.Modal) ? new bootstrap.Modal(document.getElementById('aiPowerModal')) : null;
-    if (modal) { modal.show(); } else { $('#aiPowerModal').modal('show'); }
-    $('#aiPowerResult').html('<div class="text-center text-muted py-4"><i class="fa fa-spinner fa-spin me-2"></i>AI 正在分析，请稍候…</div>');
-    $.ajax({
+    AiAnalyze.run({
         url: 'ajax.php?act=ai_analyze_power',
-        type: 'POST',
-        data: { data: JSON.stringify(payload) },
-        dataType: 'json',
-        success: function(res) {
-            if (res.code == 0) {
-                if (window.marked) {
-                    $('#aiPowerResult').html('<div class="markdown-body">' + window.marked.parse(res.content) + '</div>');
-                } else {
-                    $('#aiPowerResult').text(res.content);
-                }
-            } else {
-                $('#aiPowerResult').html('<div class="alert alert-danger">' + (res.msg || '分析失败') + '</div>');
-            }
+        modalId: 'aiPowerModal',
+        resultId: 'aiPowerResult',
+        fabSel: '.ai-fab',
+        payload: function () {
+            var d = window.__powerStatsData;
+            var roomText = $('#roomSelect option:selected').text() || '';
+            return {
+                data: JSON.stringify({
+                    type: 'statistics',
+                    dormitory: roomText,
+                    stats: {
+                        healthText: d.health_text,
+                        yesterdayUsage: d.yesterday_usage,
+                        yesterdayCost: d.yesterday_cost,
+                        dailyAvgUsage: d.daily_avg_usage,
+                        dailyAvgCost: d.daily_avg_cost,
+                        latestBalance: d.latest_balance,
+                        estimatedDays: d.estimated_days
+                    },
+                    recentTrend: (d.recent_trend || []).map(function(p) {
+                        return { label: p.time || p.date || '', usage: p.usage };
+                    }),
+                    records: (d.records || []).slice(0, 20).map(function(r) {
+                        return {
+                            time: r.record_time || r.created_at || '',
+                            balance: r.balance,
+                            usage: parseFloat(r.usage_kwh) || 0,
+                            cost: parseFloat(r.usage_cost) || 0
+                        };
+                    })
+                })
+            };
         },
-        error: function() {
-            $('#aiPowerResult').html('<div class="alert alert-danger">请求失败，请稍后重试</div>');
+        cacheKey: function () { return 'power_statistics:' + JSON.stringify(window.__powerStatsData); },
+        validate: function () {
+            if (!window.__powerStatsData) {
+                layer.msg('请先加载统计数据后再使用 AI 分析', {icon: 0});
+                return false;
+            }
+            return true;
         }
     });
 }

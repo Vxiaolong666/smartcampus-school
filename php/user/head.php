@@ -26,7 +26,16 @@ if(isset($_SESSION['userId'])){
 }
 
 function getUserAvatar($avatar, $qq) {
+    global $siteBasePath;
     if(!empty($avatar)){
+        // 已是完整地址（含 http）直接返回
+        if (strpos($avatar, 'http') === 0) {
+            return $avatar;
+        }
+        // 相对路径：补齐站点子目录前缀（兼容 /csgocs 等二级目录部署）
+        if (!empty($siteBasePath) && strpos($avatar, $siteBasePath) !== 0) {
+            return $siteBasePath . $avatar;
+        }
         return $avatar;
     }
     return 'https://q2.qlogo.cn/g?b=qq&nk=' . ($qq ?? '') . '&s=100';

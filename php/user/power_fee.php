@@ -356,31 +356,19 @@ function renderAllResults(results) {
 }
 
 function aiAnalyzePower() {
-    if (!window.__powerData || !window.__powerData.rooms || !window.__powerData.rooms.length) {
-        layer.msg('请先查询电费后再使用 AI 分析', {icon: 0});
-        return;
-    }
-    var modal = (window.bootstrap && bootstrap.Modal) ? new bootstrap.Modal(document.getElementById('aiPowerModal')) : null;
-    if (modal) { modal.show(); } else { $('#aiPowerModal').modal('show'); }
-    $('#aiPowerResult').html('<div class="text-center text-muted py-4"><i class="fa fa-spinner fa-spin me-2"></i>AI 正在分析，请稍候…</div>');
-    $.ajax({
+    AiAnalyze.run({
         url: 'ajax.php?act=ai_analyze_power',
-        type: 'POST',
-        data: { data: JSON.stringify(window.__powerData) },
-        dataType: 'json',
-        success: function(res) {
-            if (res.code == 0) {
-                if (window.marked) {
-                    $('#aiPowerResult').html('<div class="markdown-body">' + window.marked.parse(res.content) + '</div>');
-                } else {
-                    $('#aiPowerResult').text(res.content);
-                }
-            } else {
-                $('#aiPowerResult').html('<div class="alert alert-danger">' + (res.msg || '分析失败') + '</div>');
+        modalId: 'aiPowerModal',
+        resultId: 'aiPowerResult',
+        fabSel: '.ai-fab',
+        payload: function () { return { data: JSON.stringify(window.__powerData) }; },
+        cacheKey: function () { return 'power_query:' + JSON.stringify(window.__powerData); },
+        validate: function () {
+            if (!window.__powerData || !window.__powerData.rooms || !window.__powerData.rooms.length) {
+                layer.msg('请先查询电费后再使用 AI 分析', {icon: 0});
+                return false;
             }
-        },
-        error: function() {
-            $('#aiPowerResult').html('<div class="alert alert-danger">请求失败，请稍后重试</div>');
+            return true;
         }
     });
 }
@@ -394,6 +382,12 @@ function aiAnalyzePower() {
     }
 })();
 </script>
+
+<!-- 右侧浮动 AI 分析按钮（与 uniapp 端一致） -->
+<div class="ai-fab" title="AI 智能分析电费" onclick="aiAnalyzePower()">
+    <span class="ai-fab-icon">AI</span>
+    <span class="ai-fab-label">分析</span>
+</div>
 
 <!-- AI 智能电费分析 弹窗 -->
 <div class="modal fade" id="aiPowerModal" tabindex="-1" aria-hidden="true">

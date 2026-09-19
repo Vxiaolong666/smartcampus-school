@@ -711,6 +711,14 @@ const getNoticeDetail = (id) => {
   });
 };
 
+// AI 智能总结（页面加载自动异步生成，命中历史缓存不重复消耗额度）
+const getNoticeAiSummary = (id) => {
+  return request({
+    act: 'ai_analyze_announcement&id=' + id,
+    method: 'GET'
+  });
+};
+
 /* ==================== 推送设置相关接口 ==================== */
 
 /**
@@ -961,6 +969,7 @@ module.exports = {
   setDefaultDormitory,
   getNotices,
   getNoticeDetail,
+  getNoticeAiSummary,
   isLoggedIn,
   getToken,
   setToken,

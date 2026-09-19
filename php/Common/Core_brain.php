@@ -30,16 +30,27 @@ session_start();
 
 $siteBasePath = '';
 // 根据实际访问路径推导站点子目录前缀（兼容子目录部署，如 /csgocs）
+// 部分服务器环境下 $_SERVER['SCRIPT_NAME'] 不会包含二级目录，导致以此推导的
+// 地址缺失子路径；因此优先以浏览器实际请求路径（REQUEST_URI）为准。
 $scriptName = isset($_SERVER['SCRIPT_NAME']) ? $_SERVER['SCRIPT_NAME'] : '';
-if ($scriptName !== '') {
+$reqUri = isset($_SERVER['REQUEST_URI']) ? parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) : '';
+if (!empty($reqUri) && basename($reqUri) === basename($scriptName)) {
     // 当前脚本位于 {子目录}/{Adminq|user}/xxx.php，向上两级即为站点根
-    $appBase = dirname(dirname($scriptName));
-    if ($appBase === '/' || $appBase === '\\' || $appBase === '') {
+    $appBase = dirname(dirname($reqUri));
+    if ($appBase === '/' || $appBase === '\\' || $appBase === '' || $appBase === '.') {
         $appBase = '';
     }
     $siteBasePath = $appBase;
 }
-// 回退：使用站点配置地址中的路径部分
+// 回退：使用 SCRIPT_NAME 推导
+if ($siteBasePath === '' && $scriptName !== '') {
+    $appBase = dirname(dirname($scriptName));
+    if ($appBase === '/' || $appBase === '\\' || $appBase === '' || $appBase === '.') {
+        $appBase = '';
+    }
+    $siteBasePath = $appBase;
+}
+// 再回退：使用站点配置地址中的路径部分
 if ($siteBasePath === '') {
     $tmpUrl = conf('Url');
     if (!empty($tmpUrl)) {

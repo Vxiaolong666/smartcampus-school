@@ -377,6 +377,12 @@ foreach ($parsedCourses as $item) {
     </div>
 </div>
 
+<!-- 右侧浮动 AI 分析按钮（与 uniapp 端一致） -->
+<div class="ai-fab" title="AI 智能分析课表" onclick="aiAnalyzeSchedule()">
+    <span class="ai-fab-icon">AI</span>
+    <span class="ai-fab-label">分析</span>
+</div>
+
 <!-- AI 智能分析课表 弹窗 -->
 <div class="modal fade" id="aiModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -412,37 +418,27 @@ window.__scheduleData = {
     courses: <?php echo json_encode($aiCourses, JSON_UNESCAPED_UNICODE); ?>
 };
 function aiAnalyzeSchedule() {
-    if (!window.__scheduleData || !window.__scheduleData.courses || !window.__scheduleData.courses.length) {
-        alert('暂无可分析的课程数据');
-        return;
-    }
-    var modal = (window.bootstrap && bootstrap.Modal) ? new bootstrap.Modal(document.getElementById('aiModal')) : null;
-    if (modal) { modal.show(); } else { $('#aiModal').modal('show'); }
-    $('#aiResult').html('<div class="text-center text-muted py-4"><i class="fa fa-spinner fa-spin me-2"></i>AI 正在分析，请稍候…</div>');
-    $.ajax({
+    AiAnalyze.run({
         url: 'ajax.php?act=ai_analyze_schedule',
-        type: 'POST',
-        data: {
-            data: JSON.stringify({
-                type: 'semester',
-                week: window.__scheduleData.week,
-                courses: window.__scheduleData.courses
-            })
+        modalId: 'aiModal',
+        resultId: 'aiResult',
+        fabSel: '.ai-fab',
+        payload: function () {
+            return {
+                data: JSON.stringify({
+                    type: 'semester',
+                    week: window.__scheduleData.week,
+                    courses: window.__scheduleData.courses
+                })
+            };
         },
-        dataType: 'json',
-        success: function(res) {
-            if (res.code == 0) {
-                if (window.marked) {
-                    $('#aiResult').html('<div class="markdown-body">' + window.marked.parse(res.content) + '</div>');
-                } else {
-                    $('#aiResult').text(res.content);
-                }
-            } else {
-                $('#aiResult').html('<div class="alert alert-danger">' + (res.msg || '分析失败') + '</div>');
+        cacheKey: function () { return 'schedule_semester:' + JSON.stringify(window.__scheduleData); },
+        validate: function () {
+            if (!window.__scheduleData || !window.__scheduleData.courses || !window.__scheduleData.courses.length) {
+                alert('暂无可分析的课程数据');
+                return false;
             }
-        },
-        error: function() {
-            $('#aiResult').html('<div class="alert alert-danger">请求失败，请稍后重试</div>');
+            return true;
         }
     });
 }

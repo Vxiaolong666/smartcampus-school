@@ -23,6 +23,10 @@ $title = htmlspecialchars($announcement['title']);
 $thumbnail = $announcement['thumbnail'];
 $image = $announcement['image'];
 $displayImage = $image ?: $thumbnail;
+// 补齐站点子目录前缀（兼容 /csgocs 等二级目录部署），与公告列表页保持一致
+if ($displayImage && strpos($displayImage, 'http') !== 0 && strpos($displayImage, $siteBasePath) !== 0) {
+    $displayImage = $siteBasePath . $displayImage;
+}
 
 include('./head.php');
 ?>
@@ -69,7 +73,27 @@ include('./head.php');
                                 <img src="<?php echo htmlspecialchars($displayImage); ?>" alt="<?php echo htmlspecialchars($announcement['title']); ?>" class="img-fluid rounded" style="max-height: 400px; width: 100%; object-fit: cover;">
                             </div>
                             <?php endif; ?>
-                            
+
+                            <!-- AI 智能总结（页面加载自动异步生成，优先复用历史缓存；样式与 uniapp 浅色主题统一） -->
+                            <div class="ai-summary-card" id="aiSummaryCard">
+                                <div class="ai-summary-head">
+                                    <span class="ai-summary-badge"><i class="fa fa-robot"></i>AI 摘要</span>
+                                    <span class="ai-summary-meta" id="aiSummaryTime"></span>
+                                </div>
+                                <h3 class="ai-summary-title"><?php echo htmlspecialchars($announcement['title']); ?></h3>
+                                <div class="ai-summary-tabs">
+                                    <span class="ai-summary-tab active" data-ai-tab="summary">总结</span>
+                                    <span class="ai-summary-tab" data-ai-tab="detail" id="aiSummaryTabDetail" style="display:none;">要点</span>
+                                </div>
+                                <div class="ai-summary-body" id="aiSummary">
+                                    <div class="ai-summary-loading">
+                                        <i class="fa fa-spinner fa-spin me-2"></i>AI 正在总结本文内容…
+                                    </div>
+                                </div>
+                                <div class="ai-summary-body" id="aiSummaryDetail" style="display:none;"></div>
+                                <div class="ai-summary-foot">本卡片由 AI 阅读公告后生成，可能存在疏漏，请以公告正文为准。</div>
+                            </div>
+
                             <div class="content markdown-body" id="announcementContent">
                                 <?php echo htmlspecialchars($announcement['content']); ?>
                             </div>
@@ -91,6 +115,86 @@ include('./head.php');
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/github-markdown-css@5.2.0/github-markdown.min.css">
 <style>
+/* ===== AI 智能总结卡片（浅色主题渐变，与 uniapp 端 #13c2c2→#1890ff 主题呼应） ===== */
+.ai-summary-card {
+    background: linear-gradient(135deg, #e6f7ff 0%, #f0f5ff 55%, #e6fffb 100%);
+    border: 1px solid rgba(19, 194, 194, .18);
+    border-radius: 14px;
+    padding: 18px 20px;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 6px 18px rgba(24, 144, 255, .08);
+}
+.ai-summary-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+.ai-summary-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: linear-gradient(135deg, #13c2c2 0%, #1890ff 100%);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 12px;
+    border-radius: 999px;
+    box-shadow: 0 2px 8px rgba(19, 194, 194, .35);
+}
+.ai-summary-meta { font-size: 12px; color: #8a94a6; }
+.ai-summary-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: #2a303b;
+    line-height: 1.4;
+    margin: 0 0 10px;
+}
+.ai-summary-tabs {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, .6);
+    border: 1px solid rgba(19, 194, 194, .15);
+    padding: 5px;
+    border-radius: 12px;
+    margin-bottom: 16px;
+}
+.ai-summary-tab {
+    font-size: 14px;
+    font-weight: 600;
+    color: #5b6b7b;
+    padding: 7px 18px;
+    border-radius: 9px;
+    cursor: pointer;
+    transition: color .2s ease, background .2s ease, box-shadow .2s ease;
+}
+.ai-summary-tab:hover {
+    color: #13c2c2;
+}
+.ai-summary-tab.active {
+    color: #fff;
+    background: linear-gradient(135deg, #13c2c2 0%, #1890ff 100%);
+    box-shadow: 0 4px 12px rgba(19, 194, 194, .35);
+}
+.ai-summary-body { font-size: 14px; line-height: 1.8; color: #3c4554; }
+.ai-summary-body .markdown-body { font-size: 14px; line-height: 1.8; color: #3c4554; background: transparent; }
+.ai-summary-body .markdown-body p:last-child,
+.ai-summary-body .markdown-body ul:last-child,
+.ai-summary-body .markdown-body ol:last-child { margin-bottom: 0; }
+.ai-summary-loading { text-align: center; color: #8a94a6; padding: 14px 0; }
+.ai-summary-foot {
+    margin-top: 14px;
+    padding-top: 10px;
+    border-top: 1px dashed rgba(19, 194, 194, .25);
+    font-size: 12px;
+    color: #8a94a6;
+}
+@media (max-width: 768px) {
+    .ai-summary-card { padding: 14px 16px; border-radius: 12px; }
+    .ai-summary-title { font-size: 15px; }
+}
+
 .markdown-body {
     font-size: 15px;
     line-height: 1.8;
@@ -128,9 +232,84 @@ marked.setOptions({
     gfm: true
 });
 
+// 页面加载后自动异步调用 AI 接口总结本文，命中页面缓存/历史缓存则不重复消耗额度
+// 将 AI 返回内容拆分为「总结」（第一段概括）与「要点」（其余列表/说明）
+function splitAiSummary(text) {
+    var lines = (text || '').split(/\r?\n/);
+    var summary = [], detail = [], inDetail = false, started = false;
+    for (var i = 0; i < lines.length; i++) {
+        var line = lines[i].trim();
+        var isItem = /^([-*•]|\d+[.、)])\s*/.test(line);
+        var isHeader = /^\*\*[^*]+\*\*:?$/.test(line) || /^【[^】]+】$/.test(line);
+        if (!inDetail) {
+            if (!line) {
+                if (started) inDetail = true;
+                continue;
+            }
+            if (isItem || isHeader) {
+                inDetail = true;
+                detail.push(line);
+                continue;
+            }
+            summary.push(line);
+            started = true;
+        } else {
+            detail.push(line);
+        }
+    }
+    return { summary: summary.join('\n'), detail: detail.join('\n') };
+}
+
+function renderAiSummary(text) {
+    var parts = splitAiSummary(text);
+    var toHtml = function (md) {
+        return window.marked ? marked.parse(md) : $('<div>').text(md).html();
+    };
+    $('#aiSummary').html('<div class="markdown-body">' + toHtml(parts.summary || text) + '</div>');
+    if (parts.detail) {
+        $('#aiSummaryDetail').html('<div class="markdown-body">' + toHtml(parts.detail) + '</div>');
+        $('#aiSummaryTabDetail').show();
+    } else {
+        $('#aiSummaryDetail').empty().hide();
+        $('#aiSummaryTabDetail').hide();
+    }
+}
+
+function aiSummarizeAnnouncement() {
+    AiAnalyze.run({
+        url: 'ajax.php?act=ai_analyze_announcement',
+        modalId: '',
+        resultId: 'aiSummary',
+        fabSel: '',
+        payload: function () { return { id: <?php echo intval($id); ?> }; },
+        cacheKey: function () { return 'announcement:' + <?php echo intval($id); ?>; },
+        validate: function () { return true; },
+        onDone: function (res) {
+            var now = new Date();
+            function p(n) { return (n < 10 ? '0' : '') + n; }
+            var ts = now.getFullYear() + '-' + p(now.getMonth() + 1) + '-' + p(now.getDate())
+                + ' ' + p(now.getHours()) + ':' + p(now.getMinutes());
+            $('#aiSummaryTime').text(ts + ' 生成');
+            if (res && res.code === 0 && res.content) {
+                renderAiSummary(res.content);
+            }
+        }
+    });
+}
+
+// 总结 / 要点 页签切换
+$(document).on('click', '.ai-summary-tab[data-ai-tab]', function () {
+    var tab = $(this).data('ai-tab');
+    $('.ai-summary-tab[data-ai-tab]').removeClass('active');
+    $(this).addClass('active');
+    $('#aiSummary').toggle(tab === 'summary');
+    $('#aiSummaryDetail').toggle(tab === 'detail');
+});
+
 $(document).ready(function() {
     var content = $('#announcementContent').text();
     $('#announcementContent').html(marked.parse(content));
+    aiSummarizeAnnouncement();
 });
 </script>
 

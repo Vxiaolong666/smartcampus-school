@@ -18,7 +18,7 @@
 				</view>
 
 				<view class="alert-tip">
-					<text class="alert-text">绑定前请确认已通过账号密码登录本账号；每个第三方账号只能绑定一个本平台账号。</text>
+					<text class="alert-text">每个第三方账号只能绑定一个本平台账号。</text>
 					<text class="alert-refresh" @click="loadBinds">刷新</text>
 				</view>
 
