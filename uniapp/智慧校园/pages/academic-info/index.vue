@@ -82,7 +82,10 @@
 					</view>
 				</view>
 
-				<button v-if="!loading" class="refresh-btn" @click="onRefresh">刷新数据</button>
+				<button v-if="!loading" class="refresh-btn" @click="onRefresh">
+					<image class="btn-icon" src="/static/assets/wxmp-refresh.svg" mode="widthFix"></image>
+					<text>刷新数据</text>
+				</button>
 			</view>
 		</view>
 	</view>
@@ -343,9 +346,19 @@ page {
 	border-radius: 20rpx;
 	font-weight: bold;
 	margin-top: 40rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
 }
 
 .refresh-btn:active {
 	opacity: 0.9;
+}
+
+.refresh-btn .btn-icon {
+	width: 32rpx;
+	height: 32rpx;
+	margin-right: 10rpx;
 }
 </style>

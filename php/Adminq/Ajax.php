@@ -1395,11 +1395,31 @@ switch($act){
             $id    = intval(isset($_POST['id']) ? $_POST['id'] : 0);
             $title = addslashes(trim(isset($_POST['title']) ? $_POST['title'] : ''));
             $image = addslashes(trim(isset($_POST['image']) ? $_POST['image'] : ''));
-            $url   = trim(isset($_POST['url']) ? $_POST['url'] : '');
-            if ($url !== '' && !preg_match('#^(https?://|/)#i', $url)) {
-                exit('{"code":-1,"msg":"跳转链接需以 / 或 http(s):// 开头"}');
+            $url    = trim(isset($_POST['url']) ? $_POST['url'] : '');
+            $urlWx  = trim(isset($_POST['url_wx']) ? $_POST['url_wx'] : '');
+            $urlApp = trim(isset($_POST['url_app']) ? $_POST['url_app'] : '');
+            $urlWeb = trim(isset($_POST['url_web']) ? $_POST['url_web'] : '');
+
+            // 小程序 / Uniapp：站内页面以 / 开头，或 http(s)://
+            $pageUrlCheck = array(
+                '通用'   => $url,
+                '小程序' => $urlWx,
+                'Uniapp' => $urlApp,
+            );
+            foreach ($pageUrlCheck as $label => $u) {
+                if ($u !== '' && !preg_match('#^(https?://|/)#i', $u)) {
+                    exit('{"code":-1,"msg":"' . $label . '跳转链接需以 / 或 http(s):// 开头"}');
+                }
             }
-            $url   = addslashes($url);
+            // 网页端：允许站内相对路径（如 grade.php），仅拦截脚本协议
+            if ($urlWeb !== '' && preg_match('#^(javascript|data|vbscript):#i', $urlWeb)) {
+                exit('{"code":-1,"msg":"网页端跳转链接不合法"}');
+            }
+
+            $url    = addslashes($url);
+            $urlWx  = addslashes($urlWx);
+            $urlApp = addslashes($urlApp);
+            $urlWeb = addslashes($urlWeb);
             $sort  = intval(isset($_POST['sort']) ? $_POST['sort'] : 0);
             $status = intval(isset($_POST['status']) ? $_POST['status'] : 1) ? 1 : 0;
 
@@ -1408,11 +1428,11 @@ switch($act){
             }
 
             if ($id > 0) {
-                $sql = "update nteam_banners set `title`='{$title}',`image`='{$image}',`url`='{$url}',`sort`={$sort},`status`={$status} where `id`={$id}";
+                $sql = "update nteam_banners set `title`='{$title}',`image`='{$image}',`url`='{$url}',`url_wx`='{$urlWx}',`url_app`='{$urlApp}',`url_web`='{$urlWeb}',`sort`={$sort},`status`={$status} where `id`={$id}";
                 $ok = $DB->exec($sql) !== false;
                 $logType = '修改了轮播图(ID:' . $id . ')';
             } else {
-                $sql = "insert into nteam_banners (`title`,`image`,`url`,`sort`,`status`) values ('{$title}','{$image}','{$url}',{$sort},{$status})";
+                $sql = "insert into nteam_banners (`title`,`image`,`url`,`url_wx`,`url_app`,`url_web`,`sort`,`status`) values ('{$title}','{$image}','{$url}','{$urlWx}','{$urlApp}','{$urlWeb}',{$sort},{$status})";
                 $ok = $DB->exec($sql) !== false;
                 $logType = '新增了轮播图';
             }
@@ -1481,6 +1501,101 @@ switch($act){
         }
         $DB->query("insert into `nteam_log` (`adminUser`,`type`,`data`,`ip`,`city`) values ('" . $_SESSION['adminUser'] . "','删除了App版本(ID:{$id})', NOW(), '".$ip."', '')");
         exit('{"code":0,"msg":"删除成功！"}');
+    break;
+
+    // ===== 开屏广告：图片上传 =====
+    case 'upload_splash_image':
+        if(!$isLogin)exit('{"code":-1,"msg":"未登录"}');
+        if($adminData['adminRank']!=1){exit('{"code":-1,"msg":"您的账号没有权限使用此功能！"}');}
+
+        if (!isset($_FILES['file']) || $_FILES['file']['error'] != 0) {
+            exit('{"code":-1,"msg":"请选择图片"}');
+        }
+        $file = $_FILES['file'];
+        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        if (!in_array($ext, array('jpg', 'jpeg', 'png', 'gif', 'webp'))) {
+            exit('{"code":-1,"msg":"仅支持 jpg / png / gif / webp 图片"}');
+        }
+        if ($file['size'] > 5 * 1024 * 1024) {
+            exit('{"code":-1,"msg":"图片大小不能超过5MB"}');
+        }
+
+        $uploadDir = '../uploads/splash/';
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0755, true);
+        }
+        $filename = date('YmdHis') . '_' . uniqid() . '.' . $ext;
+        $filepath = $uploadDir . $filename;
+
+        if (move_uploaded_file($file['tmp_name'], $filepath)) {
+            $url = '/uploads/splash/' . $filename;
+            $displayUrl = $siteBasePath . $url;
+            exit('{"code":0,"msg":"上传成功","data":{"url":"' . $url . '","displayUrl":"' . $displayUrl . '"}}');
+        } else {
+            exit('{"code":-1,"msg":"上传失败"}');
+        }
+    break;
+
+    // ===== 开屏广告：保存 =====
+    case 'splash_save':
+        if(!$isLogin)exit('{"code":0,"msg":"未登录"}');
+        if($adminData['adminRank']!=1){exit('{"code":-1,"msg":"您的账号没有权限使用此功能！"}');}
+        {
+            $id       = intval(isset($_POST['id']) ? $_POST['id'] : 0);
+            $title    = addslashes(trim(isset($_POST['title']) ? $_POST['title'] : ''));
+            $image    = addslashes(trim(isset($_POST['image']) ? $_POST['image'] : ''));
+            $url      = trim(isset($_POST['url']) ? $_POST['url'] : '');
+            $urlWx    = trim(isset($_POST['url_wx']) ? $_POST['url_wx'] : '');
+            $urlApp   = trim(isset($_POST['url_app']) ? $_POST['url_app'] : '');
+            $duration = intval(isset($_POST['duration']) ? $_POST['duration'] : 3);
+            $sort     = intval(isset($_POST['sort']) ? $_POST['sort'] : 0);
+            $status   = intval(isset($_POST['status']) ? $_POST['status'] : 1) ? 1 : 0;
+
+            if ($image === '') {
+                exit('{"code":-1,"msg":"请上传开屏广告图片"}');
+            }
+            if ($duration < 1)  $duration = 3;
+            if ($duration > 15) $duration = 15;
+
+            // 站内页面以 / 开头，或 http(s)://
+            $urlCheck = array('通用' => $url, '小程序' => $urlWx, 'Uniapp' => $urlApp);
+            foreach ($urlCheck as $label => $u) {
+                if ($u !== '' && !preg_match('#^(https?://|/)#i', $u)) {
+                    exit('{"code":-1,"msg":"' . $label . '跳转链接需以 / 或 http(s):// 开头"}');
+                }
+            }
+
+            $url    = addslashes($url);
+            $urlWx  = addslashes($urlWx);
+            $urlApp = addslashes($urlApp);
+
+            if ($id > 0) {
+                $sql = "UPDATE nteam_splash_ads SET `title`='$title', `image`='$image', `url`='$url', `url_wx`='$urlWx', `url_app`='$urlApp', `duration`='$duration', `sort`='$sort', `status`='$status' WHERE `id`='$id'";
+                if ($DB->exec($sql) === false) exit('{"code":-1,"msg":"修改失败['.$DB->error().']"}');
+                $DB->query("insert into `nteam_log` (`adminUser`,`type`,`data`,`ip`,`city`) values ('" . $_SESSION['adminUser'] . "','修改了开屏广告(ID:{$id})', NOW(), '".$ip."', '')");
+                exit('{"code":0,"msg":"修改成功！"}');
+            } else {
+                $sql = "INSERT INTO nteam_splash_ads (`title`,`image`,`url`,`url_wx`,`url_app`,`duration`,`sort`,`status`) VALUES ('$title','$image','$url','$urlWx','$urlApp','$duration','$sort','$status')";
+                if ($DB->exec($sql) === false) exit('{"code":-1,"msg":"添加失败['.$DB->error().']"}');
+                $DB->query("insert into `nteam_log` (`adminUser`,`type`,`data`,`ip`,`city`) values ('" . $_SESSION['adminUser'] . "','新增了开屏广告', NOW(), '".$ip."', '')");
+                exit('{"code":0,"msg":"添加成功！"}');
+            }
+        }
+    break;
+
+    // ===== 开屏广告：删除 =====
+    case 'splash_del':
+        if(!$isLogin)exit('{"code":0,"msg":"未登录"}');
+        if($adminData['adminRank']!=1){exit('{"code":-1,"msg":"您的账号没有权限使用此功能！"}');}
+        {
+            $id = intval(isset($_POST['id']) ? $_POST['id'] : 0);
+            if ($id <= 0) exit('{"code":-1,"msg":"参数错误"}');
+            if ($DB->exec("DELETE FROM nteam_splash_ads WHERE `id`='{$id}'") === false) {
+                exit('{"code":-1,"msg":"删除失败['.$DB->error().']"}');
+            }
+            $DB->query("insert into `nteam_log` (`adminUser`,`type`,`data`,`ip`,`city`) values ('" . $_SESSION['adminUser'] . "','删除了开屏广告(ID:{$id})', NOW(), '".$ip."', '')");
+            exit('{"code":0,"msg":"删除成功！"}');
+        }
     break;
 
     default:

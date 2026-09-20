@@ -181,6 +181,31 @@ function getCourseTimeSlots($classTime, $weekNoteDetail = '', $maxSection = 20) 
 }
 
 /**
+ * 按节次时间判定所属时段：morning / afternoon / evening
+ * 与 uniapp / 小程序端保持一致，按「该节次开始时间」判定，避免写死节次边界
+ * 导致后台作息中下午最后一节（如下午到第 8 节）被错分到晚上。
+ */
+function courseSessionBySlots($slots, $timeSlots) {
+    $section = !empty($slots) ? min($slots) : 0;
+    $code = '1' . sprintf('%02d', $section);
+    $time = isset($timeSlots[$code]['time']) ? $timeSlots[$code]['time'] : '';
+    if ($time !== '' && strpos($time, '-') !== false) {
+        $start = explode('-', $time)[0];
+        $parts = explode(':', $start);
+        if (count($parts) == 2) {
+            $minutes = intval($parts[0]) * 60 + intval($parts[1]);
+            if ($minutes < 12 * 60) return 'morning';
+            if ($minutes < 18 * 60) return 'afternoon';
+            return 'evening';
+        }
+    }
+    // 取不到时间时回退到节次边界
+    if ($section <= 4) return 'morning';
+    if ($section <= 7) return 'afternoon';
+    return 'evening';
+}
+
+/**
  * 合并同一天里「同一门课（课程名 + 地点 + 教师 + 周次相同）」的连续节次记录
  * 教务常把一段连堂课拆成多条记录（如第9-10节、第11-12节），合并成一条展示，避免同一节课重复出现
  * 合并后把节次写回 classTime（1+两位节次编码）并清空 weekNoteDetail，后续 getCourseTimeSlots() 即可解析出合并结果
@@ -271,6 +296,22 @@ foreach ($dayCourses as $c) {
     }
 }
 $timeSlots = scheduleTimePeriodsByCode(scheduleTimeGetPeriods($DB, ''), $maxSectionInData);
+
+// 按节次时间把当日课程分为 上午 / 下午 / 晚上 三组（与 uniapp、小程序端一致）
+$morningCourses = array();
+$afternoonCourses = array();
+$eveningCourses = array();
+foreach ($dayCourses as $course) {
+    $slots = getCourseTimeSlots($course['classTime'] ?? '', $course['weekNoteDetail'] ?? '', scheduleTimeMaxPeriods());
+    $session = courseSessionBySlots($slots, $timeSlots);
+    if ($session === 'morning') {
+        $morningCourses[] = $course;
+    } elseif ($session === 'afternoon') {
+        $afternoonCourses[] = $course;
+    } else {
+        $eveningCourses[] = $course;
+    }
+}
 
 $currentTime = date('H:i');
 $currentSection = null;
@@ -692,6 +733,17 @@ if (!empty($dayCourses)) {
                     <i class="fa fa-book me-2"></i><?php echo $dayNamesFull[$selectDay]; ?>课程 (共<?php echo count($dayCourses); ?>节)
                 </h5>
                 
+                <?php
+                // 按上午/下午/晚上分段展示：依「节次时间」判定（与 uniapp、小程序端一致）
+                $courseSessionNames  = array('morning' => '上午', 'afternoon' => '下午', 'evening' => '晚上');
+                $courseSessionIcons  = array('morning' => 'fa-sun', 'afternoon' => 'fa-cloud-sun', 'evening' => 'fa-moon');
+                $courseSessionCounts = array(
+                    'morning'   => count($morningCourses),
+                    'afternoon' => count($afternoonCourses),
+                    'evening'   => count($eveningCourses),
+                );
+                $lastCourseSession = '';
+                ?>
                 <div class="row">
                     <?php foreach($dayCourses as $index => $course): ?>
                     <?php 
@@ -705,6 +757,11 @@ if (!empty($dayCourses)) {
                         $slots = getCourseTimeSlots($classTime, $weekNoteDetail);
                         $firstSlot = !empty($slots) ? min($slots) : 0;
                         $lastSlot = !empty($slots) ? max($slots) : 0;
+
+                        // 所属时段：解析不出节次的课程沿用上一个时段，避免重复插入标题
+                        $courseSession = !empty($slots)
+                            ? courseSessionBySlots($slots, $timeSlots)
+                            : ($lastCourseSession !== '' ? $lastCourseSession : 'morning');
                         
                         $timeDisplay = '';
                         if ($firstSlot > 0 && $lastSlot > 0) {
@@ -739,6 +796,14 @@ if (!empty($dayCourses)) {
                             }
                         }
                     ?>
+                    <?php if ($courseSession !== $lastCourseSession): ?>
+                    <div class="col-12">
+                        <h6 class="fw-bold mb-3">
+                            <i class="fa <?php echo $courseSessionIcons[$courseSession]; ?> me-2"></i><?php echo $courseSessionNames[$courseSession]; ?>
+                            <span class="badge bg-secondary ms-2"><?php echo $courseSessionCounts[$courseSession]; ?>节</span>
+                        </h6>
+                    </div>
+                    <?php $lastCourseSession = $courseSession; endif; ?>
                     <div class="col-md-6 col-lg-4 mb-3">
                         <div class="card h-100 <?php echo $isCurrent ? 'border-primary' : ($isPast ? 'opacity-50' : ''); ?>">
                             <div class="card-header <?php echo $isCurrent ? 'bg-primary text-white' : 'bg-light'; ?>">

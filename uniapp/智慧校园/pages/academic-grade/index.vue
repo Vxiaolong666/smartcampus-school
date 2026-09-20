@@ -31,6 +31,25 @@
 				</view>
 			</view>
 
+			<!-- 本学期统计（学期筛选下方） -->
+			<view class="summary-card" v-if="!loading && grades.length > 0">
+				<view class="summary-title">本学期统计</view>
+				<view class="summary-row">
+					<view class="summary-item">
+						<view class="summary-value">{{ summary.totalCourses }}</view>
+						<view class="summary-label">课程数</view>
+					</view>
+					<view class="summary-item">
+						<view class="summary-value">{{ summary.earnedCredits }}</view>
+						<view class="summary-label">已修学分</view>
+					</view>
+					<view class="summary-item">
+						<view class="summary-value">{{ summary.avgGpa }}</view>
+						<view class="summary-label">平均绩点</view>
+					</view>
+				</view>
+			</view>
+
 			<view v-if="loading" class="loading-wrapper">
 				<view class="loading-text">加载中...</view>
 			</view>
@@ -41,10 +60,10 @@
 			</view>
 
 			<view v-else class="grade-list">
-				<view class="grade-item" v-for="(item, index) in grades" :key="index">
+				<view class="grade-item" v-for="(item, index) in grades" :key="index" @click="openDetail(item)">
 					<view class="grade-header">
 						<view class="grade-name">{{ item.courseName }}</view>
-						<view class="grade-score" :class="item.score >= 60 ? 'pass' : 'fail'">{{ item.score }}</view>
+						<view class="grade-score" :class="scoreClass(item.score)">{{ item.score }}</view>
 					</view>
 					<view class="grade-info">
 						<view class="grade-info-item">
@@ -62,23 +81,6 @@
 					</view>
 				</view>
 
-				<view class="summary-card">
-					<view class="summary-title">本学期统计</view>
-					<view class="summary-row">
-						<view class="summary-item">
-							<view class="summary-value">{{ summary.totalCourses }}</view>
-							<view class="summary-label">课程数</view>
-						</view>
-						<view class="summary-item">
-							<view class="summary-value">{{ summary.earnedCredits }}</view>
-							<view class="summary-label">已修学分</view>
-						</view>
-						<view class="summary-item">
-							<view class="summary-value">{{ summary.avgGpa }}</view>
-							<view class="summary-label">平均绩点</view>
-						</view>
-					</view>
-				</view>
 			</view>
 
 			<view class="ai-analyze-wrap" v-if="!loading && grades.length > 0">
@@ -111,6 +113,40 @@
 		<view class="ai-fab" :class="{ 'ai-loading': aiLoading }" @click="aiAnalyze">
 			<text class="ai-fab-icon">AI</text>
 			<text class="ai-fab-label">分析</text>
+		</view>
+
+		<!-- 成绩详情自定义弹窗 -->
+		<view class="detail-mask" v-if="showDetail" @click="closeDetail">
+			<view class="detail-modal" @click.stop>
+				<view class="detail-modal-header" :style="'background: linear-gradient(160deg, ' + detailTint.bg + ' 0%, #ffffff 100%);'">
+					<view class="detail-title-wrap">
+						<view class="detail-title" :style="'color: ' + detailTint.text + ';'">{{ detailItem.courseName }}</view>
+						<view class="detail-sub">
+							<text class="detail-sub-chip" :style="'background-color: ' + detailTint.text + ';'">{{ detailItem.score }} 分</text>
+						</view>
+					</view>
+					<view class="detail-close" @click="closeDetail">✕</view>
+				</view>
+
+				<view class="detail-modal-body">
+					<view class="detail-grid">
+						<view class="detail-grid-item">
+							<view class="detail-grid-num" :style="'color: ' + detailTint.text + ';'">{{ detailItem.credit }}</view>
+							<view class="detail-grid-label">学分</view>
+						</view>
+						<view class="detail-grid-item">
+							<view class="detail-grid-num" :style="'color: ' + detailTint.text + ';'">{{ detailItem.gpa || '-' }}</view>
+							<view class="detail-grid-label">绩点</view>
+						</view>
+						<view class="detail-grid-item">
+							<view class="detail-grid-num" :style="'color: ' + detailTint.text + ';'">{{ detailItem.courseType || '-' }}</view>
+							<view class="detail-grid-label">课程类型</view>
+						</view>
+					</view>
+
+					<button class="detail-btn" @click="closeDetail" :style="'background: linear-gradient(90deg, ' + detailTint.text + ', ' + detailTint.light + '); box-shadow: 0 10rpx 24rpx ' + detailTint.shadow + ';'">我知道了</button>
+				</view>
+			</view>
 		</view>
 	</view>
 </template>
@@ -151,7 +187,11 @@ export default {
 			sheetHeight: 0,
 			dragStartY: 0,
 			dragStartHeight: 0,
-			dragging: false
+			dragging: false,
+			// 成绩详情自定义弹窗
+			showDetail: false,
+			detailItem: {},
+			detailTint: { text: '#13c2c2', bg: '#e8f9f9', light: '#36cfc9', shadow: 'rgba(19, 194, 194, 0.3)' }
 		};
 	},
 
@@ -287,6 +327,35 @@ export default {
 					this.loading = false;
 					uni.showToast({ title: err.msg || '查询失败', icon: 'none' });
 				});
+		},
+
+		// 打开成绩详情（自定义弹窗，与课程详情风格一致）
+		openDetail(item) {
+			if (!item) return;
+			const tints = {
+				fail: { text: '#ff4d4f', bg: '#fff0f0', light: '#ff7875', shadow: 'rgba(255, 77, 79, 0.3)' },
+				excellent: { text: '#52c41a', bg: '#f6ffed', light: '#95de64', shadow: 'rgba(82, 196, 26, 0.3)' },
+				normal: { text: '#13c2c2', bg: '#e8f9f9', light: '#36cfc9', shadow: 'rgba(19, 194, 194, 0.3)' }
+			};
+			this.detailTint = tints[this.scoreClass(item.score)] || tints.normal;
+			this.detailItem = item;
+			this.showDetail = true;
+		},
+
+		// 关闭成绩详情
+		closeDetail() {
+			this.showDetail = false;
+			this.detailItem = {};
+		},
+
+		// 成绩颜色：60 以下红；85 及以上绿；其它（含非数字）蓝（主题色）
+		scoreClass(score) {
+			const n = parseFloat(score);
+			if (!isNaN(n)) {
+				if (n < 60) return 'fail';
+				if (n >= 85) return 'excellent';
+			}
+			return 'normal';
 		},
 
 		calculateGpa(score) {
@@ -554,14 +623,22 @@ page {
 	border-radius: 12rpx;
 }
 
-.grade-score.pass {
-	background: #e8f9f9;
-	color: #13c2c2;
-}
-
+/* 60 以下：红色 */
 .grade-score.fail {
 	background: #fff0f0;
-	color: #ff7b7b;
+	color: #ff4d4f;
+}
+
+/* 85 及以上：绿色 */
+.grade-score.excellent {
+	background: #f6ffed;
+	color: #52c41a;
+}
+
+/* 其它（60~85 及非数字）：蓝色主题色 */
+.grade-score.normal {
+	background: #e8f9f9;
+	color: #13c2c2;
 }
 
 .grade-info {
@@ -586,7 +663,7 @@ page {
 	background: white;
 	border-radius: 20rpx;
 	padding: 30rpx;
-	margin-top: 20rpx;
+	margin-bottom: 24rpx;
 	box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.05);
 }
 
@@ -711,5 +788,151 @@ page {
 	color: #48416f;
 	line-height: 1.75;
 	word-break: break-word;
+}
+
+/* ==================== 成绩详情自定义弹窗 ==================== */
+
+.grade-item:active {
+	opacity: 0.92;
+}
+
+.detail-mask {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(50, 44, 84, 0.45);
+	backdrop-filter: blur(4px);
+	-webkit-backdrop-filter: blur(4px);
+	z-index: 998;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 60rpx;
+	animation: detailMaskFade 0.25s ease;
+}
+
+@keyframes detailMaskFade {
+	from { opacity: 0; }
+	to { opacity: 1; }
+}
+
+.detail-modal {
+	width: 100%;
+	max-width: 620rpx;
+	background: white;
+	border-radius: 32rpx;
+	overflow: hidden;
+	box-shadow: 0 24rpx 80rpx rgba(50, 44, 84, 0.25);
+	animation: detailModalUp 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes detailModalUp {
+	from { transform: translateY(80rpx) scale(0.96); opacity: 0; }
+	to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.detail-modal-header {
+	display: flex;
+	align-items: flex-start;
+	padding: 36rpx 32rpx 28rpx;
+}
+
+.detail-title-wrap {
+	flex: 1;
+	min-width: 0;
+}
+
+.detail-title {
+	font-size: 36rpx;
+	font-weight: bold;
+	line-height: 1.35;
+	word-break: break-all;
+	letter-spacing: 1rpx;
+}
+
+.detail-sub {
+	margin-top: 16rpx;
+}
+
+.detail-sub-chip {
+	display: inline-block;
+	font-size: 22rpx;
+	color: white;
+	padding: 8rpx 22rpx;
+	border-radius: 999rpx;
+	letter-spacing: 1rpx;
+}
+
+.detail-close {
+	width: 52rpx;
+	height: 52rpx;
+	line-height: 50rpx;
+	text-align: center;
+	font-size: 26rpx;
+	color: #948eb3;
+	background: rgba(255, 255, 255, 0.85);
+	border-radius: 50%;
+	flex-shrink: 0;
+	margin-left: 16rpx;
+	box-shadow: 0 4rpx 12rpx rgba(50, 44, 84, 0.08);
+}
+
+.detail-close:active {
+	background: #f0eef6;
+	transform: scale(0.92);
+}
+
+.detail-modal-body {
+	padding: 8rpx 36rpx 40rpx;
+}
+
+.detail-grid {
+	display: flex;
+	gap: 20rpx;
+	margin-top: 12rpx;
+}
+
+.detail-grid-item {
+	flex: 1;
+	background: #f7f8fc;
+	border-radius: 20rpx;
+	padding: 24rpx 20rpx;
+	text-align: center;
+}
+
+.detail-grid-num {
+	font-size: 30rpx;
+	font-weight: bold;
+	color: #13c2c2;
+	word-break: break-all;
+}
+
+.detail-grid-label {
+	font-size: 22rpx;
+	color: #948eb3;
+	margin-top: 8rpx;
+}
+
+.detail-btn {
+	margin-top: 36rpx;
+	height: 84rpx;
+	line-height: 84rpx;
+	border-radius: 42rpx;
+	color: white;
+	font-size: 30rpx;
+	font-weight: bold;
+	letter-spacing: 4rpx;
+	padding: 0;
+}
+
+.detail-btn:active {
+	opacity: 0.85;
+	transform: scale(0.98);
+}
+
+.detail-btn::after {
+	border: none;
 }
 </style>

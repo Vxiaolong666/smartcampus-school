@@ -45,7 +45,7 @@
       </view>
 
       <view wx:if="{{results.length > 0}}" class="results-wrapper">
-        <view class="result-card {{item.status === 'normal' ? 'card-normal' : item.status === 'warning' ? 'card-warning' : item.status === 'low' ? 'card-low' : item.status === 'arrears' ? 'card-arrears' : 'card-error'}}" wx:for="{{results}}" wx:key="id">
+        <view class="result-card {{item.status === 'normal' ? 'card-normal' : item.status === 'warning' ? 'card-warning' : item.status === 'low' ? 'card-low' : item.status === 'arrears' ? 'card-arrears' : 'card-error'}}" wx:for="{{results}}" wx:key="id" data-index="{{index}}" bindtap="openDetail">
           <view class="result-header">
             <view class="result-name">{{item.displayName}}</view>
             <view class="result-status">{{item.statusText}}</view>
@@ -153,5 +153,52 @@
   <view class="ai-fab {{aiLoading ? 'ai-loading' : ''}}" bindtap="aiAnalyze">
     <text class="ai-fab-icon">AI</text>
     <text class="ai-fab-label">分析</text>
+  </view>
+
+  <!-- 电费详情自定义弹窗 -->
+  <view class="detail-mask" wx:if="{{showDetail}}" bindtap="closeDetail">
+    <view class="detail-modal" catchtap="noop">
+      <view class="detail-modal-header" style="background: linear-gradient(160deg, {{detailTint.bg}} 0%, #ffffff 100%);">
+        <view class="detail-title-wrap">
+          <view class="detail-title" style="color: {{detailTint.text}};">{{detailItem.displayName}}</view>
+          <view class="detail-sub">
+            <text class="detail-sub-chip" style="background-color: {{detailTint.text}};">{{detailItem.statusText}}</text>
+          </view>
+        </view>
+        <view class="detail-close" catchtap="closeDetail">✕</view>
+      </view>
+
+      <view class="detail-modal-body">
+        <view class="detail-grid">
+          <view class="detail-grid-item">
+            <view class="detail-grid-num" style="color: {{detailTint.text}};">{{detailItem.balance !== null ? detailItem.balance : '--'}}</view>
+            <view class="detail-grid-label">余额（元）</view>
+          </view>
+          <view class="detail-grid-item">
+            <view class="detail-grid-num" style="color: {{detailTint.text}};">{{detailItem.remainingKwh !== null ? detailItem.remainingKwh : '--'}}</view>
+            <view class="detail-grid-label">剩余电量（度）</view>
+          </view>
+          <view class="detail-grid-item">
+            <view class="detail-grid-num" style="color: {{detailTint.text}};">{{detailItem.estimatedDaysText}}</view>
+            <view class="detail-grid-label">预计可用（天）</view>
+          </view>
+        </view>
+
+        <view class="detail-row">
+          <text class="detail-row-label">电价</text>
+          <text class="detail-row-value">{{detailItem.pricePerKwh != null ? detailItem.pricePerKwh + ' 元/度' : '-'}}</text>
+        </view>
+        <view class="detail-row">
+          <text class="detail-row-label">统计时段</text>
+          <text class="detail-row-value">{{detailItem.timeRangeText || '-'}}</text>
+        </view>
+        <view class="detail-row">
+          <text class="detail-row-label">房间位置</text>
+          <text class="detail-row-value">{{detailItem.school_area}}{{detailItem.building}} {{detailItem.room_num}}</text>
+        </view>
+
+        <button class="detail-btn" catchtap="closeDetail" style="background: linear-gradient(90deg, {{detailTint.text}}, {{detailTint.light}}); box-shadow: 0 10rpx 24rpx {{detailTint.shadow}};">我知道了</button>
+      </view>
+    </view>
   </view>
 </view>

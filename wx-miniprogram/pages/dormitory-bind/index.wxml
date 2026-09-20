@@ -46,7 +46,7 @@
           <view class="dorm-time">绑定于 {{item.bind_time}}</view>
         </view>
         <view class="dorm-actions">
-          <button wx:if="{{item.is_default != 1}}" class="action-btn default-btn" data-id="{{item.id}}" bindtap="onSetDefault">
+          <button class="action-btn default-btn {{item.is_default == 1 ? 'is-default' : ''}}" data-id="{{item.id}}" bindtap="onSetDefault">
             <image class="btn-icon" src="/assets/wxmp-star.svg" mode="widthFix"></image>
             设为默认
           </button>

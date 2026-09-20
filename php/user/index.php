@@ -14,6 +14,23 @@ $lowSubscriptions = $DB->getAll("SELECT s.subscribe_count, t.name, t.template_id
     JOIN nteam_wx_templates t ON s.template_id = t.template_id 
     WHERE s.user_id='$userId' AND s.status=1 AND s.subscribe_count < 2 AND t.status=1");
 
+// 首页轮播图：与小程序/uniapp 使用同一张配置表 nteam_banners
+$banners = array();
+try {
+    $bannerTableChk = $DB->query("SHOW TABLES LIKE 'nteam_banners'");
+    if ($bannerTableChk && $bannerTableChk->fetch()) {
+        $rows = $DB->getAll("SELECT * FROM nteam_banners WHERE `status`=1 ORDER BY `sort` ASC, `id` ASC");
+        // 过滤未配置图片的记录，避免空图占位
+        foreach ($rows as $row) {
+            if (!empty($row['image'])) {
+                $banners[] = $row;
+            }
+        }
+    }
+} catch (Exception $e) {
+    $banners = array();
+}
+
 $sceneTypeNames = [
     'schedule_reminder' => '课程提醒',
     'grade_notify' => '成绩通知',
@@ -36,7 +53,146 @@ $sceneTypeNames = [
             </div>
         </div>
     </div>
-    
+
+    <?php if(!empty($banners)): ?>
+    <style>
+        /* 用户中心轮播图（与小程序/uniapp 同一套配置） */
+        .user-banner-block {
+            max-width: 720px;
+            margin: 0 auto;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, .06);
+            background: #f4f5f9;
+        }
+        .user-banner-carousel {
+            position: relative;
+            width: 100%;
+            padding-bottom: 48%; /* 750 x 360 图片比例 */
+            overflow: hidden;
+            touch-action: pan-y;
+        }
+        .user-banner-track {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            transition: transform .5s ease;
+            will-change: transform;
+        }
+        .user-banner-slide {
+            flex: 0 0 100%;
+            height: 100%;
+        }
+        .user-banner-slide img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            cursor: pointer;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+        .user-banner-dots {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 6px;
+        }
+        .user-banner-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, .55);
+            box-shadow: 0 0 4px rgba(0, 0, 0, .25);
+            cursor: pointer;
+            transition: all .3s ease;
+        }
+        .user-banner-dot.active {
+            width: 20px;
+            border-radius: 4px;
+            background: #fff;
+        }
+        .user-banner-arrow {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, .25);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            line-height: 1;
+            cursor: pointer;
+            z-index: 2;
+            opacity: .85;
+            transition: background .25s ease, opacity .25s ease;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        .user-banner-arrow:hover {
+            background: rgba(0, 0, 0, .5);
+            opacity: 1;
+        }
+        .user-banner-arrow-prev {
+            left: 12px;
+        }
+        .user-banner-arrow-next {
+            right: 12px;
+        }
+    </style>
+    <div class="content animated fadeIn">
+        <div class="user-banner-block">
+            <div class="user-banner-carousel" id="userBannerCarousel">
+                <div class="user-banner-track" id="userBannerTrack">
+                    <?php foreach($banners as $b):
+                        $bannerImg = $b['image'];
+                        if (!empty($bannerImg) && strpos($bannerImg, 'http') !== 0) {
+                            $bannerImg = $siteBasePath . $bannerImg;
+                        }
+                        // 网页端跳转：优先 url_web；为空时回退到通用 url 中的站外 http(s) 地址
+                        $bannerUrl = isset($b['url_web']) ? $b['url_web'] : '';
+                        if ($bannerUrl === '') {
+                            $genericUrl = isset($b['url']) ? $b['url'] : '';
+                            if (preg_match('#^https?://#i', $genericUrl)) {
+                                $bannerUrl = $genericUrl;
+                            }
+                        }
+                    ?>
+                    <div class="user-banner-slide" data-url="<?php echo htmlspecialchars($bannerUrl, ENT_QUOTES, 'UTF-8'); ?>">
+                        <img src="<?php echo htmlspecialchars($bannerImg, ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars($b['title'], ENT_QUOTES, 'UTF-8'); ?>">
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+                <?php if(count($banners) > 1): ?>
+                <div class="user-banner-arrow user-banner-arrow-prev" id="userBannerPrev" aria-label="上一张">
+                    <i class="fa fa-angle-left"></i>
+                </div>
+                <div class="user-banner-arrow user-banner-arrow-next" id="userBannerNext" aria-label="下一张">
+                    <i class="fa fa-angle-right"></i>
+                </div>
+                <div class="user-banner-dots" id="userBannerDots">
+                    <?php foreach($banners as $i => $b): ?>
+                    <span class="user-banner-dot<?php echo $i === 0 ? ' active' : ''; ?>" data-index="<?php echo intval($i); ?>"></span>
+                    <?php endforeach; ?>
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+
     <div class="content animated fadeIn">
         <div class="row items-push">
             <div class="col-sm-6 col-xxl-4">
@@ -400,4 +556,102 @@ $sceneTypeNames = [
 $(function(){ layer.alert('您的注销申请已自动撤销，账号已恢复正常。', {icon: 1}); });
 </script>
 <?php endif; ?>
+
+<script>
+(function () {
+    function initUserBanner() {
+        var carousel = document.getElementById('userBannerCarousel');
+        if (!carousel || carousel.getAttribute('data-init') === '1') return;
+        carousel.setAttribute('data-init', '1');
+
+        var track = carousel.querySelector('.user-banner-track');
+        var slides = carousel.querySelectorAll('.user-banner-slide');
+        var dots = carousel.querySelectorAll('.user-banner-dot');
+        var count = slides.length;
+        if (!track || count === 0) return;
+
+        var index = 0;
+        var timer = null;
+        var INTERVAL = 4000;
+        var startX = 0;
+        var moved = false;
+
+        function render() {
+            track.style.transform = 'translateX(' + (-index * 100) + '%)';
+            for (var i = 0; i < dots.length; i++) {
+                dots[i].className = 'user-banner-dot' + (i === index ? ' active' : '');
+            }
+        }
+        function goTo(i) {
+            index = (i + count) % count;
+            render();
+        }
+        function next() { goTo(index + 1); }
+        function stop() {
+            if (timer) { clearInterval(timer); timer = null; }
+        }
+        function play() {
+            stop();
+            if (count > 1) timer = setInterval(next, INTERVAL);
+        }
+
+        for (var d = 0; d < dots.length; d++) {
+            (function (di) {
+                dots[di].addEventListener('click', function () { goTo(di); play(); });
+            })(d);
+        }
+
+        // 左右箭头
+        var prevBtn = carousel.querySelector('.user-banner-arrow-prev');
+        var nextBtn = carousel.querySelector('.user-banner-arrow-next');
+        if (prevBtn) prevBtn.addEventListener('click', function () { goTo(index - 1); play(); });
+        if (nextBtn) nextBtn.addEventListener('click', function () { goTo(index + 1); play(); });
+
+        for (var s = 0; s < count; s++) {
+            (function (slide) {
+                slide.addEventListener('click', function () {
+                    if (moved) return;
+                    var url = slide.getAttribute('data-url');
+                    if (!url) return;
+                    if (/^https?:\/\//i.test(url)) {
+                        window.open(url, '_blank');
+                    } else {
+                        window.location.href = url;
+                    }
+                });
+            })(slides[s]);
+        }
+
+        carousel.addEventListener('touchstart', function (e) {
+            startX = e.touches[0].clientX;
+            moved = false;
+            stop();
+        }, { passive: true });
+        carousel.addEventListener('touchmove', function (e) {
+            if (Math.abs(e.touches[0].clientX - startX) > 10) moved = true;
+        }, { passive: true });
+        carousel.addEventListener('touchend', function (e) {
+            var dx = e.changedTouches[0].clientX - startX;
+            if (Math.abs(dx) > 40) goTo(dx < 0 ? index + 1 : index - 1);
+            play();
+        });
+
+        carousel.addEventListener('mouseenter', stop);
+        carousel.addEventListener('mouseleave', play);
+
+        render();
+        play();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initUserBanner);
+    } else {
+        initUserBanner();
+    }
+    // pjax 局部刷新后重新初始化
+    if (window.jQuery) {
+        jQuery(document).on('pjax:end pjax:complete', initUserBanner);
+    }
+})();
+</script>
 <?php include 'foot.php'; ?>

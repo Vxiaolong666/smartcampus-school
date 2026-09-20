@@ -8,6 +8,28 @@ const { sceneTypeNames } = require('../../utils/common.js');
 
 const __tab__ = 0;  // 当前TabBar索引
 
+// ===== 开屏广告会话标记 =====
+// 用于区分「首次进入」与「首页刷新」：内存标记，冷启动重置。
+// 首次进入不受冷却限制，仅同会话内再次进入才受冷却。
+function splashSessionHandled() {
+    try {
+        const app = getApp();
+        return !!(app && app.globalData && app.globalData.__splashSession);
+    } catch (e) {
+        return false;
+    }
+}
+
+function markSplashSession() {
+    try {
+        const app = getApp();
+        if (app) {
+            app.globalData = app.globalData || {};
+            app.globalData.__splashSession = true;
+        }
+    } catch (e) {}
+}
+
 Page({
     data: {
         isLoggedIn: false,      // 是否已登录
@@ -27,7 +49,12 @@ Page({
         randomPoem: '',          // 随机古诗词一言
         _dataLoaded: false,      // 数据是否已加载（避免重复加载）
         featureSettings: {},     // 功能开关设置
-        indexAnnouncement: null  // 首页公告
+        indexAnnouncement: null, // 首页公告
+        splashVisible: false,    // 开屏广告是否展示
+        splashImage: '',         // 开屏广告图片
+        splashUrl: '',           // 开屏广告跳转链接
+        splashCountdown: 3,      // 开屏广告倒计时（秒）
+        splashName: '智慧校园'    // 开屏底部应用名（取后台站点名）
     },
 
     // 古诗词一言列表
@@ -61,7 +88,9 @@ Page({
         this.loadRandomPoem();
         this.loadFeatureSettings();
         this.loadBanners();
-        
+        // 开屏广告（后台可配置，免登录）
+        this.loadSplashAd();
+
         // 未登录则跳转到登录页（使用 redirectTo 避免页面栈累积）
         if (!api.isLoggedIn()) {
             wx.redirectTo({
@@ -234,7 +263,8 @@ Page({
             const list = (res.data || []).map(item => ({
                 id: item.id,
                 image: item.image_url || item.image,
-                url: item.url || ''
+                // 小程序端读取 url_wx，为空回退通用 url
+                url: item.url_wx || item.url || ''
             }));
             if (list.length > 0) {
                 this.setData({ swiperList: list });
@@ -242,6 +272,153 @@ Page({
         } catch (err) {
             console.warn('加载轮播图配置失败，使用默认轮播图', err);
         }
+    },
+
+    //空方法：供开屏遮罩 catch:touchmove 阻止滚动穿透
+    noop() {},
+
+    //开屏广告：带本地缓存，成功则更新缓存（并把图片存到本地），失败时用缓存兜底，确保始终有内容可展示
+    loadSplashAd() {
+        const cacheKey = 'splash_ad_cache';
+        const shownKey = 'splash_ad_shown_at';
+        const COOLDOWN = 30 * 60 * 1000; // 展示冷却：30 分钟内不重复展示（刷新首页/重新进入不重复弹）
+
+        // 仅「同一会话内再次进入首页（刷新）」应用冷却；首次进入不受冷却限制
+        if (splashSessionHandled()) {
+            let lastShown = 0;
+            try { lastShown = wx.getStorageSync(shownKey) || 0; } catch (e) {}
+            if (lastShown && (Date.now() - lastShown) < COOLDOWN) return;
+        }
+
+        let cached = null;
+        try { cached = wx.getStorageSync(cacheKey) || null; } catch (e) {}
+
+        api.getSplashAd('wx').then(res => {
+            const d = res && res.data;
+            if (!d || !(d.image_url || d.image)) {
+                // 后台明确无广告/已关闭 → 清缓存，避免展示过期内容
+                try { wx.removeStorageSync(cacheKey); } catch (e) {}
+                return;
+            }
+            let sec = parseInt(d.duration, 10);
+            if (isNaN(sec) || sec < 1) sec = 3;
+            const config = {
+                image: d.image_url || d.image,
+                localImage: '',
+                url: d.url || '',
+                duration: sec,
+                name: d.site_name || '智慧校园',
+                ts: Date.now()
+            };
+            this.showSplash(config);
+            try { wx.setStorageSync(cacheKey, config); } catch (e) {}
+            this.cacheSplashImage(config, cacheKey);
+        }).catch(() => {
+            // 请求失败 → 用本地缓存兜底
+            if (this.isSplashCacheValid(cached)) this.showSplash(cached);
+        });
+    },
+
+    //缓存是否可用（有图片且未过期，TTL 3 天）
+    isSplashCacheValid(c) {
+        if (!c || !(c.localImage || c.image)) return false;
+        const TTL = 3 * 24 * 60 * 60 * 1000;
+        if (c.ts && (Date.now() - c.ts) > TTL) return false;
+        return true;
+    },
+
+    //展示开屏广告（优先使用本地缓存图片）
+    showSplash(config) {
+        let sec = parseInt(config.duration, 10);
+        if (isNaN(sec) || sec < 1) sec = 3;
+        // 先隐藏原生底部导航栏（原生 tabBar 在页面之上、覆盖不到），再展示开屏
+        try { wx.hideTabBar({ animation: false, fail: () => {} }); } catch (e) {}
+        this.setData({
+            splashVisible: true,
+            splashImage: config.localImage || config.image,
+            splashUrl: config.url || '',
+            splashCountdown: sec,
+            splashName: config.name || '智慧校园'
+        });
+        // 记录展示时间与会话标记，配合冷却期避免同会话重复展示
+        try { wx.setStorageSync('splash_ad_shown_at', Date.now()); } catch (e) {}
+        markSplashSession();
+        this.startSplashCountdown(sec);
+    },
+
+    //把开屏图片下载并保存到本地，供离线/加速展示（best effort）
+    cacheSplashImage(config, cacheKey) {
+        try {
+            wx.downloadFile({
+                url: config.image,
+                success: (res) => {
+                    if (!res || res.statusCode !== 200 || !res.tempFilePath) return;
+                    wx.saveFile({
+                        tempFilePath: res.tempFilePath,
+                        success: (s) => {
+                            if (!s || !s.savedFilePath) return;
+                            config.localImage = s.savedFilePath;
+                            try { wx.setStorageSync(cacheKey, config); } catch (e) {}
+                        }
+                    });
+                }
+            });
+        } catch (e) {}
+    },
+
+    //开屏广告倒计时
+    startSplashCountdown(sec) {
+        this.clearSplashTimer();
+        this.splashTimer = setInterval(() => {
+            const n = (this.data.splashCountdown || 0) - 1;
+            if (n <= 0) {
+                this.closeSplash();
+            } else {
+                this.setData({ splashCountdown: n });
+            }
+        }, 1000);
+    },
+
+    //清除开屏广告倒计时
+    clearSplashTimer() {
+        if (this.splashTimer) {
+            clearInterval(this.splashTimer);
+            this.splashTimer = null;
+        }
+    },
+
+    //关闭开屏广告
+    closeSplash() {
+        this.clearSplashTimer();
+        this.setData({ splashVisible: false });
+        // 恢复原生底部导航栏
+        try { wx.showTabBar({ animation: false, fail: () => {} }); } catch (e) {}
+    },
+
+    //点击开屏广告
+    handleSplashTap() {
+        const url = this.data.splashUrl;
+        this.closeSplash();
+        if (!url) return;
+        // 站外链接小程序无法直接打开，复制链接提示
+        if (/^https?:\/\//i.test(url)) {
+            wx.setClipboardData({
+                data: url,
+                success: () => wx.showToast({ title: '链接已复制，请在浏览器打开', icon: 'none' })
+            });
+            return;
+        }
+        wx.navigateTo({
+            url,
+            fail: () => wx.switchTab({ url })
+        });
+    },
+
+    //页面卸载
+    onUnload() {
+        this.clearSplashTimer();
+        // 兜底：确保底部导航栏处于显示状态
+        try { wx.showTabBar({ animation: false, fail: () => {} }); } catch (e) {}
     },
 
     //轮播图点击

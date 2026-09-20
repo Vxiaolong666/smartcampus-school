@@ -1,3 +1,4 @@
+<page-meta page-style="{{splashVisible ? 'overflow:hidden;' : ''}}"></page-meta>
 <view>
   <view class="background-wrapper">
    
@@ -166,6 +167,19 @@
         </view>
         <view class="content-notice-more" bind:tap="handleNotices">查看更多</view>
       </view>
+    </view>
+  </view>
+
+  <!-- 开屏广告 -->
+  <view class="splash-mask" wx:if="{{splashVisible}}" catch:touchmove="noop">
+    <image class="splash-image" src="{{splashImage}}" mode="aspectFill" bind:tap="handleSplashTap"></image>
+    <view class="splash-skip" bind:tap="closeSplash">跳过 {{splashCountdown}}s</view>
+    <view class="splash-footer" bind:tap="handleSplashTap">
+      <view class="splash-brand">
+        <image class="splash-logo" src="/assets/wxmp-logo.svg" mode="aspectFit"></image>
+        <text class="splash-name">{{splashName}}</text>
+      </view>
+      <view wx:if="{{splashUrl}}" class="splash-hint">点击跳转到详情页</view>
     </view>
   </view>
 </view>

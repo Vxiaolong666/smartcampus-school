@@ -601,6 +601,12 @@ include('../Common/Core_brain.php');
                                                     <span class="nav-main-link-name"><b>版本管理</b></span>
                                                 </a>
                                             </li>
+                                            <li class="nav-main-item">
+                                                <a class="nav-main-link" href="splash_config.php">
+                                                    <i class="nav-main-link-icon fa fa-tv"></i>
+                                                    <span class="nav-main-link-name"><b>开屏广告</b></span>
+                                                </a>
+                                            </li>
                                             <li class="nav-main-heading">Logs</li>
                                             <li class="nav-main-item">
                                                 <a class="nav-main-link" href="mail_log.php">

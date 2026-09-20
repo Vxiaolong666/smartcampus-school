@@ -142,7 +142,7 @@ include('./head.php');
                 <div class="block-content">
                     <div class="text-center text-muted py-4">
                         <i class="fa fa-user-slash fa-2x mb-2 d-block opacity-50"></i>
-                        管理员未开启账号注销功能
+                        账号注销功能维护中，如有相关问题，请联系客服处理
                     </div>
                 </div>
             </div>

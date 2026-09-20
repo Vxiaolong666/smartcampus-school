@@ -233,6 +233,12 @@ page {
     height: 30rpx;
 }
 
+.item-extra {
+    font-size: 24rpx;
+    color: #948eb3;
+    margin-right: 12rpx;
+}
+
 .status-text {
     font-size: 24rpx;
     margin-right: 16rpx;

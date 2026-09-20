@@ -17,7 +17,7 @@
 
 			<!-- 未开启 -->
 			<view v-else-if="!enabled" class="state-box">
-				<text class="state-text">管理员未开启账号注销功能</text>
+				<text class="state-text">账号注销功能维护中，如有相关问题，请联系客服处理</text>
 			</view>
 
 			<block v-else>

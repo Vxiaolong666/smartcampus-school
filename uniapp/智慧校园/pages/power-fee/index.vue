@@ -57,6 +57,7 @@
 						:class="resultCardClass(item.status)"
 						v-for="item in results"
 						:key="item.id"
+						@click="openDetail(item)"
 					>
 						<view class="result-header">
 							<view class="result-name">{{ item.displayName }}</view>
@@ -169,6 +170,53 @@
 			<text class="ai-fab-icon">AI</text>
 			<text class="ai-fab-label">分析</text>
 		</view>
+
+		<!-- 电费详情自定义弹窗 -->
+		<view class="detail-mask" v-if="showDetail" @click="closeDetail">
+			<view class="detail-modal" @click.stop>
+				<view class="detail-modal-header" :style="'background: linear-gradient(160deg, ' + detailTint.bg + ' 0%, #ffffff 100%);'">
+					<view class="detail-title-wrap">
+						<view class="detail-title" :style="'color: ' + detailTint.text + ';'">{{ detailItem.displayName }}</view>
+						<view class="detail-sub">
+							<text class="detail-sub-chip" :style="'background-color: ' + detailTint.text + ';'">{{ detailItem.statusText }}</text>
+						</view>
+					</view>
+					<view class="detail-close" @click="closeDetail">✕</view>
+				</view>
+
+				<view class="detail-modal-body">
+					<view class="detail-grid">
+						<view class="detail-grid-item">
+							<view class="detail-grid-num" :style="'color: ' + detailTint.text + ';'">{{ detailItem.balance !== null ? detailItem.balance : '--' }}</view>
+							<view class="detail-grid-label">余额（元）</view>
+						</view>
+						<view class="detail-grid-item">
+							<view class="detail-grid-num" :style="'color: ' + detailTint.text + ';'">{{ detailItem.remainingKwh !== null ? detailItem.remainingKwh : '--' }}</view>
+							<view class="detail-grid-label">剩余电量（度）</view>
+						</view>
+						<view class="detail-grid-item">
+							<view class="detail-grid-num" :style="'color: ' + detailTint.text + ';'">{{ detailItem.estimatedDaysText }}</view>
+							<view class="detail-grid-label">预计可用（天）</view>
+						</view>
+					</view>
+
+					<view class="detail-row">
+						<text class="detail-row-label">电价</text>
+						<text class="detail-row-value">{{ detailItem.pricePerKwh != null ? detailItem.pricePerKwh + ' 元/度' : '-' }}</text>
+					</view>
+					<view class="detail-row">
+						<text class="detail-row-label">统计时段</text>
+						<text class="detail-row-value">{{ detailItem.timeRangeText || '-' }}</text>
+					</view>
+					<view class="detail-row">
+						<text class="detail-row-label">房间位置</text>
+						<text class="detail-row-value">{{ detailItem.school_area }}{{ detailItem.building }} {{ detailItem.room_num }}</text>
+					</view>
+
+					<button class="detail-btn" @click="closeDetail" :style="'background: linear-gradient(90deg, ' + detailTint.text + ', ' + detailTint.light + '); box-shadow: 0 10rpx 24rpx ' + detailTint.shadow + ';'">我知道了</button>
+				</view>
+			</view>
+		</view>
 	</view>
 </template>
 
@@ -204,7 +252,11 @@ export default {
 			sheetHeight: 0,
 			dragStartY: 0,
 			dragStartHeight: 0,
-			dragging: false
+			dragging: false,
+			// 电费详情自定义弹窗
+			showDetail: false,
+			detailItem: {},
+			detailTint: { text: '#13c2c2', bg: '#e8f9f9', light: '#36cfc9', shadow: 'rgba(19, 194, 194, 0.3)' }
 		};
 	},
 
@@ -293,7 +345,12 @@ export default {
 		},
 
 		onPickerChange(e) {
-			this.selectedIndex = e.detail.value;
+			const index = e.detail.value;
+			// 未更换宿舍时不重复查询
+			if (Number(index) === Number(this.selectedIndex)) return;
+			this.selectedIndex = index;
+			// 切换宿舍后自动查询，无需再手动点「查询」
+			this.onQuery();
 		},
 
 		buildResult(dorm, res) {
@@ -361,6 +418,27 @@ export default {
 
 			this.results = results;
 			this.queryLoading = false;
+		},
+
+		// 打开电费详情（自定义弹窗，与课程详情风格一致）
+		openDetail(item) {
+			if (!item) return;
+			const tints = {
+				normal: { text: '#52c41a', bg: '#f6ffed', light: '#95de64', shadow: 'rgba(82, 196, 26, 0.3)' },
+				warning: { text: '#faad14', bg: '#fffbe6', light: '#ffd666', shadow: 'rgba(250, 173, 20, 0.3)' },
+				low: { text: '#ff4d4f', bg: '#fff0f0', light: '#ff7875', shadow: 'rgba(255, 77, 79, 0.3)' },
+				arrears: { text: '#722ed1', bg: '#f9f0ff', light: '#b37feb', shadow: 'rgba(114, 46, 209, 0.3)' },
+				error: { text: '#8c8c8c', bg: '#f5f5f5', light: '#bfbfbf', shadow: 'rgba(140, 140, 140, 0.3)' }
+			};
+			this.detailTint = tints[item.status] || tints.normal;
+			this.detailItem = item;
+			this.showDetail = true;
+		},
+
+		// 关闭电费详情
+		closeDetail() {
+			this.showDetail = false;
+			this.detailItem = {};
 		},
 
 		resultCardClass(status) {
@@ -905,6 +983,180 @@ page {
 .tips-text {
 	font-size: 22rpx;
 	color: #948eb3;
+}
+
+/* ==================== 电费详情自定义弹窗 ==================== */
+
+.result-card:active {
+	opacity: 0.92;
+}
+
+.detail-mask {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(50, 44, 84, 0.45);
+	backdrop-filter: blur(4px);
+	-webkit-backdrop-filter: blur(4px);
+	z-index: 998;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 60rpx;
+	animation: detailMaskFade 0.25s ease;
+}
+
+@keyframes detailMaskFade {
+	from { opacity: 0; }
+	to { opacity: 1; }
+}
+
+.detail-modal {
+	width: 100%;
+	max-width: 620rpx;
+	background: white;
+	border-radius: 32rpx;
+	overflow: hidden;
+	box-shadow: 0 24rpx 80rpx rgba(50, 44, 84, 0.25);
+	animation: detailModalUp 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes detailModalUp {
+	from { transform: translateY(80rpx) scale(0.96); opacity: 0; }
+	to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.detail-modal-header {
+	display: flex;
+	align-items: flex-start;
+	padding: 36rpx 32rpx 28rpx;
+}
+
+.detail-title-wrap {
+	flex: 1;
+	min-width: 0;
+}
+
+.detail-title {
+	font-size: 36rpx;
+	font-weight: bold;
+	line-height: 1.35;
+	word-break: break-all;
+	letter-spacing: 1rpx;
+}
+
+.detail-sub {
+	margin-top: 16rpx;
+}
+
+.detail-sub-chip {
+	display: inline-block;
+	font-size: 22rpx;
+	color: white;
+	padding: 8rpx 22rpx;
+	border-radius: 999rpx;
+	letter-spacing: 1rpx;
+}
+
+.detail-close {
+	width: 52rpx;
+	height: 52rpx;
+	line-height: 50rpx;
+	text-align: center;
+	font-size: 26rpx;
+	color: #948eb3;
+	background: rgba(255, 255, 255, 0.85);
+	border-radius: 50%;
+	flex-shrink: 0;
+	margin-left: 16rpx;
+	box-shadow: 0 4rpx 12rpx rgba(50, 44, 84, 0.08);
+}
+
+.detail-close:active {
+	background: #f0eef6;
+	transform: scale(0.92);
+}
+
+.detail-modal-body {
+	padding: 8rpx 36rpx 40rpx;
+}
+
+.detail-grid {
+	display: flex;
+	gap: 20rpx;
+	margin-top: 12rpx;
+}
+
+.detail-grid-item {
+	flex: 1;
+	background: #f7f8fc;
+	border-radius: 20rpx;
+	padding: 24rpx 12rpx;
+	text-align: center;
+}
+
+.detail-grid-num {
+	font-size: 30rpx;
+	font-weight: bold;
+	color: #13c2c2;
+	word-break: break-all;
+}
+
+.detail-grid-label {
+	font-size: 22rpx;
+	color: #948eb3;
+	margin-top: 8rpx;
+}
+
+.detail-row {
+	display: flex;
+	align-items: center;
+	padding: 22rpx 0;
+	border-top: 1rpx solid #f2f3f8;
+}
+
+.detail-row:first-of-type {
+	margin-top: 20rpx;
+}
+
+.detail-row-label {
+	font-size: 26rpx;
+	color: #948eb3;
+	width: 160rpx;
+	flex-shrink: 0;
+}
+
+.detail-row-value {
+	flex: 1;
+	font-size: 27rpx;
+	color: #48416f;
+	font-weight: 500;
+	text-align: right;
+	word-break: break-all;
+	line-height: 1.5;
+}
+
+.detail-btn {
+	margin-top: 36rpx;
+	height: 84rpx;
+	line-height: 84rpx;
+	border-radius: 42rpx;
+	color: white;
+	font-size: 30rpx;
+	font-weight: bold;
+	letter-spacing: 4rpx;
+	padding: 0;
+}
+
+.detail-btn:active {
+	opacity: 0.85;
+	transform: scale(0.98);
+}
+
+.detail-btn::after {
+	border: none;
 }
 
 /* AI 分析按钮与浮动按钮样式已统一到 App.vue 全局（.ai-analyze-wrap / .ai-analyze-btn / .ai-fab） */

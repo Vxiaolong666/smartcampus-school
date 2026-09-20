@@ -164,6 +164,18 @@ page {
     border: 2rpx solid #13c2c2;
 }
 
+/* 已是默认宿舍：按钮置灰（仅作展示） */
+.default-btn.is-default {
+    background: #f2f3f7;
+    color: #b8bcc9;
+    border: 2rpx solid #e2e4ee;
+}
+
+.default-btn.is-default .btn-icon {
+    filter: grayscale(1);
+    opacity: 0.65;
+}
+
 .unbind-btn {
     background: #fff0f0;
     color: #ff4d4f;

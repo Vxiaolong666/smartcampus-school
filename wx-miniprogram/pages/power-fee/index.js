@@ -22,7 +22,11 @@ Page({
         aiLoading: false,       // 是否正在分析
         aiCache: {},            // 分析结果缓存
         windowHeight: 0,
-        sheetHeight: 0          // 浮层高度（视口 80%）
+        sheetHeight: 0,         // 浮层高度（视口 80%）
+        // 电费详情自定义弹窗
+        showDetail: false,
+        detailItem: {},
+        detailTint: { text: '#13c2c2', bg: '#e8f9f9', light: '#36cfc9', shadow: 'rgba(19, 194, 194, 0.3)' }
     },
 
     //页面加载
@@ -92,9 +96,37 @@ Page({
         }
     },
 
-    //宿舍选择变化
+    //宿舍选择变化：切换宿舍后自动查询，无需再手动点「查询」
     onPickerChange(e) {
-        this.setData({ selectedIndex: e.detail.value });
+        const index = e.detail.value;
+        // 未更换宿舍时不重复查询
+        if (Number(index) === Number(this.data.selectedIndex)) return;
+        this.setData({ selectedIndex: index });
+        this.onQuery();
+    },
+
+    //打开电费详情（自定义弹窗，与课程详情风格一致）
+    openDetail(e) {
+        const index = e.currentTarget.dataset.index;
+        const item = this.data.results[index];
+        if (!item) return;
+        const tints = {
+            normal: { text: '#52c41a', bg: '#f6ffed', light: '#95de64', shadow: 'rgba(82, 196, 26, 0.3)' },
+            warning: { text: '#faad14', bg: '#fffbe6', light: '#ffd666', shadow: 'rgba(250, 173, 20, 0.3)' },
+            low: { text: '#ff4d4f', bg: '#fff0f0', light: '#ff7875', shadow: 'rgba(255, 77, 79, 0.3)' },
+            arrears: { text: '#722ed1', bg: '#f9f0ff', light: '#b37feb', shadow: 'rgba(114, 46, 209, 0.3)' },
+            error: { text: '#8c8c8c', bg: '#f5f5f5', light: '#bfbfbf', shadow: 'rgba(140, 140, 140, 0.3)' }
+        };
+        this.setData({
+            detailTint: tints[item.status] || tints.normal,
+            detailItem: item,
+            showDetail: true
+        });
+    },
+
+    //关闭电费详情
+    closeDetail() {
+        this.setData({ showDetail: false, detailItem: {} });
     },
 
     //构建查询结果数据

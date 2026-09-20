@@ -20,6 +20,17 @@ try {
     $tablesReady = false;
 }
 
+// 检测三端跳转字段（url_wx/url_app/url_web）是否已迁移
+$urlColsReady = false;
+if ($tablesReady) {
+    try {
+        $colChk = @$DB->query("SHOW COLUMNS FROM nteam_banners LIKE 'url_web'");
+        $urlColsReady = $colChk && $colChk->fetch();
+    } catch (Exception $e) {
+        $urlColsReady = false;
+    }
+}
+
 // 站点基路径（用于图片预览）：使用 Core_brain.php 已推导好的 $siteBasePath
 // （页面位于 /Adminq/ 下，不能再用 dirname(SCRIPT_NAME) 推导，否则会拼出 /adminq/uploads/... 404）
 $siteRoot = isset($siteBasePath) ? $siteBasePath : '';
@@ -82,9 +93,29 @@ if ($tablesReady && isset($_GET['edit'])) {
 }
 </style>
 
-<div id="page-container">
-    <main id="main-container">
-        <div class="content">
+<div id="pjax-container">
+    <div class="bg-body-light">
+        <div class="content content-full">
+            <div class="d-flex flex-column flex-sm-row justify-content-sm-between align-items-sm-center py-2">
+                <div class="flex-grow-1">
+                    <h1 class="h3 fw-bold mb-2">
+                        <?php echo $title ?>
+                    </h1>
+                </div>
+                <nav class="flex-shrink-0 mt-3 mt-sm-0 ms-sm-3" aria-label="breadcrumb">
+                    <ol class="breadcrumb breadcrumb-alt">
+                        <li class="breadcrumb-item">
+                            <a class="link-fx" href="javascript:void(0)">后台首页</a>
+                        </li>
+                        <li class="breadcrumb-item" aria-current="page">
+                            <?php echo $title ?>
+                        </li>
+                    </ol>
+                </nav>
+            </div>
+        </div>
+    </div>
+    <div class="content animated fadeIn">
 
             <div class="block block-rounded">
                 <div class="block-header block-header-default">
@@ -102,6 +133,12 @@ if ($tablesReady && isset($_GET['edit'])) {
                         请先在数据库中执行 <code>php/banner_update.sql</code>（创建 <code>nteam_banners</code> 表并写入默认的 3 张轮播图）后再使用本功能。
                     </div>
                     <?php else: ?>
+
+                    <?php if (!$urlColsReady): ?>
+                    <div class="alert alert-warning">
+                        检测到轮播图表尚未新增三端跳转字段，请先执行 <code>php/banner_url_platform_update.sql</code>，否则「小程序 / Uniapp / 网页端」跳转链接将无法保存。
+                    </div>
+                    <?php endif; ?>
 
                     <!-- ============ 新增 / 编辑表单 ============ -->
                     <form id="bannerForm" onsubmit="return saveBanner(this)" method="post" name="banner-form">
@@ -127,10 +164,22 @@ if ($tablesReady && isset($_GET['edit'])) {
                                     <label class="form-label" for="bannerTitle"><b>名称</b></label>
                                     <input type="text" class="form-control form-control-lg" id="bannerTitle" name="title" value="<?php echo h($editBanner ? $editBanner['title'] : ''); ?>" placeholder="管理备注，如：开学季活动图">
                                 </div>
+                                <div class="mb-3">
+                                    <label class="form-label" for="bannerUrlWx"><b>小程序跳转链接</b></label>
+                                    <input type="text" class="form-control form-control-lg" id="bannerUrlWx" name="url_wx" value="<?php echo h(isset($editBanner['url_wx']) ? $editBanner['url_wx'] : ''); ?>" placeholder="留空回退到通用链接；站内如 /pages/academic-grade/index，站外如 https://xxx.com">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label" for="bannerUrlApp"><b>Uniapp（App）跳转链接</b></label>
+                                    <input type="text" class="form-control form-control-lg" id="bannerUrlApp" name="url_app" value="<?php echo h(isset($editBanner['url_app']) ? $editBanner['url_app'] : ''); ?>" placeholder="留空回退到通用链接；站内如 /pages/academic-grade/index，站外如 https://xxx.com">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label" for="bannerUrlWeb"><b>网页端跳转链接</b></label>
+                                    <input type="text" class="form-control form-control-lg" id="bannerUrlWeb" name="url_web" value="<?php echo h(isset($editBanner['url_web']) ? $editBanner['url_web'] : ''); ?>" placeholder="留空则用通用链接中的站外地址；站内相对路径如 grade.php，或完整 https://xxx.com">
+                                </div>
                                 <div class="mb-4">
-                                    <label class="form-label" for="bannerUrl"><b>跳转链接</b></label>
-                                    <input type="text" class="form-control form-control-lg" id="bannerUrl" name="url" value="<?php echo h($editBanner ? $editBanner['url'] : ''); ?>" placeholder="留空不跳转；站内如 /pages/academic-grade/index，站外如 https://xxx.com">
-                                    <small class="text-muted">站内页面以 / 开头；站外链接需以 http(s):// 开头</small>
+                                    <label class="form-label" for="bannerUrl"><b>通用跳转链接（兜底，可留空）</b></label>
+                                    <input type="text" class="form-control form-control-lg" id="bannerUrl" name="url" value="<?php echo h($editBanner ? $editBanner['url'] : ''); ?>" placeholder="三端未单独设置时的兜底链接；站内以 / 开头，站外需 http(s)://">
+                                    <small class="text-muted">站内页面以 / 开头；站外链接需以 http(s):// 开头。三端未单独填写时会回退到此链接。</small>
                                 </div>
                                 <div class="row">
                                     <div class="col-md-6">
@@ -175,16 +224,26 @@ if ($tablesReady && isset($_GET['edit'])) {
                     <?php if ($tablesReady): ?>
                     <div class="table-responsive">
                         <table class="table table-striped table-vcenter">
-                            <thead><tr><th style="width:60px">ID</th><th style="width:150px">图片</th><th>名称</th><th>跳转链接</th><th style="width:80px">排序</th><th style="width:90px">状态</th><th style="width:150px">操作</th></tr></thead>
+                            <thead><tr><th style="width:60px">ID</th><th style="width:150px">图片</th><th>名称</th><th>跳转链接（小程序 / Uniapp / 网页端 / 通用）</th><th style="width:80px">排序</th><th style="width:90px">状态</th><th style="width:150px">操作</th></tr></thead>
                             <tbody>
                             <?php if (empty($banners)): ?>
                                 <tr><td colspan="7" class="text-center text-muted">暂无数据</td></tr>
-                            <?php else: foreach ($banners as $b): ?>
+                            <?php else: foreach ($banners as $b):
+                                $bxWx  = isset($b['url_wx'])  ? $b['url_wx']  : '';
+                                $bxApp = isset($b['url_app']) ? $b['url_app'] : '';
+                                $bxWeb = isset($b['url_web']) ? $b['url_web'] : '';
+                                $bxUrl = isset($b['url']) ? $b['url'] : '';
+                            ?>
                                 <tr>
                                     <td><?php echo intval($b['id']); ?></td>
                                     <td><img class="banner-preview" src="<?php echo $siteRoot . h($b['image']); ?>" alt=""></td>
                                     <td><?php echo h($b['title']); ?></td>
-                                    <td class="fs-sm"><?php echo $b['url'] ? '<code>' . h($b['url']) . '</code>' : '<span class="text-muted">不跳转</span>'; ?></td>
+                                    <td class="fs-sm">
+                                        <div>小程序：<?php echo $bxWx ? '<code>' . h($bxWx) . '</code>' : '<span class="text-muted">—</span>'; ?></div>
+                                        <div>Uniapp：<?php echo $bxApp ? '<code>' . h($bxApp) . '</code>' : '<span class="text-muted">—</span>'; ?></div>
+                                        <div>网页端：<?php echo $bxWeb ? '<code>' . h($bxWeb) . '</code>' : '<span class="text-muted">—</span>'; ?></div>
+                                        <div>通用：<?php echo $bxUrl ? '<code>' . h($bxUrl) . '</code>' : '<span class="text-muted">—</span>'; ?></div>
+                                    </td>
                                     <td><?php echo intval($b['sort']); ?></td>
                                     <td><?php echo intval($b['status']) ? '<span class="badge bg-success">启用</span>' : '<span class="badge bg-secondary">禁用</span>'; ?></td>
                                     <td>
@@ -199,8 +258,7 @@ if ($tablesReady && isset($_GET['edit'])) {
                     <?php endif; ?>
                 </div>
             </div>
-        </div>
-    </main>
+    </div>
 </div>
 <?php include 'foot.php'?>
 <script>

@@ -26,7 +26,11 @@ Page({
     aiLoading: false,        // 是否正在分析
     aiCache: {},             // 分析结果缓存（按学期）
     windowHeight: 0,
-    sheetHeight: 0           // 浮层高度（视口 80%）
+    sheetHeight: 0,          // 浮层高度（视口 80%）
+    // 成绩详情自定义弹窗
+    showDetail: false,
+    detailItem: {},
+    detailTint: { text: '#13c2c2', bg: '#e8f9f9', light: '#36cfc9', shadow: 'rgba(19, 194, 194, 0.3)' }
   },
 
   //页面加载
@@ -149,6 +153,7 @@ Page({
           grades = rawData[0].achievement.map(item => ({
             courseName: item.courseName || '',              // 课程名称
             score: item.fraction || '-',                    // 分数，无值时显示'-'
+            scoreClass: this.scoreClass(item.fraction),     // 分数颜色：<60 红；>=85 绿；其它蓝
             credit: item.credit || 0,                       // 学分
             gpa: item.gpa !== undefined ? item.gpa : this.calculateGpa(parseFloat(item.fraction)),  // 绩点：有则用后端值，无则根据分数计算
             courseType: item.curriculumAttributes || ''     // 课程类型（必修/选修等）
@@ -177,6 +182,16 @@ Page({
       });
   },
 
+  //成绩颜色：60 以下红；85 及以上绿；其它（含非数字）蓝（主题色）
+  scoreClass(score) {
+    const n = parseFloat(score);
+    if (!isNaN(n)) {
+      if (n < 60) return 'fail';
+      if (n >= 85) return 'excellent';
+    }
+    return 'normal';
+  },
+
   //根据分数计算绩点
   calculateGpa(score) {
     // 如果不是数字，返回 '-'
@@ -193,6 +208,28 @@ Page({
     if (score >= 64) return '1.5';
     if (score >= 60) return '1.0';
     return '0';
+  },
+
+  //打开成绩详情（自定义弹窗，与课程详情风格一致）
+  openDetail(e) {
+    const index = e.currentTarget.dataset.index;
+    const item = this.data.grades[index];
+    if (!item) return;
+    const tints = {
+      fail: { text: '#ff4d4f', bg: '#fff0f0', light: '#ff7875', shadow: 'rgba(255, 77, 79, 0.3)' },
+      excellent: { text: '#52c41a', bg: '#f6ffed', light: '#95de64', shadow: 'rgba(82, 196, 26, 0.3)' },
+      normal: { text: '#13c2c2', bg: '#e8f9f9', light: '#36cfc9', shadow: 'rgba(19, 194, 194, 0.3)' }
+    };
+    this.setData({
+      detailTint: tints[item.scoreClass] || tints.normal,
+      detailItem: item,
+      showDetail: true
+    });
+  },
+
+  //关闭成绩详情
+  closeDetail() {
+    this.setData({ showDetail: false, detailItem: {} });
   },
 
   // ===== AI 智能分析成绩 =====

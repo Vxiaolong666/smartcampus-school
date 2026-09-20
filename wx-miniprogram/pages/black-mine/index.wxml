@@ -160,6 +160,13 @@
             <view class="item-text">关于我们</view>
             <image class="item-right" src="/assets/wxmp-right.svg" mode="widthFix"></image>
           </view>
+
+          <view class="item-item" bind:tap="handleClearCache">
+            <image class="item-logo" src="/assets/icon_cvoieudado/a-199_huishou.svg" mode="widthFix"></image>
+            <view class="item-text">清理缓存</view>
+            <text class="item-extra">{{cacheSizeText}}</text>
+            <image class="item-right" src="/assets/wxmp-right.svg" mode="widthFix"></image>
+          </view>
         </view>
       </view>
 

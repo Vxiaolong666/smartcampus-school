@@ -3293,7 +3293,8 @@ switch($act) {
         }
 
         if ($tableReady) {
-            $rows = $DB->query("SELECT id, title, image, url FROM nteam_banners WHERE `status`=1 ORDER BY `sort` ASC, `id` ASC")->fetchAll();
+            // 用 SELECT * 以兼容旧库（未执行 url_wx/url_app/url_web 迁移时也能正常返回）
+            $rows = $DB->query("SELECT * FROM nteam_banners WHERE `status`=1 ORDER BY `sort` ASC, `id` ASC")->fetchAll();
             foreach ($rows as $row) {
                 $image = $row['image'] ?? '';
                 $banners[] = [
@@ -3301,7 +3302,11 @@ switch($act) {
                     'title'     => $row['title'],
                     'image'     => $image,
                     'image_url' => apiFileUrl($image),
+                    // url 为通用/兼容字段；三端各自读取 url_wx / url_app / url_web，为空时回退到 url
                     'url'       => $row['url'] ?? '',
+                    'url_wx'    => $row['url_wx'] ?? '',
+                    'url_app'   => $row['url_app'] ?? '',
+                    'url_web'   => $row['url_web'] ?? '',
                 ];
             }
         }
@@ -3633,6 +3638,74 @@ switch($act) {
         }
 
         jsonResponse(0, 'success', $list);
+    break;
+
+    // ===== 开屏广告：小程序 / Uniapp 启动首页展示（免登录） =====
+    case 'get_splash_ad':
+        // client：wx=小程序，app=Uniapp，all=通用
+        $client = strtolower(trim($_GET['client'] ?? 'all'));
+        if (!in_array($client, array('all', 'wx', 'app'))) {
+            $client = 'all';
+        }
+
+        $data = null;
+
+        // 全局开关：默认关闭，需在后台「开屏广告」开启
+        $enabled = false;
+        try {
+            $cfg = $DB->getRow("SELECT splash_enabled FROM nteam_config WHERE id=1");
+            if ($cfg !== null && isset($cfg['splash_enabled']) && intval($cfg['splash_enabled']) === 1) {
+                $enabled = true;
+            }
+        } catch (Exception $e) {}
+
+        if ($enabled) {
+            $tableReady = false;
+            try {
+                $chk = $DB->query("SHOW TABLES LIKE 'nteam_splash_ads'");
+                $tableReady = $chk && $chk->fetch();
+            } catch (Exception $e) {}
+
+            if ($tableReady) {
+                // 取排序最靠前的一条「启用」广告
+                $row = $DB->getRow("SELECT * FROM nteam_splash_ads WHERE `status`=1 ORDER BY `sort` ASC, `id` ASC LIMIT 1");
+                if ($row) {
+                    $image = $row['image'] ?? '';
+                    // 按客户端选择跳转链接，为空回退通用链接
+                    $url = '';
+                    if ($client === 'wx') {
+                        $url = $row['url_wx'] ?? '';
+                    } elseif ($client === 'app') {
+                        $url = $row['url_app'] ?? '';
+                    }
+                    if ($url === '') {
+                        $url = $row['url'] ?? '';
+                    }
+
+                    $duration = intval($row['duration'] ?? 3);
+                    if ($duration < 1)  $duration = 3;
+                    if ($duration > 15) $duration = 15;
+
+                    // 站点名称（后台「网站配置」→ conf('Name')），供开屏底部应用名展示
+                    $siteName = (string) conf('Name');
+                    if ($siteName === '') {
+                        $siteName = '智慧校园';
+                    }
+
+                    $data = array(
+                        'id'        => intval($row['id']),
+                        'title'     => $row['title'] ?? '',
+                        'image'     => $image,
+                        'image_url' => apiFileUrl($image),
+                        'url'       => $url,
+                        'duration'  => $duration,
+                        'site_name' => $siteName,
+                    );
+                }
+            }
+        }
+
+        jsonResponse(0, 'success', $data);
     break;
 
     default:

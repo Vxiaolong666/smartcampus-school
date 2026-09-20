@@ -525,15 +525,15 @@ export default {
 		currentPeriod() {
 			const c = this.currentCourse;
 			if (!c || !c.slots || c.slots.length === 0) return '';
-			const s = Math.min(...c.slots);
-			return s <= 4 ? '上午' : s <= 7 ? '下午' : '晚上';
+			const session = this.sectionSession(Math.min(...c.slots));
+			return session === 'morning' ? '上午' : session === 'afternoon' ? '下午' : '晚上';
 		},
 		// 下一节课属于哪个时段
 		nextPeriod() {
 			const c = this.nextCourse;
 			if (!c || !c.slots || c.slots.length === 0) return '';
-			const s = Math.min(...c.slots);
-			return s <= 4 ? '上午' : s <= 7 ? '下午' : '晚上';
+			const session = this.sectionSession(Math.min(...c.slots));
+			return session === 'morning' ? '上午' : session === 'afternoon' ? '下午' : '晚上';
 		},
 		// 距下节课是否足够近（≤30 分钟），用于区分「即将上课」与「课程未开始」，
 		// 避免下节课还差很久（如 200 分钟）却显示「即将上课」
@@ -789,11 +789,37 @@ export default {
 			this.setIfChanged('isEndingSoon', isEndingSoon);
 		},
 
+		//按节次时间判断所属时段（morning / afternoon / evening）。
+		//不再写死节次边界：后台作息中「下午」可能不止 5~7 节（如下午到第 8 节），
+		//写死「>=8 归晚上」会把下午最后一节误分到晚上。
+		sectionSession(section) {
+			const slot = timeSlots[section];
+			const start = (slot && slot.time) ? String(slot.time).split('-')[0] : '';
+			if (start) {
+				const m = this.timeToMinutes(start);
+				if (!isNaN(m)) {
+					if (m < 12 * 60) return 'morning';
+					if (m < 18 * 60) return 'afternoon';
+					return 'evening';
+				}
+			}
+			//取不到时间时回退到节次边界（兼容内置默认作息）
+			if (section <= 4) return 'morning';
+			if (section <= 7) return 'afternoon';
+			return 'evening';
+		},
+
 		splitGroups(list) {
-			this.morningCourses = list.filter(c => c.slots[0] >= 1 && c.slots[0] <= 4);
-			this.afternoonCourses = list.filter(c => c.slots[0] >= 5 && c.slots[0] <= 7);
-			// 晚上时段不设上限，第 12 节及以后的课程也能归入「晚上」
-			this.eveningCourses = list.filter(c => c.slots[0] >= 8);
+			const morning = [], afternoon = [], evening = [];
+			list.forEach(c => {
+				const session = this.sectionSession((c.slots && c.slots.length) ? c.slots[0] : 0);
+				if (session === 'morning') morning.push(c);
+				else if (session === 'afternoon') afternoon.push(c);
+				else evening.push(c);
+			});
+			this.morningCourses = morning;
+			this.afternoonCourses = afternoon;
+			this.eveningCourses = evening;
 		},
 
 		// 节次上限：至少 12 节，后台作息配置更多时按配置

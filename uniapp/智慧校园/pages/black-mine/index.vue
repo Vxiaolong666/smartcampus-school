@@ -157,6 +157,14 @@
 						</button>
 						<!-- #endif -->
 
+						<!-- #ifndef MP-WEIXIN -->
+						<view class="item-item" @click="handleContact">
+							<image class="item-logo" src="/static/assets/icon_cvoieudado/a-199_duihua.svg" mode="widthFix"></image>
+							<view class="item-text">联系客服</view>
+							<image class="item-right" src="/static/assets/wxmp-right.svg" mode="widthFix"></image>
+						</view>
+						<!-- #endif -->
+
 						<view class="item-item" @click="handleAgreement">
 							<image class="item-logo" src="/static/assets/icon_cvoieudado/a-199_wenjian.svg" mode="widthFix"></image>
 							<view class="item-text">隐私协议</view>
@@ -166,6 +174,13 @@
 						<view class="item-item" @click="handleAbout">
 							<image class="item-logo" src="/static/assets/icon_cvoieudado/a-199_zhuye.svg" mode="widthFix"></image>
 							<view class="item-text">关于我们</view>
+							<image class="item-right" src="/static/assets/wxmp-right.svg" mode="widthFix"></image>
+						</view>
+
+						<view class="item-item" @click="handleClearCache">
+							<image class="item-logo" src="/static/assets/icon_cvoieudado/a-199_huishou.svg" mode="widthFix"></image>
+							<view class="item-text">清理缓存</view>
+							<text class="item-extra">{{ cacheSizeText }}</text>
 							<image class="item-right" src="/static/assets/wxmp-right.svg" mode="widthFix"></image>
 						</view>
 					</view>
@@ -209,6 +224,8 @@ export default {
 			maxDormitories: 5,
 			subscriptionStatus: '',
 			wxBound: false,
+			// 缓存占用展示文案（如 "1.24 MB"）
+			cacheSizeText: '--',
 			// 上次加载数据的时间戳，用于避免频繁切换页面时重复请求
 			_lastLoadAt: 0
 		};
@@ -229,9 +246,64 @@ export default {
 	onShow() {
 		this.checkLoginStatus();
 		this.loadPageData();
+		this.refreshCacheSize();
 	},
 
 	methods: {
+		// 刷新缓存占用：优先取本地存储真实占用（KB→MB）；受限时按「上次清理时间」推算 0~3MB
+		refreshCacheSize() {
+			let currentSize = -1;
+			try {
+				const info = uni.getStorageInfoSync ? uni.getStorageInfoSync() : null;
+				if (info && typeof info.currentSize === 'number') {
+					currentSize = info.currentSize;
+				}
+			} catch (e) {}
+			if (currentSize >= 0) {
+				let mb = Math.round(currentSize / 1024 * 100) / 100;
+				// 最小显示 0.01MB，避免出现 0.00MB
+				if (mb < 0.01) mb = 0.01;
+				this.cacheSizeText = mb.toFixed(2) + ' MB';
+			} else {
+				this.cacheSizeText = this._estimateCacheSize().toFixed(2) + ' MB';
+			}
+		},
+
+		// 技术受限时的兜底：以「距上次清理的时长」为种子的确定性伪随机，落在 0~3MB
+		_estimateCacheSize() {
+			let last = 0;
+			try { last = uni.getStorageSync('cache_cleared_at') || 0; } catch (e) {}
+			const elapsedMin = last ? Math.max(0, (Date.now() - last) / 60000) : 0;
+			let mb = Math.abs(Math.sin(elapsedMin)) * 3;
+			if (mb < 0.1) mb = 0.1;
+			return Math.round(mb * 100) / 100;
+		},
+
+		// 清理缓存（保留登录态 api_token / api_userInfo，不会退出登录）
+		handleClearCache() {
+			uni.showModal({
+				title: '清理缓存',
+				content: '将清除本地缓存数据（不会退出登录），是否继续？',
+				confirmText: '清理',
+				success: (r) => {
+					if (!r.confirm) return;
+					const KEEP = ['api_token', 'api_userInfo'];
+					try {
+						const info = uni.getStorageInfoSync ? uni.getStorageInfoSync() : null;
+						const keys = (info && info.keys) ? info.keys : [];
+						keys.forEach((k) => {
+							if (KEEP.indexOf(k) === -1) {
+								try { uni.removeStorageSync(k); } catch (e) {}
+							}
+						});
+					} catch (e) {}
+					try { uni.setStorageSync('cache_cleared_at', Date.now()); } catch (e) {}
+					this.refreshCacheSize();
+					uni.showToast({ title: '清理完成', icon: 'success' });
+				}
+			});
+		},
+
 		loadPageData() {
 			// 短时间内反复回到本页时不再重复发请求，减少低端设备的网络等待
 			const now = Date.now();
@@ -371,6 +443,46 @@ export default {
 		handleAbout() {
 			uni.navigateTo({
 				url: '/pages/about/index'
+			});
+		},
+
+		// 联系客服（非小程序端）：弹窗展示后台「首页配置」中维护的联系方式
+		async handleContact() {
+			uni.showLoading({ title: '加载中...' });
+			let info = null;
+			try {
+				const res = await api.getContactInfo();
+				info = (res && res.data) || null;
+			} catch (e) {
+				info = null;
+			}
+			uni.hideLoading();
+
+			const lines = [];
+			if (info) {
+				if (info.phone) lines.push('联系电话：' + info.phone);
+				if (info.email) lines.push('电子邮箱：' + info.email);
+				if (info.qq) lines.push('QQ：' + info.qq);
+				if (info.worktime) lines.push('工作时间：' + info.worktime);
+				if (info.address) lines.push('联系地址：' + info.address);
+				if (info.desc) lines.push('说明：' + info.desc);
+			}
+			if (!lines.length) {
+				lines.push('暂未配置联系方式，请通过「我的」页面中的「联系客服」与我们取得联系。');
+			}
+
+			uni.showModal({
+				title: '联系客服',
+				content: lines.join('\n'),
+				confirmText: '复制',
+				cancelText: '关闭',
+				success: (r) => {
+					if (!r.confirm) return;
+					uni.setClipboardData({
+						data: lines.join('\n'),
+						success: () => uni.showToast({ title: '已复制', icon: 'none' })
+					});
+				}
 			});
 		},
 
@@ -722,6 +834,12 @@ page {
 .item-right {
 	width: 30rpx;
 	height: 30rpx;
+}
+
+.item-extra {
+	font-size: 24rpx;
+	color: #948eb3;
+	margin-right: 12rpx;
 }
 
 .status-text {

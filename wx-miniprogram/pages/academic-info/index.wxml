@@ -81,7 +81,10 @@
         </view>
       </view>
 
-      <button wx:if="{{!loading}}" class="refresh-btn" bindtap="onRefresh">刷新数据</button>
+      <button wx:if="{{!loading}}" class="refresh-btn" bindtap="onRefresh">
+        <image class="btn-icon" src="/assets/wxmp-refresh.svg" mode="widthFix"></image>
+        <text>刷新数据</text>
+      </button>
     </view>
   </view>
 </view>

@@ -178,6 +178,26 @@ Page({
         return parseInt(h) * 60 + parseInt(m);
     },
 
+    //按节次时间判断所属时段（morning / afternoon / evening）
+    //不再写死节次边界：后台作息中「下午」可能不止 5~7 节，
+    //写死「>=8 归晚上」会把下午最后一节误分到晚上
+    sectionSession(section) {
+        const slot = timeSlots[section];
+        const start = (slot && slot.time) ? String(slot.time).split('-')[0] : '';
+        if (start) {
+            const m = this.timeToMinutes(start);
+            if (!isNaN(m)) {
+                if (m < 12 * 60) return 'morning';
+                if (m < 18 * 60) return 'afternoon';
+                return 'evening';
+            }
+        }
+        //取不到时间时回退到节次边界（兼容内置默认作息）
+        if (section <= 4) return 'morning';
+        if (section <= 7) return 'afternoon';
+        return 'evening';
+    },
+
     //更新课程状态（当前课/下一节/课间等）
     updateCourseStatus() {
         const { dayCourses, currentSection, selectedDay, todayDayOfWeek, currentTime } = this.data;
@@ -375,12 +395,23 @@ Page({
         }).map(c => ({ ...c, isEnded: false }))   // 初始化未结束状态
           .sort((a, b) => (a.slots[0] || 99) - (b.slots[0] || 99));  // 按第一节次升序排列
 
-        // 按时间段分类：上午1-4节、下午5-7节、晚上8-11节
+        // 按节次时间分类：上午 / 下午 / 晚上（不再写死节次边界，
+        // 避免后台作息中「下午」不止 5~7 节时把下午最后一节误分到晚上）
+        const morningCourses = [];
+        const afternoonCourses = [];
+        const eveningCourses = [];
+        dayCourses.forEach(c => {
+            const session = this.sectionSession((c.slots && c.slots.length) ? c.slots[0] : 0);
+            if (session === 'morning') morningCourses.push(c);
+            else if (session === 'afternoon') afternoonCourses.push(c);
+            else eveningCourses.push(c);
+        });
+
         this.setData({
             dayCourses,
-            morningCourses: dayCourses.filter(c => c.slots[0] >= 1 && c.slots[0] <= 4),
-            afternoonCourses: dayCourses.filter(c => c.slots[0] >= 5 && c.slots[0] <= 7),
-            eveningCourses: dayCourses.filter(c => c.slots[0] >= 8 && c.slots[0] <= 11),
+            morningCourses,
+            afternoonCourses,
+            eveningCourses,
             loading: false
         }, () => this.updateCourseStatus());   // 回调中更新课程状态
     },

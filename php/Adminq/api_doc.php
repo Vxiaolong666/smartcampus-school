@@ -61,6 +61,8 @@ include './head.php';
                             <a class="nav-link" href="#wx-api">微信订阅消息API</a>
                             <a class="nav-link" href="#push-api">推送设置API</a>
                             <a class="nav-link" href="#feature-api">功能设置API</a>
+                            <a class="nav-link" href="#app-version-api">App 版本更新API</a>
+                            <a class="nav-link" href="#splash-api">开屏广告API</a>
                             <a class="nav-link" href="#cancel-api">账号注销API</a>
                             <a class="nav-link" href="#oauth-bind-api">第三方账号绑定API</a>
                             <a class="nav-link" href="#error-code">错误码说明</a>
@@ -1343,6 +1345,119 @@ wx.request({
                     </div>
                 </div>
                 
+                <div class="block block-rounded block-bordered mb-4" id="app-version-api">
+                    <div class="block-header block-header-default">
+                        <h3 class="block-title">
+                            <i class="fa fa-cloud-download-alt me-2"></i>App 版本更新API
+                        </h3>
+                    </div>
+                    <div class="block-content">
+                        <div class="alert alert-info">
+                            <i class="fa fa-info-circle me-2"></i>
+                            用于 Uniapp / 小程序 / App 端检查版本更新与查看更新日志。是否返回更新信息由后台「版本管理」的「开启 App 版本更新检测」开关控制，且版本记录需为「上架」状态。以下接口均为<strong>免登录</strong>。
+                        </div>
+
+                        <div class="mb-4">
+                            <h5 class="text-primary">
+                                <span class="badge bg-primary me-2">GET</span>
+                                检查版本更新
+                            </h5>
+                            <p><strong>接口：</strong><code>?act=get_app_version</code></p>
+                            <p><strong>需要认证：</strong>否</p>
+                            <table class="table table-bordered table-sm">
+                                <thead><tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr></thead>
+                                <tbody>
+                                    <tr><td>version_code</td><td>int</td><td>否</td><td>当前客户端数字版本号（如 1001），用于比较大小；默认 0</td></tr>
+                                    <tr><td>platform</td><td>string</td><td>否</td><td>平台：all / android / ios / harmony，默认 all；非法值按 all 处理</td></tr>
+                                </tbody>
+                            </table>
+                            <p><strong>返回：</strong></p>
+                            <pre class="bg-light p-2 rounded"><code>{
+    "code": 0,
+    "msg": "success",
+    "data": {
+        "has_update": true,
+        "force_update": 0,
+        "version": "1.3.26",
+        "version_code": 1002,
+        "download_url": "https://xxx.com/app.apk",
+        "changelog": "1. 新增xxx\n2. 修复xxx"
+    }
+}</code></pre>
+                            <p>说明：无更新或未开启检测时 <code>has_update</code> 为 <code>false</code>；<code>force_update</code> 为 1 表示强制更新。</p>
+                        </div>
+
+                        <div class="mb-4">
+                            <h5 class="text-primary">
+                                <span class="badge bg-primary me-2">GET</span>
+                                获取更新日志
+                            </h5>
+                            <p><strong>接口：</strong><code>?act=get_app_version_log</code></p>
+                            <p><strong>需要认证：</strong>否</p>
+                            <p>说明：返回后台「版本管理」中<strong>已上架</strong>版本的更新日志列表（按数字版本号倒序，最多 20 条）。</p>
+                            <p><strong>返回：</strong></p>
+                            <pre class="bg-light p-2 rounded"><code>{
+    "code": 0,
+    "msg": "success",
+    "data": [
+        {
+            "version": "1.3.26",
+            "version_code": 1002,
+            "platform": "android",
+            "download_url": "https://xxx.com/app.apk",
+            "changelog": "1. 新增xxx\n2. 修复xxx",
+            "created_at": "2026-09-19 12:00:00"
+        }
+    ]
+}</code></pre>
+                            <p>说明：<code>platform</code> 取值 all（全平台）/ android / ios / harmony（鸿蒙）。</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="block block-rounded block-bordered mb-4" id="splash-api">
+                    <div class="block-header block-header-default">
+                        <h3 class="block-title">
+                            <i class="fa fa-tv me-2"></i>开屏广告API
+                        </h3>
+                    </div>
+                    <div class="block-content">
+                        <div class="alert alert-info">
+                            <i class="fa fa-info-circle me-2"></i>
+                            用于小程序 / Uniapp 启动时拉取开屏广告。是否返回广告由后台「开屏广告」的「开启开屏广告」开关控制，且需存在「启用」状态的广告记录。接口免登录。
+                        </div>
+                        <div class="mb-4">
+                            <h5 class="text-primary">
+                                <span class="badge bg-primary me-2">GET</span>
+                                获取开屏广告
+                            </h5>
+                            <p><strong>接口：</strong><code>?act=get_splash_ad</code></p>
+                            <p><strong>需要认证：</strong>否</p>
+                            <table class="table table-bordered table-sm">
+                                <thead><tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr></thead>
+                                <tbody>
+                                    <tr><td>client</td><td>string</td><td>否</td><td>客户端：wx（小程序）/ app（Uniapp）/ all（通用），默认 all</td></tr>
+                                </tbody>
+                            </table>
+                            <p><strong>返回（有广告）：</strong></p>
+                            <pre class="bg-light p-2 rounded"><code>{
+    "code": 0,
+    "msg": "success",
+    "data": {
+        "id": 1,
+        "title": "开学季开屏",
+        "image": "/uploads/splash/xxx.jpg",
+        "image_url": "https://xxx.com/uploads/splash/xxx.jpg",
+        "url": "/pages/academic-grade/index",
+        "duration": 3,
+        "site_name": "智慧校园"
+    }
+}</code></pre>
+                            <p>无广告或未开启时 <code>data</code> 为 <code>null</code>；<code>duration</code> 为展示时长（秒，1~15）。</p>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="block block-rounded block-bordered mb-4" id="cancel-api">
                     <div class="block-header block-header-default">
                         <h3 class="block-title">

@@ -305,6 +305,19 @@ const getBanners = () => {
 };
 
 /**
+ * 获取开屏广告（后台「开屏广告」维护，免登录）
+ * @param {string} client wx=小程序，app=Uniapp，all=通用
+ * @returns {Promise} data: {id,title,image,image_url,url,duration} 或 null（未开启/无广告）
+ */
+const getSplashAd = (client = 'wx') => {
+  return request({
+    act: 'get_splash_ad',
+    method: 'GET',
+    data: { client }
+  });
+};
+
+/**
  * 获取当前 AI 提供方支持的模型列表（供对话页下拉选择）
  * @returns {Promise} data: {models:[], default:''}
  */
@@ -952,6 +965,7 @@ module.exports = {
   getScheduleMode,
   getScheduleTimes,
   getBanners,
+  getSplashAd,
   getAiModels,
   getMaintenanceConfig,
   aiAnalyzeGrades,

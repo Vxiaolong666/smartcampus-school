@@ -225,6 +225,25 @@ Page({
     //设置默认宿舍
     async onSetDefault(e) {
         const id = e.currentTarget.dataset.id;
+        const item = (this.data.dormitories || []).find(d => String(d.id) === String(id)) || {};
+
+        // 已是默认宿舍：灰色按钮仅作展示，点击给出提示
+        if (item.is_default == 1) {
+            wx.showToast({ title: '该宿舍已是默认宿舍', icon: 'none' });
+            return;
+        }
+
+        const name = item.displayName || '该宿舍';
+        const res = await new Promise(resolve => {
+            wx.showModal({
+                title: '设置默认',
+                content: '确认把默认宿舍改为「' + name + '」吗？',
+                confirmText: '确认',
+                cancelText: '取消',
+                success: resolve
+            });
+        });
+        if (!res.confirm) return;
 
         try {
             await api.setDefaultDormitory(id);

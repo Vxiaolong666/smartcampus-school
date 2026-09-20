@@ -46,22 +46,76 @@ if ($tablesReady) {
 
 $platformText = array('all' => '全平台', 'android' => 'Android', 'ios' => 'iOS', 'harmony' => '鸿蒙');
 ?>
-<div id="page-container">
-    <main id="main-container">
-        <div class="content">
+<style>
+/* ===== 版本列表：移动端表格适配（压缩内边距/字号，操作按钮竖排，保证横向可滑动不挤压） ===== */
+.table-responsive {
+    -webkit-overflow-scrolling: touch;
+}
+@media (max-width: 768px) {
+    .table-responsive .table th,
+    .table-responsive .table td {
+        padding: 0.5rem 0.5rem;
+        font-size: 0.8125rem;
+        white-space: nowrap;
+    }
+    /* 下载地址列允许换行，避免撑宽表格 */
+    .table-responsive .table td:nth-child(6) {
+        white-space: normal;
+        word-break: break-all;
+        min-width: 150px;
+    }
+    /* 操作列：按钮竖排并撑满，避免两个按钮挤在一行溢出 */
+    .table-responsive .table td:last-child {
+        min-width: 96px;
+    }
+    .table-responsive .table td:last-child .btn {
+        display: block;
+        width: 100%;
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+    }
+    .table-responsive .table td:last-child .btn + .btn {
+        margin-top: 0.375rem;
+    }
+}
+</style>
+
+<div id="pjax-container">
+    <div class="bg-body-light">
+        <div class="content content-full">
+            <div class="d-flex flex-column flex-sm-row justify-content-sm-between align-items-sm-center py-2">
+                <div class="flex-grow-1">
+                    <h1 class="h3 fw-bold mb-2">
+                        <?php echo $title ?>
+                    </h1>
+                </div>
+                <nav class="flex-shrink-0 mt-3 mt-sm-0 ms-sm-3" aria-label="breadcrumb">
+                    <ol class="breadcrumb breadcrumb-alt">
+                        <li class="breadcrumb-item">
+                            <a class="link-fx" href="javascript:void(0)">后台首页</a>
+                        </li>
+                        <li class="breadcrumb-item" aria-current="page">
+                            <?php echo $title ?>
+                        </li>
+                    </ol>
+                </nav>
+            </div>
+        </div>
+    </div>
+    <div class="content animated fadeIn">
 
             <!-- ============ 全局更新推送开关 ============ -->
             <div class="block block-rounded">
                 <div class="block-header block-header-default">
                     <h3 class="block-title"><i class="fa fa-rocket me-2"></i>更新推送设置</h3>
                 </div>
-                <div class="block-content">
-                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
-                        <div>
+                <div class="block-content pb-4">
+                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                        <div class="flex-grow-1 pe-2">
                             <div class="fw-semibold">开启 App 版本更新检测</div>
-                            <div class="fs-sm text-muted">关闭后，所有客户端（关于我们-检查更新 / App 启动自动检测）均不会收到更新提示。</div>
+                            <div class="fs-sm text-muted mt-1">关闭后，所有客户端（关于我们-检查更新 / App 启动自动检测）均不会收到更新提示。</div>
                         </div>
-                        <div class="form-check form-switch fs-3">
+                        <div class="form-check form-switch fs-3 mb-0">
                             <input class="form-check-input" type="checkbox" role="switch" id="updateEnabled"
                                 <?php echo $updateEnabled ? 'checked' : ''; ?>
                                 onchange="toggleUpdate(this.checked)">
@@ -134,8 +188,7 @@ $platformText = array('all' => '全平台', 'android' => 'Android', 'ios' => 'iO
                 </div>
             </div>
 
-        </div>
-    </main>
+    </div>
 </div>
 
 <!-- ============ 新增 / 编辑 弹窗 ============ -->

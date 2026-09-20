@@ -152,8 +152,18 @@ page {
     border-radius: 20rpx;
     font-weight: bold;
     margin-top: 40rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
 }
 
 .refresh-btn:active {
     opacity: 0.9;
+}
+
+.refresh-btn .btn-icon {
+    width: 32rpx;
+    height: 32rpx;
+    margin-right: 10rpx;
 }

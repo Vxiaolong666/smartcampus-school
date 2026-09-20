@@ -24,6 +24,25 @@
       </view>
     </view>
 
+    <!-- 本学期统计（学期筛选下方） -->
+    <view wx:if="{{!loading && grades.length > 0}}" class="summary-card">
+      <view class="summary-title">本学期统计</view>
+      <view class="summary-row">
+        <view class="summary-item">
+          <view class="summary-value">{{summary.totalCourses}}</view>
+          <view class="summary-label">课程数</view>
+        </view>
+        <view class="summary-item">
+          <view class="summary-value">{{summary.earnedCredits}}</view>
+          <view class="summary-label">已修学分</view>
+        </view>
+        <view class="summary-item">
+          <view class="summary-value">{{summary.avgGpa}}</view>
+          <view class="summary-label">平均绩点</view>
+        </view>
+      </view>
+    </view>
+
     <view wx:if="{{loading}}" class="loading-wrapper">
       <view class="loading-text">加载中...</view>
     </view>
@@ -34,10 +53,10 @@
     </view>
 
     <view wx:else class="grade-list">
-      <view class="grade-item" wx:for="{{grades}}" wx:key="index">
+      <view class="grade-item" wx:for="{{grades}}" wx:key="index" data-index="{{index}}" bindtap="openDetail">
         <view class="grade-header">
           <view class="grade-name">{{item.courseName}}</view>
-          <view class="grade-score {{item.score >= 60 ? 'pass' : 'fail'}}">{{item.score}}</view>
+          <view class="grade-score {{item.scoreClass}}">{{item.score}}</view>
         </view>
         <view class="grade-info">
           <view class="grade-info-item">
@@ -51,24 +70,6 @@
           <view class="grade-info-item">
             <text class="info-label">类型：</text>
             <text class="info-value">{{item.courseType || '-'}}</text>
-          </view>
-        </view>
-      </view>
-
-      <view class="summary-card">
-        <view class="summary-title">本学期统计</view>
-        <view class="summary-row">
-          <view class="summary-item">
-            <view class="summary-value">{{summary.totalCourses}}</view>
-            <view class="summary-label">课程数</view>
-          </view>
-          <view class="summary-item">
-            <view class="summary-value">{{summary.earnedCredits}}</view>
-            <view class="summary-label">已修学分</view>
-          </view>
-          <view class="summary-item">
-            <view class="summary-value">{{summary.avgGpa}}</view>
-            <view class="summary-label">平均绩点</view>
           </view>
         </view>
       </view>
@@ -103,5 +104,39 @@
   <view class="ai-fab {{aiLoading ? 'ai-loading' : ''}}" bindtap="aiAnalyze">
     <text class="ai-fab-icon">AI</text>
     <text class="ai-fab-label">分析</text>
+  </view>
+
+  <!-- 成绩详情自定义弹窗 -->
+  <view class="detail-mask" wx:if="{{showDetail}}" bindtap="closeDetail">
+    <view class="detail-modal" catchtap="noop">
+      <view class="detail-modal-header" style="background: linear-gradient(160deg, {{detailTint.bg}} 0%, #ffffff 100%);">
+        <view class="detail-title-wrap">
+          <view class="detail-title" style="color: {{detailTint.text}};">{{detailItem.courseName}}</view>
+          <view class="detail-sub">
+            <text class="detail-sub-chip" style="background-color: {{detailTint.text}};">{{detailItem.score}} 分</text>
+          </view>
+        </view>
+        <view class="detail-close" catchtap="closeDetail">✕</view>
+      </view>
+
+      <view class="detail-modal-body">
+        <view class="detail-grid">
+          <view class="detail-grid-item">
+            <view class="detail-grid-num" style="color: {{detailTint.text}};">{{detailItem.credit}}</view>
+            <view class="detail-grid-label">学分</view>
+          </view>
+          <view class="detail-grid-item">
+            <view class="detail-grid-num" style="color: {{detailTint.text}};">{{detailItem.gpa || '-'}}</view>
+            <view class="detail-grid-label">绩点</view>
+          </view>
+          <view class="detail-grid-item">
+            <view class="detail-grid-num" style="color: {{detailTint.text}};">{{detailItem.courseType || '-'}}</view>
+            <view class="detail-grid-label">课程类型</view>
+          </view>
+        </view>
+
+        <button class="detail-btn" catchtap="closeDetail" style="background: linear-gradient(90deg, {{detailTint.text}}, {{detailTint.light}}); box-shadow: 0 10rpx 24rpx {{detailTint.shadow}};">我知道了</button>
+      </view>
+    </view>
   </view>
 </view>

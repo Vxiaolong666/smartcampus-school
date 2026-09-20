@@ -78,6 +78,16 @@
 				</view>
 			</view>
 		</view>
+
+		<!-- 版本更新弹窗 -->
+		<update-modal
+			:show="updateVisible"
+			:version="updateInfo.version"
+			:changelog="updateInfo.changelog"
+			:force="updateInfo.force"
+			:download-url="updateInfo.downloadUrl"
+			@close="updateVisible = false"
+		/>
 	</view>
 </template>
 
@@ -92,7 +102,9 @@ export default {
 	data() {
 		return {
 			currentVersion: '1.3.25',
-			currentVersionCode: 1001
+			currentVersionCode: 1001,
+			updateVisible: false,
+			updateInfo: {}
 		};
 	},
 
@@ -144,27 +156,14 @@ export default {
 		},
 
 		showUpdateModal(d) {
-			const force = parseInt(d.force_update, 10) === 1;
-			uni.showModal({
-				title: '发现新版本 v' + d.version,
-				content: (d.changelog || '修复了一些问题，体验更流畅') + '\n\n建议尽快更新以获得更好体验',
-				confirmText: '立即更新',
-				showCancel: !force,
-				success: (r) => {
-					if (r.confirm && d.download_url) {
-						this.openUrl(d.download_url);
-					}
-				}
-			});
-		},
-
-		openUrl(url) {
-			// #ifdef APP-PLUS
-			plus.runtime.openURL(url);
-			// #endif
-			// #ifndef APP-PLUS
-			try { window.open(url, '_blank'); } catch (e) {}
-			// #endif
+			// 交给自定义更新弹窗组件展示（头部图片 + 更新日志）
+			this.updateInfo = {
+				version: d.version || '',
+				changelog: d.changelog || '',
+				force: parseInt(d.force_update, 10) === 1,
+				downloadUrl: d.download_url || ''
+			};
+			this.updateVisible = true;
 		},
 
 		goVersionLog() {

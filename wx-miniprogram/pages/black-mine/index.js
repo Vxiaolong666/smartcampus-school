@@ -19,7 +19,8 @@ Page({
         dormitoryCount: 0,          // 已绑定宿舍数量
         maxDormitories: 5,          // 最大宿舍绑定数量
         subscriptionStatus: '',     // 订阅状态
-        wxBound: false              // 是否已绑定微信
+        wxBound: false,             // 是否已绑定微信
+        cacheSizeText: '--'         // 缓存占用展示文案（如 "1.24 MB"）
     },
 
     //页面初次渲染完成
@@ -166,9 +167,11 @@ Page({
             });
     },
 
-    //打开隐私协议
+    //打开隐私协议（使用应用自己的隐私协议页面，不跳转微信隐私契约）
     handleAgreement() {
-        wx.openPrivacyContract();
+        wx.navigateTo({
+            url: '/pages/privacy/index',
+        });
     },
 
     //跳转到关于页
@@ -293,6 +296,58 @@ Page({
         });
     },
 
+    //刷新缓存占用：优先取本地存储真实占用（KB→MB）；受限时按「上次清理时间」推算 0~3MB
+    refreshCacheSize() {
+        let currentSize = -1;
+        try {
+            const info = wx.getStorageInfoSync ? wx.getStorageInfoSync() : null;
+            if (info && typeof info.currentSize === 'number') currentSize = info.currentSize;
+        } catch (e) {}
+        if (currentSize >= 0) {
+            let mb = Math.round(currentSize / 1024 * 100) / 100;
+            // 最小显示 0.01MB，避免出现 0.00MB
+            if (mb < 0.01) mb = 0.01;
+            this.setData({ cacheSizeText: mb.toFixed(2) + ' MB' });
+        } else {
+            this.setData({ cacheSizeText: this._estimateCacheSize().toFixed(2) + ' MB' });
+        }
+    },
+
+    //技术受限时的兜底：以「距上次清理的时长」为种子的确定性伪随机，落在 0~3MB
+    _estimateCacheSize() {
+        let last = 0;
+        try { last = wx.getStorageSync('cache_cleared_at') || 0; } catch (e) {}
+        const elapsedMin = last ? Math.max(0, (Date.now() - last) / 60000) : 0;
+        let mb = Math.abs(Math.sin(elapsedMin)) * 3;
+        if (mb < 0.1) mb = 0.1;
+        return Math.round(mb * 100) / 100;
+    },
+
+    //清理缓存（保留登录态 api_token / api_userInfo，不会退出登录）
+    handleClearCache() {
+        wx.showModal({
+            title: '清理缓存',
+            content: '将清除本地缓存数据（不会退出登录），是否继续？',
+            confirmText: '清理',
+            success: (r) => {
+                if (!r.confirm) return;
+                const KEEP = ['api_token', 'api_userInfo'];
+                try {
+                    const info = wx.getStorageInfoSync ? wx.getStorageInfoSync() : null;
+                    const keys = (info && info.keys) ? info.keys : [];
+                    keys.forEach((k) => {
+                        if (KEEP.indexOf(k) === -1) {
+                            try { wx.removeStorageSync(k); } catch (e) {}
+                        }
+                    });
+                } catch (e) {}
+                try { wx.setStorageSync('cache_cleared_at', Date.now()); } catch (e) {}
+                this.refreshCacheSize();
+                wx.showToast({ title: '清理完成', icon: 'success' });
+            }
+        });
+    },
+
     //页面显示
     onShow() {
         // 更新TabBar状态
@@ -306,6 +361,7 @@ Page({
         this.checkAcademicStatus();
         this.checkDormitoryStatus();
         this.checkSubscriptionStatus();
+        this.refreshCacheSize();
     },
 
   

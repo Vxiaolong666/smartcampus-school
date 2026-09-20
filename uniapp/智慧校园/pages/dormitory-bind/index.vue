@@ -47,7 +47,7 @@
 						<view class="dorm-time">绑定于 {{ item.bind_time }}</view>
 					</view>
 					<view class="dorm-actions">
-						<button v-if="item.is_default != 1" class="action-btn default-btn" :data-id="item.id" @click="onSetDefault">
+						<button class="action-btn default-btn" :class="{ 'is-default': item.is_default == 1 }" :data-id="item.id" @click="onSetDefault">
 							<image class="btn-icon" src="/static/assets/wxmp-star.svg" mode="widthFix"></image>
 							设为默认
 						</button>
@@ -309,6 +309,25 @@ export default {
 
 		async onSetDefault(e) {
 			const id = e.currentTarget.dataset.id;
+			const item = (this.dormitories || []).find(d => String(d.id) === String(id)) || {};
+
+			// 已是默认宿舍：灰色按钮仅作展示，点击给出提示
+			if (item.is_default == 1) {
+				uni.showToast({ title: '该宿舍已是默认宿舍', icon: 'none' });
+				return;
+			}
+
+			const name = item.displayName || '该宿舍';
+			const res = await new Promise(resolve => {
+				uni.showModal({
+					title: '设置默认',
+					content: '确认把默认宿舍改为「' + name + '」吗？',
+					confirmText: '确认',
+					cancelText: '取消',
+					success: resolve
+				});
+			});
+			if (!res.confirm) return;
 
 			try {
 				await api.setDefaultDormitory(id);
@@ -495,6 +514,18 @@ page {
 	background: #e8f9f9;
 	color: #13c2c2;
 	border: 2rpx solid #13c2c2;
+}
+
+/* 已是默认宿舍：按钮置灰（仅作展示） */
+.default-btn.is-default {
+	background: #f2f3f7;
+	color: #b8bcc9;
+	border: 2rpx solid #e2e4ee;
+}
+
+.default-btn.is-default .btn-icon {
+	filter: grayscale(1);
+	opacity: 0.65;
 }
 
 .unbind-btn {
