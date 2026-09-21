@@ -3682,8 +3682,9 @@ switch($act) {
             } catch (Exception $e) {}
 
             if ($tableReady) {
-                // 取排序最靠前的一条「启用」广告
-                $row = $DB->getRow("SELECT * FROM nteam_splash_ads WHERE `status`=1 ORDER BY `sort` ASC, `id` ASC LIMIT 1");
+                // 取所有「启用」的广告：多张时随机展示一张（仅一张时即固定展示该张）
+                $rows = $DB->getAll("SELECT * FROM nteam_splash_ads WHERE `status`=1 ORDER BY `sort` ASC, `id` ASC");
+                $row = (!empty($rows) && is_array($rows)) ? $rows[array_rand($rows)] : null;
                 if ($row) {
                     $image = $row['image'] ?? '';
                     // 按客户端选择跳转链接，为空回退通用链接
