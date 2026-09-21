@@ -42,6 +42,8 @@
           <view class="ai-summary-foot">本卡片由 AI 阅读通知后生成，可能存在疏漏，请以通知正文为准。</view>
         </view>
 
+        <view wx:if="{{summaryHtml}}" class="ai-summary-divider"></view>
+
         <view class="notice-content">{{notice.content}}</view>
         <image wx:if="{{notice.image}}" class="notice-image" src="{{notice.image}}" mode="widthFix" bind:tap="onPreviewImage" />
       </view>

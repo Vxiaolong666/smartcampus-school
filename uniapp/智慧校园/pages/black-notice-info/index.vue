@@ -43,6 +43,8 @@
 						<view class="ai-summary-foot">本卡片由 AI 阅读通知后生成，可能存在疏漏，请以通知正文为准。</view>
 					</view>
 
+					<view v-if="summaryHtml" class="ai-summary-divider"></view>
+
 					<view class="notice-content">{{ notice.content }}</view>
 					<image v-if="notice.image" class="notice-image" :src="notice.image" mode="widthFix" @click="onPreviewImage"></image>
 				</view>
@@ -309,8 +311,15 @@ page {
 	border: 1rpx solid rgba(19, 194, 194, .18);
 	border-radius: 20rpx;
 	padding: 24rpx 28rpx;
-	margin: 0 30rpx 30rpx 30rpx;
+	margin: 0 30rpx;
 	box-shadow: 0 10rpx 30rpx rgba(24, 144, 255, .08);
+}
+
+/* AI 总结与公告正文之间的分隔线（灰色，与上方 divider 一致；仅在有 AI 总结时展示） */
+.ai-summary-divider {
+	height: 1rpx;
+	margin: 28rpx 30rpx 24rpx;
+	background: #f0f0f0;
 }
 
 .ai-summary-head {
