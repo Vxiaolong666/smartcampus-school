@@ -186,6 +186,12 @@ page {
     box-shadow: 0 4rpx 12rpx rgba(19, 194, 194, .35);
 }
 
+.ai-summary-badge-icon {
+    width: 24rpx;
+    height: 24rpx;
+    margin-right: 8rpx;
+}
+
 .ai-summary-meta {
     font-size: 22rpx;
     color: #8a94a6;
@@ -197,32 +203,6 @@ page {
     color: #2a303b;
     line-height: 1.4;
     margin-bottom: 14rpx;
-}
-
-.ai-summary-tabs {
-    display: inline-flex;
-    align-items: center;
-    gap: 10rpx;
-    background: rgba(255, 255, 255, .6);
-    border: 1rpx solid rgba(19, 194, 194, .15);
-    padding: 8rpx;
-    border-radius: 20rpx;
-    margin-bottom: 20rpx;
-}
-
-.ai-summary-tab {
-    font-size: 26rpx;
-    font-weight: 600;
-    color: #5b6b7b;
-    padding: 12rpx 34rpx;
-    border-radius: 16rpx;
-    transition: color .2s ease, background .2s ease, box-shadow .2s ease;
-}
-
-.ai-summary-tab.active {
-    color: #fff;
-    background: linear-gradient(135deg, #13c2c2 0%, #1890ff 100%);
-    box-shadow: 0 4rpx 12rpx rgba(19, 194, 194, .35);
 }
 
 .ai-summary-body {

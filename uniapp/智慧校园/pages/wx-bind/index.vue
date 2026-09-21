@@ -129,7 +129,7 @@ export default {
 			}
 			// #endif
 			// #ifndef MP-WEIXIN
-			uni.showToast({ title: '当前平台暂不支持微信绑定', icon: 'none' });
+			uni.showToast({ title: '当前平台暂不支持微信绑定，请前往小程序端进行绑定', icon: 'none' });
 			// #endif
 		},
 

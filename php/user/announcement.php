@@ -67,22 +67,11 @@ include('./head.php');
                             </header>
                             
                             <!-- AI 智能总结（页面加载自动异步生成，优先复用历史缓存；样式与 uniapp 浅色主题统一） -->
-                            <div class="ai-summary-card" id="aiSummaryCard">
+                            <div class="ai-summary-card" id="aiSummaryCard" style="display:none;">
                                 <div class="ai-summary-head">
                                     <span class="ai-summary-badge"><i class="fa fa-robot"></i>AI 摘要</span>
-                                    <span class="ai-summary-meta" id="aiSummaryTime"></span>
                                 </div>
-                                <h3 class="ai-summary-title"><?php echo htmlspecialchars($announcement['title']); ?></h3>
-                                <div class="ai-summary-tabs">
-                                    <span class="ai-summary-tab active" data-ai-tab="summary">总结</span>
-                                    <span class="ai-summary-tab" data-ai-tab="detail" id="aiSummaryTabDetail" style="display:none;">要点</span>
-                                </div>
-                                <div class="ai-summary-body" id="aiSummary">
-                                    <div class="ai-summary-loading">
-                                        <i class="fa fa-spinner fa-spin me-2"></i>AI 正在总结本文内容…
-                                    </div>
-                                </div>
-                                <div class="ai-summary-body" id="aiSummaryDetail" style="display:none;"></div>
+                                <div class="ai-summary-body" id="aiSummary"></div>
                                 <div class="ai-summary-foot">本卡片由 AI 阅读公告后生成，可能存在疏漏，请以公告正文为准。</div>
                             </div>
 
@@ -140,33 +129,6 @@ include('./head.php');
     line-height: 1.4;
     margin: 0 0 10px;
 }
-.ai-summary-tabs {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: rgba(255, 255, 255, .6);
-    border: 1px solid rgba(19, 194, 194, .15);
-    padding: 5px;
-    border-radius: 12px;
-    margin-bottom: 16px;
-}
-.ai-summary-tab {
-    font-size: 14px;
-    font-weight: 600;
-    color: #5b6b7b;
-    padding: 7px 18px;
-    border-radius: 9px;
-    cursor: pointer;
-    transition: color .2s ease, background .2s ease, box-shadow .2s ease;
-}
-.ai-summary-tab:hover {
-    color: #13c2c2;
-}
-.ai-summary-tab.active {
-    color: #fff;
-    background: linear-gradient(135deg, #13c2c2 0%, #1890ff 100%);
-    box-shadow: 0 4px 12px rgba(19, 194, 194, .35);
-}
 .ai-summary-body { font-size: 14px; line-height: 1.8; color: #3c4554; }
 .ai-summary-body .markdown-body { font-size: 14px; line-height: 1.8; color: #3c4554; background: transparent; }
 .ai-summary-body .markdown-body p:last-child,
@@ -223,46 +185,12 @@ marked.setOptions({
 });
 
 // 页面加载后自动异步调用 AI 接口总结本文，命中页面缓存/历史缓存则不重复消耗额度
-// 将 AI 返回内容拆分为「总结」（第一段概括）与「要点」（其余列表/说明）
-function splitAiSummary(text) {
-    var lines = (text || '').split(/\r?\n/);
-    var summary = [], detail = [], inDetail = false, started = false;
-    for (var i = 0; i < lines.length; i++) {
-        var line = lines[i].trim();
-        var isItem = /^([-*•]|\d+[.、)])\s*/.test(line);
-        var isHeader = /^\*\*[^*]+\*\*:?$/.test(line) || /^【[^】]+】$/.test(line);
-        if (!inDetail) {
-            if (!line) {
-                if (started) inDetail = true;
-                continue;
-            }
-            if (isItem || isHeader) {
-                inDetail = true;
-                detail.push(line);
-                continue;
-            }
-            summary.push(line);
-            started = true;
-        } else {
-            detail.push(line);
-        }
-    }
-    return { summary: summary.join('\n'), detail: detail.join('\n') };
-}
-
+// 总结与要点合并为单个 markdown-body 渲染，由 marked 自然处理段落/列表间距
 function renderAiSummary(text) {
-    var parts = splitAiSummary(text);
     var toHtml = function (md) {
         return window.marked ? marked.parse(md) : $('<div>').text(md).html();
     };
-    $('#aiSummary').html('<div class="markdown-body">' + toHtml(parts.summary || text) + '</div>');
-    if (parts.detail) {
-        $('#aiSummaryDetail').html('<div class="markdown-body">' + toHtml(parts.detail) + '</div>');
-        $('#aiSummaryTabDetail').show();
-    } else {
-        $('#aiSummaryDetail').empty().hide();
-        $('#aiSummaryTabDetail').hide();
-    }
+    $('#aiSummary').html('<div class="markdown-body">' + toHtml(text || '') + '</div>');
 }
 
 function aiSummarizeAnnouncement() {
@@ -275,26 +203,13 @@ function aiSummarizeAnnouncement() {
         cacheKey: function () { return 'announcement:' + <?php echo intval($id); ?>; },
         validate: function () { return true; },
         onDone: function (res) {
-            var now = new Date();
-            function p(n) { return (n < 10 ? '0' : '') + n; }
-            var ts = now.getFullYear() + '-' + p(now.getMonth() + 1) + '-' + p(now.getDate())
-                + ' ' + p(now.getHours()) + ':' + p(now.getMinutes());
-            $('#aiSummaryTime').text(ts + ' 生成');
             if (res && res.code === 0 && res.content) {
                 renderAiSummary(res.content);
+                $('#aiSummaryCard').show();
             }
         }
     });
 }
-
-// 总结 / 要点 页签切换
-$(document).on('click', '.ai-summary-tab[data-ai-tab]', function () {
-    var tab = $(this).data('ai-tab');
-    $('.ai-summary-tab[data-ai-tab]').removeClass('active');
-    $(this).addClass('active');
-    $('#aiSummary').toggle(tab === 'summary');
-    $('#aiSummaryDetail').toggle(tab === 'detail');
-});
 
 $(document).ready(function() {
     var content = $('#announcementContent').text();

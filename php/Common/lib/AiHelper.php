@@ -258,6 +258,37 @@ class AiHelper
     }
 
     /**
+     * 折叠模型偶发输出的整段重复内容（同一总结被连续输出两遍）。
+     * 按「前半与后半在去除空白后完全一致」检测，命中则仅保留前半部分；
+     * 正常文本不会前后半逐字一致，不会误伤。
+     */
+    public static function collapseDuplicate($content)
+    {
+        $content = trim((string)$content);
+        if ($content === '') {
+            return $content;
+        }
+        $lines = preg_split('/\r?\n/', $content);
+        $n = is_array($lines) ? count($lines) : 0;
+        if ($n < 6) {
+            return $content;
+        }
+        $norm = function ($s) {
+            return preg_replace('/\s+/', '', $s);
+        };
+        $minSplit = max(2, (int)floor($n * 0.3));
+        for ($p = (int)floor($n / 2); $p >= $minSplit; $p--) {
+            $first = implode("\n", array_slice($lines, 0, $p));
+            $second = implode("\n", array_slice($lines, $p));
+            $firstNorm = $norm($first);
+            if ($firstNorm !== '' && $firstNorm === $norm($second)) {
+                return trim($first);
+            }
+        }
+        return $content;
+    }
+
+    /**
      * 带历史缓存的 AI 分析：优先命中缓存（相同用户 + 业务类型 + 数据指纹），
      * 命中则直接返回，避免重复消耗 AI 额度；未命中才真正调用模型并写回缓存。
      * 与成绩分析（nteam_ai_grade_analysis）思路一致，统一复用同一张缓存表。
@@ -266,9 +297,10 @@ class AiHelper
      * @param string $bizType  业务类型标识（如 power_query / power_statistics / schedule_semester / schedule_today）
      * @param string $dataHash 数据指纹（如 md5(json)），用于判断数据是否变化
      * @param array  $messages OpenAI 格式消息
+     * @param array  $opts     调用模型的可选项（如 ['temperature'=>0.3]），仅未命中缓存时生效
      * @return array{success:bool,content?:string,cached?:int,msg?:string}
      */
-    public static function analyzeCached($DB, $userId, $bizType, $dataHash, array $messages)
+    public static function analyzeCached($DB, $userId, $bizType, $dataHash, array $messages, array $opts = [])
     {
         $DB->exec("CREATE TABLE IF NOT EXISTS nteam_ai_analysis_cache (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -290,14 +322,14 @@ class AiHelper
             [$userId, $bizType, $dataHash]
         );
         if ($cached && trim($cached['content']) !== '' && $cached['content'] !== '暂无分析结果') {
-            return ['success' => true, 'content' => $cached['content'], 'cached' => 1];
+            return ['success' => true, 'content' => self::collapseDuplicate($cached['content']), 'cached' => 1];
         }
 
-        $result = self::chat($messages);
+        $result = self::chat($messages, $opts);
         if (!$result['success']) {
             return $result;
         }
-        $content = isset($result['content']) ? trim($result['content']) : '';
+        $content = self::collapseDuplicate(isset($result['content']) ? trim($result['content']) : '');
         if ($content === '') {
             return ['success' => false, 'msg' => '分析结果为空，请重试'];
         }

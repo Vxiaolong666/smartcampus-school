@@ -1719,7 +1719,7 @@ switch($act){
             ['role' => 'user', 'content' => $prompt],
         ];
         $ai = new \lib\AiHelper();
-        $result = $ai->analyzeCached($DB, $userId, 'announcement_summary', $dataHash, $messages);
+        $result = $ai->analyzeCached($DB, $userId, 'announcement_summary', $dataHash, $messages, ['temperature' => 0.3]);
         if (!$result['success']) {
             exit(json_encode(['code' => -1, 'msg' => $result['msg']]));
         }

@@ -28,21 +28,16 @@
         </view>
         <view class="divider"></view>
 
-        <!-- AI 智能总结（页面加载自动异步生成，命中历史缓存不重复消耗额度） -->
-        <view wx:if="{{aiLoading || summaryHtml || detailHtml}}" class="ai-summary-card">
+        <!-- AI 智能总结（页面加载自动异步生成，命中历史缓存不重复消耗额度；完成后才展示卡片） -->
+        <view wx:if="{{summaryHtml}}" class="ai-summary-card">
           <view class="ai-summary-head">
-            <view class="ai-summary-badge">AI 摘要</view>
-            <text class="ai-summary-meta">{{aiTime ? aiTime + ' 生成' : ''}}</text>
+            <view class="ai-summary-badge">
+            <image class="ai-summary-badge-icon" src="/assets/wxmp-ai-robot.svg" mode="aspectFit" />
+            AI 摘要
           </view>
-          <view class="ai-summary-title">{{notice.title}}</view>
-          <view class="ai-summary-tabs">
-            <text class="ai-summary-tab {{activeTab === 'summary' ? 'active' : ''}}" data-tab="summary" bind:tap="switchTab">总结</text>
-            <text wx:if="{{detailHtml}}" class="ai-summary-tab {{activeTab === 'detail' ? 'active' : ''}}" data-tab="detail" bind:tap="switchTab">要点</text>
           </view>
           <view class="ai-summary-body">
-            <view wx:if="{{aiLoading}}" class="ai-summary-loading">AI 正在总结本文内容…</view>
-            <rich-text wx:elif="{{activeTab === 'summary'}}" nodes="{{summaryHtml}}" class="ai-summary-rich"></rich-text>
-            <rich-text wx:else nodes="{{detailHtml}}" class="ai-summary-rich"></rich-text>
+            <rich-text wx:if="{{summaryHtml}}" nodes="{{summaryHtml}}" class="ai-summary-rich"></rich-text>
           </view>
           <view class="ai-summary-foot">本卡片由 AI 阅读通知后生成，可能存在疏漏，请以通知正文为准。</view>
         </view>

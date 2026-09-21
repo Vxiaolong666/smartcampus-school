@@ -2492,7 +2492,7 @@ switch($act) {
         $ai = new \lib\AiHelper();
         $authUser = authenticateUser($DB);
         $userId = $authUser ? intval($authUser['user_id']) : 0;
-        $result = $ai->analyzeCached($DB, $userId, 'announcement_summary', $dataHash, $messages);
+        $result = $ai->analyzeCached($DB, $userId, 'announcement_summary', $dataHash, $messages, ['temperature' => 0.3]);
         if (!$result['success']) {
             jsonResponse(-1, $result['msg']);
         }

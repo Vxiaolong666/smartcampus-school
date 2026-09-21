@@ -29,21 +29,16 @@
 					</view>
 					<view class="divider"></view>
 
-					<!-- AI 智能总结（页面加载自动异步生成，命中历史缓存不重复消耗额度） -->
-					<view class="ai-summary-card" v-if="aiLoading || summaryHtml || detailHtml">
+					<!-- AI 智能总结（页面加载自动异步生成，命中历史缓存不重复消耗额度；完成后才展示卡片） -->
+					<view class="ai-summary-card" v-if="summaryHtml">
 						<view class="ai-summary-head">
-							<view class="ai-summary-badge">AI 摘要</view>
-							<text class="ai-summary-meta">{{ aiTime ? aiTime + ' 生成' : '' }}</text>
+							<view class="ai-summary-badge">
+							<image class="ai-summary-badge-icon" src="/static/assets/wxmp-ai-robot.svg" mode="aspectFit"></image>
+							AI 摘要
 						</view>
-						<view class="ai-summary-title">{{ notice.title }}</view>
-						<view class="ai-summary-tabs">
-							<text class="ai-summary-tab" :class="{ active: activeTab === 'summary' }" @click="switchTab('summary')">总结</text>
-							<text v-if="detailHtml" class="ai-summary-tab" :class="{ active: activeTab === 'detail' }" @click="switchTab('detail')">要点</text>
 						</view>
 						<view class="ai-summary-body">
-							<view v-if="aiLoading" class="ai-summary-loading">AI 正在总结本文内容…</view>
-							<rich-text v-else-if="activeTab === 'summary'" :nodes="summaryHtml" class="ai-summary-rich"></rich-text>
-							<rich-text v-else :nodes="detailHtml" class="ai-summary-rich"></rich-text>
+							<rich-text v-if="summaryHtml" :nodes="summaryHtml" class="ai-summary-rich"></rich-text>
 						</view>
 						<view class="ai-summary-foot">本卡片由 AI 阅读通知后生成，可能存在疏漏，请以通知正文为准。</view>
 					</view>
@@ -71,10 +66,7 @@ export default {
 			notice: null,
 			loading: true,
 			aiLoading: false,
-			aiTime: '',
-			activeTab: 'summary',
-			summaryHtml: '',
-			detailHtml: ''
+			summaryHtml: ''
 		};
 	},
 
@@ -133,14 +125,7 @@ export default {
 			this.aiLoading = true;
 			try {
 				const res = await api.getNoticeAiSummary(id);
-				const now = new Date();
-				const p = (n) => (n < 10 ? '0' : '') + n;
-				this.aiTime = now.getFullYear() + '-' + p(now.getMonth() + 1) + '-' + p(now.getDate())
-					+ ' ' + p(now.getHours()) + ':' + p(now.getMinutes());
-				const parts = this.parseAiSummary(res.data.content);
-				this.summaryHtml = markdownToHtml(parts.summary || res.data.content);
-				this.detailHtml = parts.detail ? markdownToHtml(parts.detail) : '';
-				this.activeTab = 'summary';
+				this.summaryHtml = markdownToHtml(res.data.content);
 			} catch (e) {
 				// 总结失败不影响正文浏览
 			} finally {
@@ -148,40 +133,6 @@ export default {
 			}
 		},
 
-		// 总结 / 要点 页签切换
-		switchTab(tab) {
-			this.activeTab = tab;
-		},
-
-		// 将 AI 返回内容拆分为「总结」（第一段概括）与「要点」（其余列表/说明），返回 Markdown 文本
-		parseAiSummary(text) {
-			const lines = (text || '').split(/\r?\n/);
-			const summary = [];
-			const detail = [];
-			let inDetail = false;
-			let started = false;
-			for (let raw of lines) {
-				const line = raw.trim();
-				if (!inDetail) {
-					if (!line) {
-						if (started) inDetail = true;
-						continue;
-					}
-					const isItem = /^([-*•]|\d+[.、)])\s*/.test(line);
-					const isHeader = /^\*\*[^*]+\*\*:?$/.test(line) || /^【[^】]+】$/.test(line);
-					if (isItem || isHeader) {
-						inDetail = true;
-						detail.push(line);
-						continue;
-					}
-					summary.push(line);
-					started = true;
-				} else if (line) {
-					detail.push(line);
-				}
-			}
-			return { summary: summary.join('\n'), detail: detail.join('\n') };
-		}
 	}
 };
 </script>
@@ -381,6 +332,12 @@ page {
 	box-shadow: 0 4rpx 12rpx rgba(19, 194, 194, .35);
 }
 
+.ai-summary-badge-icon {
+	width: 24rpx;
+	height: 24rpx;
+	margin-right: 8rpx;
+}
+
 .ai-summary-meta {
 	font-size: 22rpx;
 	color: #8a94a6;
@@ -392,32 +349,6 @@ page {
 	color: #2a303b;
 	line-height: 1.4;
 	margin-bottom: 14rpx;
-}
-
-.ai-summary-tabs {
-	display: inline-flex;
-	align-items: center;
-	gap: 10rpx;
-	background: rgba(255, 255, 255, .6);
-	border: 1rpx solid rgba(19, 194, 194, .15);
-	padding: 8rpx;
-	border-radius: 20rpx;
-	margin-bottom: 20rpx;
-}
-
-.ai-summary-tab {
-	font-size: 26rpx;
-	font-weight: 600;
-	color: #5b6b7b;
-	padding: 12rpx 34rpx;
-	border-radius: 16rpx;
-	transition: color .2s ease, background .2s ease, box-shadow .2s ease;
-}
-
-.ai-summary-tab.active {
-	color: #fff;
-	background: linear-gradient(135deg, #13c2c2 0%, #1890ff 100%);
-	box-shadow: 0 4rpx 12rpx rgba(19, 194, 194, .35);
 }
 
 .ai-summary-body {

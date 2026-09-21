@@ -101,8 +101,8 @@ import api from '../../utils/api.js';
 export default {
 	data() {
 		return {
-			currentVersion: '1.3.25',
-			currentVersionCode: 1001,
+			currentVersion: '1.6.10',
+			currentVersionCode: 1010,
 			updateVisible: false,
 			updateInfo: {}
 		};
