@@ -76,67 +76,84 @@
 		 * 逻辑与小程序端 app.js 的 checkMaintenanceTime 保持一致
 		 */
 		async checkMaintenance() {
+			// 去重：H5 启动时 onLaunch 与 onShow 会几乎同时触发，避免并发检查与并发导航互相取消
+			if (this._maintChecking) return;
+			this._maintChecking = true;
 			try {
 				// 条件1：检查时间（使用后台配置的时段）
+				// getMaintenanceWindow 内部已做兜底，取不到时用内置默认值，不会抛错
 				const win = await this.getMaintenanceWindow();
 				const now = new Date();
 				const nowMin = now.getHours() * 60 + now.getMinutes();
 				const isMaintenanceTime = inWindow(nowMin, toMinutes(win.start), toMinutes(win.end));
 
-				// 条件2：检查功能开关（管理员手动关闭服务）
-				const featureStatus = await feature.checkFeature('weihu_open');
-				const isFeatureEnabled = featureStatus && featureStatus.enabled === true;
+				// 条件2：管理员是否手动开启维护
+				// 必须「明确读到 weihu_open 且 is_enabled=1」才算维护中；
+				// 接口失败 / 未配置该开关一律按未开启处理，避免误跳维护页
+				let isFeatureEnabled = false;
+				try {
+					const sw = await feature.checkMaintenanceSwitch();
+					isFeatureEnabled = !!(sw && sw.enabled === true);
+				} catch (e) {
+					isFeatureEnabled = false;
+				}
 
 				// 满足任一条件则跳转
 				if (isMaintenanceTime || isFeatureEnabled) {
-					const pages = getCurrentPages();
-					const currentPage = pages[pages.length - 1];
-					const currentRoute = currentPage ? currentPage.route : '';
-
-					// 当前已在维护页则不再跳转
-					if (currentRoute !== 'pages/maintenance/index') {
-						uni.redirectTo({
-							url: '/pages/maintenance/index',
-							fail: () => {
-								// redirectTo 失败（如当前为 tabBar 页）时改用 reLaunch
-								uni.reLaunch({
-									url: '/pages/maintenance/index'
-								});
-							}
-						});
-					}
+					this.navigateToMaintenance();
 				}
-			} catch (error) {
-				// 检查失败时只按时间判断，保证夜间维护仍可正常提示
-				// （时段同样取自后台配置，取不到时用内置默认值）
-				let winStart = DEFAULT_START;
-				let winEnd = DEFAULT_END;
-				try {
-					const win = await this.getMaintenanceWindow();
-					winStart = win.start;
-					winEnd = win.end;
-				} catch (e) {}
-				const now = new Date();
-				const nowMin = now.getHours() * 60 + now.getMinutes();
-				const isMaintenanceTime = inWindow(nowMin, toMinutes(winStart), toMinutes(winEnd));
-
-				if (isMaintenanceTime) {
-					const pages = getCurrentPages();
-					const currentPage = pages[pages.length - 1];
-					const currentRoute = currentPage ? currentPage.route : '';
-
-					if (currentRoute !== 'pages/maintenance/index') {
-						uni.redirectTo({
-							url: '/pages/maintenance/index',
-							fail: () => {
-								uni.reLaunch({
-									url: '/pages/maintenance/index'
-								});
-							}
-						});
-					}
-				}
+			} finally {
+				this._maintChecking = false;
 			}
+		},
+
+		/**
+		 * 跳转到系统维护页
+		 * 维护页需要接管整个应用，直接使用 reLaunch 清空页面栈、一次性完成，
+		 * 避免 redirectTo 失败后再 reLaunch 造成的「二次导航」与被取消的导航竞态
+		 * （即 uni-h5 报 Navigation cancelled / Uncaught (in promise) 的根因）。
+		 * H5 首屏路由尚未就绪时会取消导航，这里做少量重试，并吞掉被取消的 Promise 拒绝。
+		 */
+		navigateToMaintenance() {
+			const pages = getCurrentPages();
+			const currentPage = pages[pages.length - 1];
+			const currentRoute = currentPage ? (currentPage.route || '') : '';
+			if (currentRoute === 'pages/maintenance/index') return; // 已在维护页
+			if (this._maintNavigating) return; // 已有跳转进行中
+
+			this._maintNavigating = true;
+			let attempts = 0;
+
+			const go = () => {
+				attempts++;
+				let task = null;
+				try {
+					task = uni.reLaunch({
+						url: '/pages/maintenance/index',
+						success: () => {
+							this._maintNavigating = false;
+						},
+						fail: () => {
+							// 导航被新导航取消（如首屏路由切换）→ 稍后重试，最多 3 次
+							if (attempts < 3) {
+								setTimeout(go, 300);
+							} else {
+								this._maintNavigating = false;
+							}
+						}
+					});
+				} catch (e) {
+					this._maintNavigating = false;
+					return;
+				}
+				// H5 下即便传入了 fail 回调，reLaunch 仍可能返回 Promise；
+				// 不接管其拒绝会报 Uncaught (in promise) Navigation cancelled
+				if (task && typeof task.catch === 'function') {
+					task.catch(() => {});
+				}
+			};
+
+			go();
 		}
 	}
 	}

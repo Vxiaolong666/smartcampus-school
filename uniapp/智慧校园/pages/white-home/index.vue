@@ -663,9 +663,11 @@ export default {
 			});
 		},
 
-		handleAcademicPushSettings() {
+		// 课程/成绩推送设置共用同一页面，通过 scene 参数让目标页按入口展示标题
+		// （首页入口不传 scene → 显示「学术推送设置」）
+		handleAcademicPushSettings(scene) {
 			uni.navigateTo({
-				url: '/pages/academic-push-settings/index'
+				url: '/pages/academic-push-settings/index' + (scene ? '?scene=' + scene : '')
 			});
 		}
 	}

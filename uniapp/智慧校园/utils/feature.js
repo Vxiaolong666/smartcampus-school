@@ -120,6 +120,37 @@ const checkFeature = async (featureKey) => {
 };
 
 /**
+ * 检查「维护开关」weihu_open 是否开启（维护页专用）
+ *
+ * 注意：维护开关的语义是「开启 = 正在维护」，与普通功能开关相反。
+ * 因此「接口失败 / 读不到该开关」时必须判定为「未开启」，
+ * 绝不能沿用 checkFeature 的 enabled:true 默认值，否则接口偶发失败时
+ * 会被误判为「管理员已开启维护」而跳到维护页，页面随后又判定「维护已结束」跳回首页。
+ *
+ * @async
+ * @returns {Promise<{enabled:boolean, known:boolean, announcement:Object|null, featureName:string}>}
+ *   enabled 是否正在维护；known 为 false 表示配置读取失败（无法确认状态）
+ */
+const checkMaintenanceSwitch = async () => {
+    const settings = await getFeatureSettings();
+    const item = settings ? settings['weihu_open'] : null;
+    if (!item) {
+        // settings 为 null：接口失败 → known=false，调用方不应据此判定「维护已结束」
+        // settings 非空但没有 weihu_open：后台未配置该开关 → 明确视为未开启（known=true）
+        return { enabled: false, known: !!settings, announcement: null, featureName: '' };
+    }
+    return {
+        enabled: item.is_enabled === 1,
+        known: true,
+        announcement: item.announcement ? {
+            content: item.announcement,
+            type: item.announcement_type || 'info'
+        } : null,
+        featureName: item.feature_name || ''
+    };
+};
+
+/**
  * 显示功能禁用提示弹窗
  * @param {string} featureName - 功能名称
  * @param {Object|null} [announcement=null] - 公告对象
@@ -173,6 +204,7 @@ export {
     isFeatureEnabled,
     getFeatureAnnouncement,
     checkFeature,
+    checkMaintenanceSwitch,
     showDisabledAlert,
     getAnnouncementClass,
     getAnnouncementIcon
@@ -184,6 +216,7 @@ export default {
     isFeatureEnabled,
     getFeatureAnnouncement,
     checkFeature,
+    checkMaintenanceSwitch,
     showDisabledAlert,
     getAnnouncementClass,
     getAnnouncementIcon

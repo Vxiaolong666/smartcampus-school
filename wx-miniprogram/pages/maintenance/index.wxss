@@ -48,6 +48,34 @@ page {
     padding-bottom: 30rpx;
 }
 
+/* ===== 加载动画（与学术推送设置页保持一致） ===== */
+.loading-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 100rpx 0;
+}
+
+.loading-spinner {
+    width: 60rpx;
+    height: 60rpx;
+    border: 4rpx solid #e0e0e0;
+    border-top-color: #13c2c2;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.loading-text {
+    margin-top: 20rpx;
+    color: #666;
+    font-size: 28rpx;
+}
+
 .maintenance-card {
     background: white;
     border-radius: 20rpx;

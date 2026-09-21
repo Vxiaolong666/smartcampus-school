@@ -81,12 +81,12 @@
               <text class="status-text status-{{subscriptionStatus === '正常' ? 'ok' : subscriptionStatus === '即将不足' ? 'low' : 'empty'}}">{{subscriptionStatus}}</text>
               <image class="item-right" src="/assets/wxmp-right.svg" mode="widthFix"></image>
             </view>
-            <view class="item-item" bind:tap="handleAcademicPushSettings">
+            <view class="item-item" bind:tap="handleAcademicPushSettings" data-scene="course">
               <image class="item-logo" src="/assets/icon_cvoieudado/a-199_tixing.svg" mode="widthFix"></image>
               <view class="item-text">课程推送设置</view>
               <image class="item-right" src="/assets/wxmp-right.svg" mode="widthFix"></image>
             </view>
-            <view class="item-item" bind:tap="handleAcademicPushSettings">
+            <view class="item-item" bind:tap="handleAcademicPushSettings" data-scene="grade">
               <image class="item-logo" src="/assets/icon_cvoieudado/a-199_jiangzhang.svg" mode="widthFix"></image>
               <view class="item-text">成绩推送设置</view>
               <image class="item-right" src="/assets/wxmp-right.svg" mode="widthFix"></image>

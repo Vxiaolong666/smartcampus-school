@@ -1,6 +1,6 @@
 <view class="container">
   <top-menu showBack="{{true}}">
-    <view class="nav-title">学术推送设置</view>
+    <view class="nav-title">{{pageTitle}}</view>
   </top-menu>
 
   <view class="background-wrapper">
@@ -19,8 +19,8 @@
     <view wx:elif="{{!hasAcademicAccount}}" class="form-card">
       <view class="card-header">
         <image class="card-logo" src="/assets/048-presentation.svg" mode="widthFix"></image>
-        <view class="card-title">学术推送设置</view>
-        <view class="card-desc">开启后可自动推送课程提醒和成绩通知</view>
+        <view class="card-title">{{pageTitle}}</view>
+        <view class="card-desc">{{pageDesc}}</view>
       </view>
       <view class="empty-tip">
         <text>请先绑定教务账号后再设置学术推送</text>
@@ -32,8 +32,8 @@
       <view class="form-card">
         <view class="card-header">
           <image class="card-logo" src="/assets/048-presentation.svg" mode="widthFix"></image>
-          <view class="card-title">学术推送设置</view>
-          <view class="card-desc">开启后可自动推送课程提醒和成绩通知</view>
+          <view class="card-title">{{pageTitle}}</view>
+          <view class="card-desc">{{pageDesc}}</view>
         </view>
 
         <view class="bound-info">

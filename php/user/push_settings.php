@@ -42,7 +42,7 @@ if ($pushSettings) {
                 <?php if (count($dormitories) > 0): ?>
                 <div class="alert alert-info d-flex align-items-center mb-4" role="alert">
                     <i class="fa fa-info-circle me-2"></i>
-                    <div>开启推送后，系统会根据您的设置自动推送电费相关提醒消息</div>
+                    <div>开启推送后，系统才会记录宿舍用电信息和根据您的设置自动推送电费相关提醒消息，如发现无历史电费信息，请开启此功能。</div>
                 </div>
                 
                 <?php foreach ($dormitories as $dorm): 

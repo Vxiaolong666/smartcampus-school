@@ -60,7 +60,7 @@
 				</view>
 
 				<view class="about-footer">
-					<text class="footer-text">版本 {{currentVersion}}</text>
+					<text class="footer-text">版本 {{currentVersion || '未知'}}</text>
 				</view>
 			</view>
 
@@ -101,8 +101,10 @@ import api from '../../utils/api.js';
 export default {
 	data() {
 		return {
-			currentVersion: '1.6.10',
-			currentVersionCode: 1010,
+			// 版本号由 initVersion() 从 manifest.json 自动读取（uni.getAppBaseInfo / plus.runtime），
+			// 升级版本只需修改 manifest.json，无需再改动本页
+			currentVersion: '',
+			currentVersionCode: 0,
 			updateVisible: false,
 			updateInfo: {}
 		};
@@ -113,14 +115,36 @@ export default {
 	},
 
 	methods: {
-		// 优先读取 App 实际版本号，H5/开发时回退到内置常量
+		/**
+		 * 自动读取应用版本（取自 manifest.json 的 versionName / versionCode）
+		 * - uni.getAppBaseInfo()：App / H5 / 微信小程序 均支持（H5 需 HBuilderX 3.4.13+）
+		 * - App 端再以 plus.runtime 的实际打包版本为准
+		 * 这样升级版本只需修改 manifest.json，不必再改本页
+		 */
 		initVersion() {
+			try {
+				const info = typeof uni.getAppBaseInfo === 'function' ? uni.getAppBaseInfo() : null;
+				if (info) {
+					if (info.appVersion) {
+						this.currentVersion = String(info.appVersion);
+					}
+					if (info.appVersionCode !== undefined && info.appVersionCode !== null) {
+						const code = parseInt(info.appVersionCode, 10);
+						if (!isNaN(code)) this.currentVersionCode = code;
+					}
+				}
+			} catch (e) {}
+
+			// App 端以实际打包版本为准（离线打包 / 热更新后更准确）
 			// #ifdef APP-PLUS
 			try {
 				const vn = plus.runtime.version;
 				const vc = plus.runtime.versionCode;
-				if (vn) this.currentVersion = vn;
-				if (vc) this.currentVersionCode = parseInt(vc, 10) || this.currentVersionCode;
+				if (vn) this.currentVersion = String(vn);
+				if (vc) {
+					const code = parseInt(vc, 10);
+					if (!isNaN(code)) this.currentVersionCode = code;
+				}
 			} catch (e) {}
 			// #endif
 		},

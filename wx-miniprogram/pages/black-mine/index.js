@@ -242,9 +242,11 @@ Page({
     },
 
     //跳转到教务推送设置页
-    handleAcademicPushSettings() {
+    // 课程/成绩推送设置共用同一页面，通过 scene 参数让目标页按入口展示标题
+    handleAcademicPushSettings(e) {
+        const scene = (e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.scene) || '';
         wx.navigateTo({
-            url: '/pages/academic-push-settings/index',
+            url: '/pages/academic-push-settings/index' + (scene ? '?scene=' + scene : ''),
         });
     },
 

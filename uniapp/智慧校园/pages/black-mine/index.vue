@@ -81,12 +81,12 @@
 								<text class="status-text" :class="subscriptionStatusClass">{{ subscriptionStatus }}</text>
 								<image class="item-right" src="/static/assets/wxmp-right.svg" mode="widthFix"></image>
 							</view>
-							<view class="item-item" @click="handleAcademicPushSettings">
+							<view class="item-item" @click="handleAcademicPushSettings('course')">
 								<image class="item-logo" src="/static/assets/icon_cvoieudado/a-199_tixing.svg" mode="widthFix"></image>
 								<view class="item-text">课程推送设置</view>
 								<image class="item-right" src="/static/assets/wxmp-right.svg" mode="widthFix"></image>
 							</view>
-							<view class="item-item" @click="handleAcademicPushSettings">
+							<view class="item-item" @click="handleAcademicPushSettings('grade')">
 								<image class="item-logo" src="/static/assets/icon_cvoieudado/a-199_jiangzhang.svg" mode="widthFix"></image>
 								<view class="item-text">成绩推送设置</view>
 								<image class="item-right" src="/static/assets/wxmp-right.svg" mode="widthFix"></image>
@@ -531,9 +531,10 @@ export default {
 			});
 		},
 
-		handleAcademicPushSettings() {
+		// 课程/成绩推送设置共用同一页面，通过 scene 参数让目标页按入口展示标题
+		handleAcademicPushSettings(scene) {
 			uni.navigateTo({
-				url: '/pages/academic-push-settings/index'
+				url: '/pages/academic-push-settings/index' + (scene ? '?scene=' + scene : '')
 			});
 		},
 

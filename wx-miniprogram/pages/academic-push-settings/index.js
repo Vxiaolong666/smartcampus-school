@@ -6,10 +6,21 @@ const app = getApp()
 const api = require('../../utils/api.js')
 const feature = require('../../utils/feature.js')
 
+// 入口场景 → 页面标题 / 卡片副标题
+// 「我的」页的「课程推送设置」与「成绩推送设置」共用本页，按入口动态展示标题与说明
+const PAGE_META = {
+    default: { title: '学术推送设置', desc: '开启后可自动推送课程提醒和成绩通知' },
+    course: { title: '课程推送设置', desc: '开启后可自动推送课程提醒' },
+    grade: { title: '成绩推送设置', desc: '开启后可自动推送成绩通知' }
+};
+
 Page({
     data: {
         featureEnabled: true,       // 功能是否启用
         announcement: null,          // 公告信息
+        scene: '',                   // 入口场景：course=课程推送，grade=成绩推送，空=学术推送
+        pageTitle: PAGE_META.default.title, // 页面标题（按入口动态展示）
+        pageDesc: PAGE_META.default.desc,   // 卡片副标题（按入口动态展示）
         studentId: '',                    // 学号
         hasAcademicAccount: false,        // 是否已绑定教务账号
         isEnabled: false,                 // 推送总开关
@@ -33,7 +44,19 @@ Page({
     },
 
     //页面加载
-    onLoad: function() {
+    onLoad: function(options) {
+        // 按入口动态展示标题与副标题：「我的」页的课程/成绩推送设置均跳转到本页
+        const scene = (options && options.scene) ? String(options.scene) : 'default';
+        const meta = PAGE_META[scene] || PAGE_META.default;
+        this.setData({
+            scene: scene,
+            pageTitle: meta.title,
+            pageDesc: meta.desc
+        });
+        try {
+            wx.setNavigationBarTitle({ title: pageTitle });
+        } catch (e) {}
+
         // 检查功能开关
         this.checkFeature().then(canProceed => {
             if (canProceed) {

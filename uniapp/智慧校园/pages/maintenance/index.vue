@@ -10,7 +10,12 @@
 		</view>
 
 		<view class="content-wrapper">
-			<view class="maintenance-card">
+			<view v-if="loading" class="loading-section">
+				<view class="loading-spinner"></view>
+				<text class="loading-text">加载中...</text>
+			</view>
+
+			<view v-else class="maintenance-card">
 				<view class="card-header">
 					<image class="card-logo" src="/static/assets/wxmp-logo.svg" mode="widthFix"></image>
 					<view class="card-title">系统维护中</view>
@@ -19,7 +24,7 @@
 
 				<view class="maintenance-content">
 					<view class="maintenance-icon-wrapper">
-						<image class="maintenance-icon" src="/static/assets/wxmp-clock.svg" mode="widthFix"></image>
+						<image class="maintenance-icon" :src="manualOnly ? '/static/assets/wxmp-maintenance-shield.svg' : '/static/assets/wxmp-clock.svg'" mode="widthFix"></image>
 					</view>
 
 					<!-- 每日例行维护 -->
@@ -44,9 +49,7 @@
 								<text class="reason-label">预计恢复</text>
 								<text class="reason-value countdown">{{ countdown }} 后</text>
 							</view>
-							<view class="reason-desc">
-								维护期间课表、成绩、今日课程等教务相关功能暂不可用，宿舍电费等功能不受影响，06:00 后将自动恢复。
-							</view>
+							<view class="reason-desc">{{ recoverDesc }}</view>
 						</view>
 					</view>
 
@@ -55,18 +58,14 @@
 						<view class="reason-head">
 							<image class="reason-icon-img" src="/static/assets/wxmp-maintenance-shield.svg" mode="aspectFit"></image>
 							<view class="reason-title-wrap">
-								<view class="reason-title">管理员维护{{ featureName ? '（' + featureName + '）' : '' }}</view>
-								<view class="reason-sub">系统维护已由管理员手动开启</view>
+								<view class="reason-title">系统正在维护</view>
+								<view class="reason-sub">不便之处敬请谅解</view>
 							</view>
 						</view>
 						<view class="reason-body">
-							<view class="reason-row">
-								<text class="reason-label">维护时段</text>
-								<text class="reason-value">{{ maintenanceTime }}</text>
-							</view>
 							<!-- 后台配置的实际维护信息 -->
 							<view v-if="notice" class="notice-box">
-								<view class="notice-title">维护公告</view>
+								<view class="notice-title">功能维护公告</view>
 								<view class="notice-content">{{ notice.content }}</view>
 							</view>
 							<view v-else class="notice-box">
@@ -78,7 +77,7 @@
 					<view class="maintenance-section">
 						<view class="section-title">温馨提示</view>
 						<view class="section-text">
-							如需紧急帮助，请通过「我的」页面中的「联系客服」与我们取得联系。系统恢复后重新进入即可正常使用。
+							如需紧急帮助，可点击下方「联系客服」与我们取得联系。系统恢复后重新进入即可正常使用。
 						</view>
 					</view>
 				</view>
@@ -89,7 +88,7 @@
 						<view class="action-btn action-primary" @click="onContact">联系客服</view>
 						<view class="action-btn action-plain" @click="onRecheck">重新检测</view>
 					</view>
-					<view class="footer-text">感谢您的耐心等待</view>
+					<view class="footer-text">感谢您的耐心等待，我们会尽快恢复。</view>
 				</view>
 			</view>
 		</view>
@@ -141,14 +140,24 @@ export default {
 			notice: null,           // 管理员维护公告 {content, type}
 			featureName: '',        // 后台功能名称
 			currentTime: '',        // 当前时间 HH:mm
-			startText: DEFAULT_START, // 后台配置的维护开始时间
-			endText: DEFAULT_END,     // 后台配置的维护结束时间
+			startText: DEFAULT_START, // 后台配置的维护开始时间（未取到时为兜底值，不直接展示）
+			endText: DEFAULT_END,     // 后台配置的维护结束时间（未取到时为兜底值，不直接展示）
+			configLoaded: false,      // 后台时段配置是否已成功加载（未加载时不展示兜底时段）
+			recoverDesc: '',          // 「预计恢复」说明文案（随后台时段动态生成）
 			contactShow: false,
 			contactLines: []
 		};
 	},
 
+	computed: {
+		// 仅「管理员手动开启维护」（不处于每日维护时段）时，主图标改用橙色以作区分
+		manualOnly() {
+			return this.manualActive && !this.dailyActive;
+		}
+	},
+
 	onLoad() {
+		// 先拉取后台维护时段配置（到达后会重新判定）；同时先渲染一次，避免白屏
 		this.loadMaintenanceConfig();
 		this.detectStatus();
 	},
@@ -160,69 +169,99 @@ export default {
 
 	onHide() {
 		this.clearTimer();
+		this.clearExitTimer();
 	},
 
 	onUnload() {
 		this.clearTimer();
+		this.clearExitTimer();
 	},
 
 	methods: {
-		//读取后台「服务停止时段」配置（失败时沿用内置默认值）
-		async loadMaintenanceConfig() {
+		//读取后台「服务停止时段」配置（失败时沿用内置默认值），并返回本次判定结果
+		async loadMaintenanceConfig(options) {
 			try {
 				const res = await api.getMaintenanceConfig();
 				this.startText = (res.data && res.data.start) || DEFAULT_START;
 				this.endText = (res.data && res.data.end) || DEFAULT_END;
-				// 配置到达后重新判定一次
-				this.detectStatus();
+				// 配置已就绪，允许据此判定“维护已结束”
+				this._configLoaded = true;
+				this.configLoaded = true;
 			} catch (e) {
-				// 保持默认值
+				// 拉取失败：保留默认值，并标记为“未就绪”，避免据此误判为维护已结束
+				this._configLoaded = false;
+				this.configLoaded = false;
 			}
+			// 配置（或失败）到达后重新判定一次，并把结果返回给调用方
+			return await this.detectStatus(options);
 		},
 
-		//检测当前维护状态
-		async detectStatus() {
+		/**
+		 * 检测当前维护状态
+		 * @param {Object} [options] { notifyEnded:false } 时不在此弹「维护已结束」提示，由调用方提示
+		 * @returns {Object} { active, dailyActive, manualActive, reliable }
+		 *   active   是否处于维护中；reliable 结果是否可信（配置已加载且功能开关判定成功）
+		 */
+		async detectStatus(options) {
+			// 取消上一次可能存在的「回首页」定时器，避免配置到达后仍被跳走
+			this.clearExitTimer();
+
+			// 管理员维护开关（weihu_open 启用即代表管理员开启了维护）
+			let manualActive = false;
+			let notice = null;
+			let featureName = '';
+			let featureChecked = false; // 是否成功读到维护开关配置（失败时不能据此判定“维护已结束”）
+			try {
+				const sw = await feature.checkMaintenanceSwitch();
+				manualActive = !!(sw && sw.enabled === true);
+				if (sw && sw.announcement) {
+					notice = {
+						content: sw.announcement.content,
+						type: sw.announcement.type || 'info'
+					};
+				}
+				featureName = (sw && sw.featureName) || '';
+				// known=false 表示开关配置读取失败，此时不能判定“维护已结束”
+				featureChecked = !!(sw && sw.known);
+			} catch (e) {
+				// 拉取失败时无法确认维护是否结束，保持维护页展示
+				featureChecked = false;
+			}
+
+			// 关键：时段必须在上面 await 之后「重新读取」。
+			// 若在 await 之前读取，等待期间 loadMaintenanceConfig 可能已更新时段并置 _configLoaded=true，
+			// 就会出现「dailyActive 用旧（默认）时段算出 false、reliable 却已是 true」的误判，
+			// 导致每日时段维护时刚进页面就被判定“维护已结束”跳回首页（管理员手动维护不受影响）。
 			const now = new Date();
 			const startMin = toMinutes(this.startText);
 			const endMin = toMinutes(this.endText);
 			const nowMin = now.getHours() * 60 + now.getMinutes();
 			const dailyActive = inWindow(nowMin, startMin, endMin);
 
-			// 管理员维护开关（weihu_open 启用即代表管理员开启了维护）
-			let manualActive = false;
-			let notice = null;
-			let featureName = '';
-			try {
-				const result = await feature.checkFeature('weihu_open');
-				manualActive = !!(result && result.enabled === true);
-				if (result && result.announcement) {
-					notice = {
-						content: result.announcement.content,
-						type: result.announcement.type || 'info'
-					};
-				}
-				featureName = (result && result.featureName) || '';
-			} catch (e) {
-				// 拉取失败时按每日维护状态展示
-			}
-
 			const typeLabel = dailyActive && manualActive
-				? '每日维护 + 管理员维护'
-				: (dailyActive ? '每日例行维护' : (manualActive ? '管理员维护' : '维护结束'));
+				? '教务系统维护'
+				: (dailyActive ? '教务系统维护' : (manualActive ? '系统维护' : '维护结束'));
 
 			// 跨天时段显示“次日”，同日时段直接显示
 			const windowText = startMin < endMin
 				? ('每日 ' + this.startText + ' - ' + this.endText)
 				: ('每日 ' + this.startText + ' - 次日 ' + this.endText);
+			// 「维护时段」仅用于每日例行维护卡片（管理员维护卡片不展示该行）；
+			// 并且未成功加载后台时段时不展示兜底时段（避免把默认 23:00-06:00 误当成真实时段）
 			const maintenanceTime = dailyActive
-				? windowText
-				: (manualActive ? '时间待定（以公告为准）' : '—');
+				? (this._configLoaded ? windowText : '时间待确认（以公告为准）')
+				: '—';
+			// 「预计恢复」文案同样随后台时段动态生成，不写死结束时间
+			const recoverDesc = this._configLoaded
+				? ('维护期间课表、成绩、今日课程、宿舍电费等教务相关功能暂不可用，基础功能不受影响，' + this.endText + ' 后将自动恢复。')
+				: '维护期间课表、成绩、今日课程、宿舍电费等教务相关功能暂不可用，基础功能不受影响，恢复后将自动可用。';
 
 			this.loading = false;
 			this.dailyActive = dailyActive;
 			this.manualActive = manualActive;
 			this.typeLabel = typeLabel;
 			this.maintenanceTime = maintenanceTime;
+			this.recoverDesc = recoverDesc;
 			this.notice = notice;
 			this.featureName = featureName;
 			this.currentTime = this.formatTime(now);
@@ -234,12 +273,38 @@ export default {
 				this.countdown = '';
 			}
 
-			// 已不在任何维护状态：返回首页
-			if (!dailyActive && !manualActive) {
+			// 结果是否可信：配置已加载且功能开关判定成功；不可信时不应判定为“维护已结束”
+			const reliable = this._configLoaded && featureChecked;
+			const active = dailyActive || manualActive;
+
+			// 仅当结果可信且不在维护状态时，才判定维护已结束并返回首页；
+			// 否则（例如后台时段配置尚未返回、仍在使用默认时段）不跳转，
+			// 避免刚进入维护页就被误判为“维护已结束”而立刻跳回首页
+			if (!active && reliable) {
+				this.scheduleExitHome(!(options && options.notifyEnded === false));
+			}
+
+			return { active, dailyActive, manualActive, reliable };
+		},
+
+		//维护已结束时返回首页（可被后续检测取消）
+		//notify=false 时不在此提示，交由调用方在关闭 loading 后提示，避免提示被 hideLoading 覆盖
+		scheduleExitHome(notify) {
+			if (this._exitTimer) return;
+			if (notify !== false) {
 				uni.showToast({ title: '维护已结束', icon: 'none' });
-				setTimeout(() => {
-					uni.switchTab({ url: '/pages/white-home/index' });
-				}, 800);
+			}
+			this._exitTimer = setTimeout(() => {
+				this._exitTimer = null;
+				uni.switchTab({ url: '/pages/white-home/index' });
+			}, 800);
+		},
+
+		//取消「回首页」定时器（重新检测到维护中 / 页面隐藏时调用）
+		clearExitTimer() {
+			if (this._exitTimer) {
+				clearTimeout(this._exitTimer);
+				this._exitTimer = null;
 			}
 		},
 
@@ -281,11 +346,33 @@ export default {
 			return this.pad(date.getHours()) + ':' + this.pad(date.getMinutes());
 		},
 
-		//重新检测维护状态
-		onRecheck() {
-			uni.showLoading({ title: '检测中...' });
-			this.detectStatus();
-			setTimeout(() => uni.hideLoading(), 600);
+		//重新检测维护状态：等待检测真正完成后关闭 loading，并给出明确结果提示
+		async onRecheck() {
+			uni.showLoading({ title: '检测中...', mask: true });
+
+			let result = null;
+			try {
+				// 交由本方法提示结果，避免 detectStatus 内的提示被随后的 hideLoading 覆盖
+				result = await this.loadMaintenanceConfig({ notifyEnded: false });
+			} catch (e) {
+				result = null;
+			}
+			uni.hideLoading();
+
+			if (!result) {
+				uni.showToast({ title: '网络不佳，请检查网络后重试', icon: 'none' });
+				return;
+			}
+			if (result.active) {
+				uni.showToast({ title: '系统仍在维护中，请稍后再试。带来的不便我们深表歉意，请您谅解', icon: 'none' });
+				return;
+			}
+			if (!result.reliable) {
+				uni.showToast({ title: '网络不佳，请检查网络后重试', icon: 'none' });
+				return;
+			}
+			// 已不在维护状态：detectStatus 已安排好返回首页，这里给出提示
+			uni.showToast({ title: '维护已结束，感谢您的理解', icon: 'none' });
 		},
 
 		//联系客服：弹窗展示后台「首页配置」中维护的联系方式
@@ -371,6 +458,36 @@ page {
 	box-shadow: 0 -80rpx 80rpx 40rpx rgba(0, 0, 0, 0.2);
 	padding: 30rpx;
 	padding-bottom: 30rpx;
+}
+
+/* ===== 加载动画（与学术推送设置页保持一致） ===== */
+.loading-section {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: 100rpx 0;
+}
+
+.loading-spinner {
+	width: 60rpx;
+	height: 60rpx;
+	border: 4rpx solid #e0e0e0;
+	border-top-color: #13c2c2;
+	border-radius: 50%;
+	animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+.loading-text {
+	margin-top: 20rpx;
+	color: #666;
+	font-size: 28rpx;
 }
 
 .maintenance-card {

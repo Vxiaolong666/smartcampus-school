@@ -67,59 +67,69 @@ App({
    * 条件2：维护页面功能开关设置为启用（is_enabled = 1）
    */
   async checkMaintenanceTime() {
+    // 去重：onLaunch 与 onShow 会几乎同时触发，避免并发检查与并发导航互相取消
+    if (this._maintChecking) return;
+    this._maintChecking = true;
     try {
-      // 条件1：检查时间（使用后台配置的时段）
+      // 条件1：检查时间（使用后台配置的时段；getMaintenanceWindow 内部已做兜底，不会抛错）
       const win = await this.getMaintenanceWindow();
       const now = new Date();
       const nowMin = now.getHours() * 60 + now.getMinutes();
       const isMaintenanceTime = inWindow(nowMin, toMinutes(win.start), toMinutes(win.end));
 
-      // 条件2：检查功能开关
-      const featureStatus = await feature.checkFeature('weihu_open');
-      const isFeatureEnabled = featureStatus && featureStatus.enabled === true;
+      // 条件2：管理员是否手动开启维护
+      // 必须「明确读到 weihu_open 且 is_enabled=1」才算维护中；
+      // 接口失败 / 未配置该开关一律按未开启处理，避免误跳维护页
+      let isFeatureEnabled = false;
+      try {
+        const sw = await feature.checkMaintenanceSwitch();
+        isFeatureEnabled = !!(sw && sw.enabled === true);
+      } catch (e) {
+        isFeatureEnabled = false;
+      }
 
       // 满足任一条件则跳转
       if (isMaintenanceTime || isFeatureEnabled) {
-        // 获取当前页面路径
-        const pages = getCurrentPages();
-        const currentPage = pages[pages.length - 1];
-        const currentRoute = currentPage ? currentPage.route : '';
-
-        // 如果当前不在维护页面，则跳转
-        if (currentRoute !== 'pages/maintenance/index') {
-          wx.redirectTo({
-            url: '/pages/maintenance/index',
-            fail: () => {
-              // 如果 redirectTo 失败（比如是 tabBar 页面），使用 reLaunch
-              wx.reLaunch({
-                url: '/pages/maintenance/index'
-              });
-            }
-          });
-        }
+        this.navigateToMaintenance();
       }
-    } catch (error) {
-      // 如果检查失败，只根据时间判断
-      const now = new Date();
-      const hour = now.getHours();
-      const isMaintenanceTime = hour >= 23 || hour < 6;
-
-      if (isMaintenanceTime) {
-        const pages = getCurrentPages();
-        const currentPage = pages[pages.length - 1];
-        const currentRoute = currentPage ? currentPage.route : '';
-
-        if (currentRoute !== 'pages/maintenance/index') {
-          wx.redirectTo({
-            url: '/pages/maintenance/index',
-            fail: () => {
-              wx.reLaunch({
-                url: '/pages/maintenance/index'
-              });
-            }
-          });
-        }
-      }
+    } finally {
+      this._maintChecking = false;
     }
+  },
+
+  /**
+   * 跳转到系统维护页
+   * 维护页需要接管整个应用，直接使用 reLaunch 清空页面栈、一次性完成，
+   * 避免 redirectTo 失败后再 reLaunch 造成的「二次导航」与被取消的导航竞态
+   */
+  navigateToMaintenance() {
+    const pages = getCurrentPages();
+    const currentPage = pages[pages.length - 1];
+    const currentRoute = currentPage ? (currentPage.route || '') : '';
+    if (currentRoute === 'pages/maintenance/index') return; // 已在维护页
+    if (this._maintNavigating) return; // 已有跳转进行中
+
+    this._maintNavigating = true;
+    let attempts = 0;
+
+    const go = () => {
+      attempts++;
+      wx.reLaunch({
+        url: '/pages/maintenance/index',
+        success: () => {
+          this._maintNavigating = false;
+        },
+        fail: () => {
+          // 导航被新导航取消（如首屏路由切换）→ 稍后重试，最多 3 次
+          if (attempts < 3) {
+            setTimeout(go, 300);
+          } else {
+            this._maintNavigating = false;
+          }
+        }
+      });
+    };
+
+    go();
   }
 })

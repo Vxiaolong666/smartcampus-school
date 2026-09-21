@@ -1,7 +1,7 @@
 <template>
 	<view class="container">
 		<cb-nav-bar :show-back="true">
-			<view class="nav-title">电费信息推送设置</view>
+			<view class="nav-title">电费推送设置</view>
 		</cb-nav-bar>
 
 		<view class="background-wrapper">
@@ -29,7 +29,7 @@
 						<image class="action-icon" src="/static/assets/wxmp-lightbulb.svg" mode="widthFix"></image>
 						<text>推送说明</text>
 					</view>
-					<view class="action-desc">开启推送后，系统会根据您的设置自动推送电费相关提醒消息</view>
+					<view class="action-desc">开启推送后，系统才会记录宿舍用电信息和根据您的设置自动推送电费相关提醒消息，如发现无历史电费信息，请开启此功能。</view>
 				</view>
 
 				<view v-for="(item, index) in dormitories" :key="item.id" class="dorm-card">

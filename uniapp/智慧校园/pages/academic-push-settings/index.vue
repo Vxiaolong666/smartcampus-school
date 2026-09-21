@@ -1,7 +1,7 @@
 <template>
 	<view class="container">
 		<cb-nav-bar :show-back="true">
-			<view class="nav-title">学术推送设置</view>
+			<view class="nav-title">{{ pageTitle }}</view>
 		</cb-nav-bar>
 
 		<view class="background-wrapper">
@@ -20,8 +20,8 @@
 			<view v-else-if="!hasAcademicAccount" class="form-card">
 				<view class="card-header">
 					<image class="card-logo" src="/static/assets/048-presentation.svg" mode="widthFix"></image>
-					<view class="card-title">学术推送设置</view>
-					<view class="card-desc">开启后可自动推送课程提醒和成绩通知</view>
+					<view class="card-title">{{ pageTitle }}</view>
+					<view class="card-desc">{{ pageDesc }}</view>
 				</view>
 				<view class="empty-tip">
 					<text>请先绑定教务账号后再设置学术推送</text>
@@ -33,8 +33,8 @@
 				<view class="form-card">
 					<view class="card-header">
 						<image class="card-logo" src="/static/assets/048-presentation.svg" mode="widthFix"></image>
-						<view class="card-title">学术推送设置</view>
-						<view class="card-desc">开启后可自动推送课程提醒和成绩通知</view>
+						<view class="card-title">{{ pageTitle }}</view>
+						<view class="card-desc">{{ pageDesc }}</view>
 					</view>
 
 					<view class="bound-info">
@@ -125,11 +125,22 @@
 import api from '../../utils/api.js';
 import feature from '../../utils/feature.js';
 
+// 入口场景 → 页面标题 / 卡片副标题
+// 「我的」页的「课程推送设置」与「成绩推送设置」共用本页，按入口动态展示标题与说明
+const PAGE_META = {
+    default: { title: '学术推送设置', desc: '开启后可自动推送课程提醒和成绩通知' },
+    course: { title: '课程推送设置', desc: '开启后可自动推送课程提醒' },
+    grade: { title: '成绩推送设置', desc: '开启后可自动推送成绩通知' }
+};
+
 export default {
 	data() {
 		return {
 			featureEnabled: true,
 			announcement: null,
+			scene: '',                            // 入口场景：course=课程推送，grade=成绩推送，空=学术推送
+			pageTitle: PAGE_META.default.title,    // 页面标题（按入口动态展示）
+			pageDesc: PAGE_META.default.desc,      // 卡片副标题（按入口动态展示）
 			studentId: '',
 			hasAcademicAccount: false,
 			isEnabled: false,
@@ -153,7 +164,17 @@ export default {
 		};
 	},
 
-	onLoad() {
+	onLoad(options) {
+		// 按入口动态展示标题与副标题：「我的」页的课程/成绩推送设置均跳转到本页
+		const scene = (options && options.scene) ? String(options.scene) : 'default';
+		const meta = PAGE_META[scene] || PAGE_META.default;
+		this.scene = scene;
+		this.pageTitle = meta.title;
+		this.pageDesc = meta.desc;
+		try {
+			uni.setNavigationBarTitle({ title: this.pageTitle });
+		} catch (e) {}
+
 		this.checkFeature().then(canProceed => {
 			if (canProceed) {
 				this.loadSettings();

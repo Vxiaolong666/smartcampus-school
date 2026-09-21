@@ -9,7 +9,12 @@
   </view>
 
   <view class="content-wrapper">
-    <view class="maintenance-card">
+    <view wx:if="{{loading}}" class="loading-section">
+      <view class="loading-spinner"></view>
+      <text class="loading-text">加载中...</text>
+    </view>
+
+    <view wx:else class="maintenance-card">
       <view class="card-header">
         <image class="card-logo" src="/assets/wxmp-logo.svg" mode="widthFix"></image>
         <view class="card-title">系统维护中</view>
@@ -18,7 +23,7 @@
 
       <view class="maintenance-content">
         <view class="maintenance-icon-wrapper">
-          <image class="maintenance-icon" src="/assets/wxmp-clock.svg" mode="widthFix"></image>
+          <image class="maintenance-icon" src="{{manualOnly ? iconShield : '/assets/wxmp-clock.svg'}}" mode="widthFix"></image>
         </view>
 
         <!-- 每日例行维护 -->
@@ -43,9 +48,7 @@
               <text class="reason-label">预计恢复</text>
               <text class="reason-value countdown">{{countdown}} 后</text>
             </view>
-            <view class="reason-desc">
-              维护期间课表、成绩、今日课程等教务相关功能暂不可用，宿舍电费等功能不受影响，06:00 后将自动恢复。
-            </view>
+            <view class="reason-desc">{{recoverDesc}}</view>
           </view>
         </view>
 
@@ -54,18 +57,14 @@
           <view class="reason-head">
             <image class="reason-icon-img" src="{{iconShield}}" mode="aspectFit"></image>
             <view class="reason-title-wrap">
-              <view class="reason-title">管理员维护{{featureName ? '（' + featureName + '）' : ''}}</view>
-              <view class="reason-sub">系统维护已由管理员手动开启</view>
+              <view class="reason-title">系统正在维护</view>
+              <view class="reason-sub">不便之处敬请谅解</view>
             </view>
           </view>
           <view class="reason-body">
-            <view class="reason-row">
-              <text class="reason-label">维护时段</text>
-              <text class="reason-value">{{maintenanceTime}}</text>
-            </view>
             <!-- 后台配置的实际维护信息 -->
             <view class="notice-box" wx:if="{{notice}}">
-              <view class="notice-title">维护公告</view>
+              <view class="notice-title">功能维护公告</view>
               <view class="notice-content">{{notice.content}}</view>
             </view>
             <view class="notice-box" wx:else>
@@ -77,7 +76,7 @@
         <view class="maintenance-section">
           <view class="section-title">温馨提示</view>
           <view class="section-text">
-            如需紧急帮助，可点击下方「联系客服」直接发起客服会话。系统恢复后重新进入即可正常使用。
+            如需紧急帮助，可点击下方「联系客服」与我们取得联系。系统恢复后重新进入即可正常使用。
           </view>
         </view>
       </view>
@@ -88,7 +87,7 @@
           <view class="action-btn action-primary" bindtap="openContactGuide">联系客服</view>
           <button class="action-btn action-plain" bindtap="onRecheck">重新检测</button>
         </view>
-        <view class="footer-text">感谢您的耐心等待</view>
+        <view class="footer-text">感谢您的耐心等待，我们会尽快恢复。</view>
       </view>
     </view>
   </view>
