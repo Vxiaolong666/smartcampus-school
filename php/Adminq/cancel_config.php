@@ -12,7 +12,6 @@ include './head.php';
 
 $cfg = cancelGetConfig();
 $modes = cancelVerifyModes();
-$defaultAgreement = cancelDefaultAgreement();
 $agreementConfigured = trim($cfg['agreement']) !== '';
 
 $pendingCount = (int)$DB->getColumn("SELECT COUNT(*) FROM nteam_account_deletions WHERE status='pending'");
@@ -70,6 +69,9 @@ $logActionMap = [
     'delete' => ['正式注销', 'success'],
     'failed' => ['注销失败', 'danger'],
 ];
+
+// 当前 tab（默认显示注销设置）
+$activeTab = isset($_GET['tab']) ? $_GET['tab'] : 'config';
 
 // 分页渲染（$base 形如 '?rstatus=deleted&rpage=' ，末尾直接拼页码）
 if (!function_exists('cancelPager')) {
@@ -162,6 +164,19 @@ if (!function_exists('cancelPager')) {
         </div>
 
         <!-- 配置表单 -->
+        <ul class="nav nav-tabs mt-4" role="tablist">
+            <li class="nav-item">
+                <a class="nav-link <?php echo $activeTab === 'config' ? 'active' : ''; ?>" href="?tab=config">注销设置</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link <?php echo $activeTab === 'records' ? 'active' : ''; ?>" href="?tab=records">注销记录</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link <?php echo $activeTab === 'logs' ? 'active' : ''; ?>" href="?tab=logs">注销日志</a>
+            </li>
+        </ul>
+
+        <?php if ($activeTab === 'config'): ?>
         <div class="block block-rounded">
             <div class="block-header block-header-default">
                 <h3 class="block-title">注销设置</h3>
@@ -261,8 +276,7 @@ if (!function_exists('cancelPager')) {
                         <label class="form-label"><b>《用户注销服务协议》</b>（支持 Markdown）</label>
                         <textarea class="form-control" name="agreement" id="agreementText" rows="12" style="font-size:13px;"><?php echo htmlspecialchars($cfg['agreement']); ?></textarea>
                         <div class="form-text">
-                            使用 Markdown 编写，用户端按 Markdown 渲染；用户须阅读并同意本协议后方可进入注销流程。请确保内容合规（建议由法务确认）。
-                            <a href="javascript:void(0)" onclick="restoreAgreement()">恢复默认协议</a>
+                            使用 Markdown 编写，用户端按 Markdown 渲染；用户须阅读并同意本协议后方可进入注销流程。
                         </div>
                     </div>
 
@@ -275,6 +289,9 @@ if (!function_exists('cancelPager')) {
             </div>
         </div>
 
+        <?php endif; ?>
+
+        <?php if ($activeTab === 'records'): ?>
         <!-- 注销记录 -->
         <div class="block block-rounded">
             <div class="block-header block-header-default">
@@ -286,11 +303,11 @@ if (!function_exists('cancelPager')) {
             </div>
             <div class="block-content">
                 <div class="mb-3">
-                    <a class="btn btn-sm <?php echo $recStatus === '' ? 'btn-primary' : 'btn-alt-primary'; ?>" href="cancel_config.php">全部</a>
-                    <a class="btn btn-sm <?php echo $recStatus === 'pending' ? 'btn-primary' : 'btn-alt-primary'; ?>" href="cancel_config.php?rstatus=pending">冷静期中</a>
-                    <a class="btn btn-sm <?php echo $recStatus === 'cancelled' ? 'btn-primary' : 'btn-alt-primary'; ?>" href="cancel_config.php?rstatus=cancelled">已撤销</a>
-                    <a class="btn btn-sm <?php echo $recStatus === 'deleted' ? 'btn-primary' : 'btn-alt-primary'; ?>" href="cancel_config.php?rstatus=deleted">已注销</a>
-                    <a class="btn btn-sm <?php echo $recStatus === 'failed' ? 'btn-primary' : 'btn-alt-primary'; ?>" href="cancel_config.php?rstatus=failed">删除失败</a>
+                    <a class="btn btn-sm <?php echo $recStatus === '' ? 'btn-primary' : 'btn-alt-primary'; ?>" href="?tab=records">全部</a>
+                    <a class="btn btn-sm <?php echo $recStatus === 'pending' ? 'btn-primary' : 'btn-alt-primary'; ?>" href="?tab=records&rstatus=pending">冷静期中</a>
+                    <a class="btn btn-sm <?php echo $recStatus === 'cancelled' ? 'btn-primary' : 'btn-alt-primary'; ?>" href="?tab=records&rstatus=cancelled">已撤销</a>
+                    <a class="btn btn-sm <?php echo $recStatus === 'deleted' ? 'btn-primary' : 'btn-alt-primary'; ?>" href="?tab=records&rstatus=deleted">已注销</a>
+                    <a class="btn btn-sm <?php echo $recStatus === 'failed' ? 'btn-primary' : 'btn-alt-primary'; ?>" href="?tab=records&rstatus=failed">删除失败</a>
                 </div>
                 <?php if (!$auditTableExists): ?>
                     <div class="alert alert-warning mb-0">未检测到数据表 <code>nteam_account_deletions</code>，请先执行数据库更新脚本。</div>
@@ -343,11 +360,14 @@ if (!function_exists('cancelPager')) {
                         </tbody>
                     </table>
                 </div>
-                <?php echo cancelPager($recPage, $recPages, '?' . ($recStatus !== '' ? 'rstatus=' . $recStatus . '&' : '') . 'rpage='); ?>
+                <?php echo cancelPager($recPage, $recPages, '?tab=records&' . ($recStatus !== '' ? 'rstatus=' . $recStatus . '&' : '') . 'rpage='); ?>
                 <?php endif; ?>
             </div>
         </div>
 
+        <?php endif; ?>
+
+        <?php if ($activeTab === 'logs'): ?>
         <!-- 注销日志 -->
         <div class="block block-rounded">
             <div class="block-header block-header-default">
@@ -400,17 +420,17 @@ if (!function_exists('cancelPager')) {
                         </tbody>
                     </table>
                 </div>
-                <?php echo cancelPager($logPage, $logPages, '?lpage='); ?>
+                <?php echo cancelPager($logPage, $logPages, '?tab=logs&lpage='); ?>
                 <?php endif; ?>
             </div>
         </div>
+        <?php endif; ?>
     </div>
 </div>
 <?php include 'foot.php'?>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css">
 <script src="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js"></script>
 <script>
-var DEFAULT_AGREEMENT = <?php echo json_encode($defaultAgreement, JSON_UNESCAPED_UNICODE); ?>;
 var agreementMDE = null;
 
 $(function () {
@@ -429,13 +449,6 @@ $(function () {
 
 function setAgreementValue(val) {
     if (agreementMDE) { agreementMDE.value(val); } else { $('#agreementText').val(val); }
-}
-
-function restoreAgreement(){
-    layer.confirm('确定要恢复为默认协议内容吗？当前编辑的内容将被覆盖。', {btn: ['确定','取消']}, function(){
-        setAgreementValue(DEFAULT_AGREEMENT);
-        layer.closeAll();
-    });
 }
 
 // 删除单条注销记录（日志删除会同时删除其来源记录）

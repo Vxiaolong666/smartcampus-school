@@ -627,6 +627,33 @@ switch($act){
         }
     break;
     
+    case 'toggle_feature_status':
+        if(!$isLogin)exit('{"code":-1,"msg":"未登录"}');
+        if($adminData['adminRank']!=1){exit('{"code":-1,"msg":"您的账号没有权限使用此功能！"}');}
+        
+        $id = intval($_POST['id']);
+        $isEnabled = intval($_POST['is_enabled']);
+        
+        if ($id <= 0) {
+            exit('{"code":-1,"msg":"参数错误"}');
+        }
+        
+        $existing = $DB->getRow("SELECT * FROM nteam_feature_settings WHERE id='$id'");
+        if (!$existing) {
+            exit('{"code":-1,"msg":"功能设置不存在"}');
+        }
+        
+        $sql = "UPDATE nteam_feature_settings SET is_enabled='$isEnabled' WHERE id='$id'";
+        
+        if ($DB->exec($sql) !== false) {
+            $statusText = $isEnabled == 1 ? '启用' : '禁用';
+            $DB->query("insert into `nteam_log` (`adminUser`,`type`,`data`,`ip`,`city`) values ('" . $_SESSION['adminUser'] . "','将功能设置「" . $existing['feature_name'] . "」" . $statusText . "', NOW(), '".$ip."', '')");
+            exit('{"code":0,"msg":"已'.$statusText.'"}');
+        } else {
+            exit('{"code":-1,"msg":"操作失败"}');
+        }
+    break;
+    
     case 'save_wx_config':
         if(!$isLogin) exit('{"code":-1,"msg":"未登录"}');
         if($adminData['adminRank']!=1) exit('{"code":-1,"msg":"您的账号没有权限使用此功能！"}');

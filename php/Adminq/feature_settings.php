@@ -45,6 +45,13 @@ $features = $DB->query("SELECT * FROM nteam_feature_settings ORDER BY id ASC")->
                         .table-responsive table th {
                             white-space: nowrap;
                         }
+                        .status-toggle {
+                            cursor: pointer;
+                            transition: opacity .15s ease;
+                        }
+                        .status-toggle:hover {
+                            opacity: .75;
+                        }
                     </style>
                     <table class="table table-bordered table-striped table-vcenter">
                         <thead>
@@ -67,9 +74,9 @@ $features = $DB->query("SELECT * FROM nteam_feature_settings ORDER BY id ASC")->
                                 <td><code><?php echo htmlspecialchars($feature['feature_key']); ?></code></td>
                                 <td class="text-center">
                                     <?php if($feature['is_enabled'] == 1): ?>
-                                    <span class="badge bg-success">已启用</span>
+                                    <span id="status-badge-<?php echo $feature['id']; ?>" class="badge bg-success status-toggle" onclick="toggleFeature(<?php echo $feature['id']; ?>, 1)" title="点击禁用">已启用</span>
                                     <?php else: ?>
-                                    <span class="badge bg-danger">已禁用</span>
+                                    <span id="status-badge-<?php echo $feature['id']; ?>" class="badge bg-danger status-toggle" onclick="toggleFeature(<?php echo $feature['id']; ?>, 0)" title="点击启用">已禁用</span>
                                     <?php endif; ?>
                                 </td>
                                 <td>
@@ -173,6 +180,42 @@ $features = $DB->query("SELECT * FROM nteam_feature_settings ORDER BY id ASC")->
 <?php include 'foot.php'?>
 <script>
 var featureData = <?php echo json_encode($features); ?>;
+
+function toggleFeature(id, current) {
+    var badge = document.getElementById('status-badge-' + id);
+    if (!badge) return;
+    var newStatus = current == 1 ? 0 : 1;
+
+    var ii = layer.load(2, {shade: [0.1, '#fff']});
+    $.ajax({
+        type: 'POST',
+        url: 'Ajax.php?act=toggle_feature_status',
+        data: {id: id, is_enabled: newStatus},
+        dataType: 'json',
+        success: function(data) {
+            layer.close(ii);
+            if (data.code == 0) {
+                if (newStatus == 1) {
+                    badge.className = 'badge bg-success status-toggle';
+                    badge.title = '点击禁用';
+                    badge.textContent = '已启用';
+                } else {
+                    badge.className = 'badge bg-danger status-toggle';
+                    badge.title = '点击启用';
+                    badge.textContent = '已禁用';
+                }
+                badge.setAttribute('onclick', 'toggleFeature(' + id + ', ' + newStatus + ')');
+                layer.msg(data.msg, {icon: 1});
+            } else {
+                layer.alert(data.msg, {icon: 2});
+            }
+        },
+        error: function() {
+            layer.close(ii);
+            layer.msg('服务器错误');
+        }
+    });
+}
 
 function editFeature(id) {
     var feature = featureData.find(function(f) { return f.id == id; });

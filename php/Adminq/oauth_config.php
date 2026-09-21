@@ -13,10 +13,40 @@ require_once '../funsion/OAuthHelper.php';
 $config = OAuthHelper::getConfig($DB);
 $enabledChannels = $config && !empty($config['channels_arr']) ? $config['channels_arr'] : [];
 
-// 用户第三方绑定信息（关联用户表，便于判断账号是否存在）
-$bindings = $DB->getAll("SELECT o.*, u.username, u.email FROM nteam_user_oauth o LEFT JOIN nteam_users u ON o.user_id = u.id ORDER BY o.id DESC");
+// 用户第三方绑定信息（关联用户表，便于判断账号是否存在，分页展示）
+$pageSize = 20;
+$page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+$offset = ($page - 1) * $pageSize;
+$bindTotal = (int)$DB->getColumn("SELECT COUNT(*) FROM nteam_user_oauth");
+$bindPages = max(1, (int)ceil($bindTotal / $pageSize));
+$bindings = $DB->getAll("SELECT o.*, u.username, u.email FROM nteam_user_oauth o LEFT JOIN nteam_users u ON o.user_id = u.id ORDER BY o.id DESC LIMIT $offset, $pageSize");
 if (!is_array($bindings)) {
     $bindings = [];
+}
+
+// 当前 tab（默认显示聚合登录设置）
+$activeTab = isset($_GET['tab']) ? $_GET['tab'] : 'config';
+
+// 分页渲染辅助（与 cancel_config / home_config 一致）
+if (!function_exists('oauthPager')) {
+    function oauthPager($curPage, $pages, $base) {
+        if ($pages <= 1) return '';
+        $html = '<nav class="mt-3"><ul class="pagination justify-content-center flex-wrap">';
+        if ($curPage > 1) {
+            $html .= '<li class="page-item"><a class="page-link" href="' . $base . ($curPage - 1) . '">上一页</a></li>';
+        }
+        $start = max(1, $curPage - 2);
+        $end   = min($pages, $curPage + 2);
+        for ($i = $start; $i <= $end; $i++) {
+            $active = ($i == $curPage) ? ' active' : '';
+            $html .= '<li class="page-item' . $active . '"><a class="page-link" href="' . $base . $i . '">' . $i . '</a></li>';
+        }
+        if ($curPage < $pages) {
+            $html .= '<li class="page-item"><a class="page-link" href="' . $base . ($curPage + 1) . '">下一页</a></li>';
+        }
+        $html .= '</ul></nav>';
+        return $html;
+    }
 }
 ?>
 <div id="pjax-container">
@@ -42,6 +72,19 @@ if (!is_array($bindings)) {
         </div>
     </div>
     <div class="content animated fadeIn">
+        <ul class="nav nav-tabs mt-4" role="tablist">
+            <li class="nav-item">
+                <a class="nav-link <?php echo $activeTab === 'config' ? 'active' : ''; ?>" href="?tab=config">聚合登录设置</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link <?php echo $activeTab === 'bindings' ? 'active' : ''; ?>" href="?tab=bindings">用户绑定</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link <?php echo $activeTab === 'help' ? 'active' : ''; ?>" href="?tab=help">配置说明</a>
+            </li>
+        </ul>
+
+        <?php if ($activeTab === 'config'): ?>
         <div class="block block-rounded">
             <div class="block-header block-header-default">
                 <h3 class="block-title">聚合登录设置</h3>
@@ -109,12 +152,15 @@ if (!is_array($bindings)) {
             </div>
         </div>
 
+        <?php endif; ?>
+
+        <?php if ($activeTab === 'bindings'): ?>
         <div class="block block-rounded">
             <div class="block-header block-header-default">
                 <h3 class="block-title">用户绑定信息</h3>
                 <div class="block-options">
                     <button type="button" class="btn btn-sm btn-alt-danger me-2" onclick="clearInvalidOauth()"><i class="fa fa-broom me-1"></i>清除无效</button>
-                    <span class="badge bg-primary">共 <?php echo count($bindings); ?> 条</span>
+                    <span class="badge bg-primary">共 <?php echo $bindTotal; ?> 条</span>
                 </div>
             </div>
             <div class="block-content">
@@ -131,9 +177,9 @@ if (!is_array($bindings)) {
                                 <th class="text-center" style="width:60px;">ID</th>
                                 <th style="min-width:90px;">渠道</th>
                                 <th style="min-width:130px;">第三方账号</th>
-                                <th class="d-none d-md-table-cell" style="min-width:150px;">第三方UID</th>
-                                <th style="min-width:130px;">绑定用户</th>
-                                <th class="d-none d-sm-table-cell" style="min-width:150px;">绑定时间</th>
+                                <th class="d-none d-md-table-cell" style="min-width:110px;">第三方UID</th>
+                                <th style="min-width:110px;">绑定用户</th>
+                                <th class="d-none d-sm-table-cell" style="min-width:120px;">绑定时间</th>
                                 <th class="text-center" style="min-width:90px;">状态</th>
                                 <th class="text-center" style="min-width:80px;">操作</th>
                             </tr>
@@ -188,10 +234,14 @@ if (!is_array($bindings)) {
                         </tbody>
                     </table>
                 </div>
+                <?php echo oauthPager($page, $bindPages, '?tab=bindings&page='); ?>
                 <?php endif; ?>
             </div>
         </div>
 
+        <?php endif; ?>
+
+        <?php if ($activeTab === 'help'): ?>
         <div class="block block-rounded">
             <div class="block-header block-header-default">
                 <h3 class="block-title">配置说明</h3>
@@ -214,6 +264,7 @@ if (!is_array($bindings)) {
                 </div>
             </div>
         </div>
+        <?php endif; ?>
     </div>
 </div>
 <?php include 'foot.php'?>

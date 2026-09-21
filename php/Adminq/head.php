@@ -1,6 +1,9 @@
 <?php
 $mod = 'admin';
-$title='后台管理';
+// 仅当页面未自定义标题时才使用默认标题，避免覆盖各页面已设置的 $title（否则标题与面包屑都显示"后台管理"）
+if (!isset($title) || trim($title) === '') {
+    $title = '后台管理';
+}
 /**
  * @var \lib\PdoHelper $DB
  */
@@ -473,6 +476,12 @@ include('../Common/Core_brain.php');
                                         <?php if($adminData['adminRank']==1){?>
                                             <li class="nav-main-heading">Users</li>
                                             <li class="nav-main-item">
+                                                <a class="nav-main-link" href="announcements.php">
+                                                    <i class="nav-main-link-icon fa fa-bullhorn"></i>
+                                                    <span class="nav-main-link-name"><b>公告管理</b></span>
+                                                </a>
+                                            </li>
+                                            <li class="nav-main-item">
                                                 <a class="nav-main-link" href="ulist.php">
                                                     <i class="nav-main-link-icon fa fa-users"></i>
                                                     <span class="nav-main-link-name"><b>用户管理</b></span>
@@ -521,23 +530,11 @@ include('../Common/Core_brain.php');
                                                     <span class="nav-main-link-name"><b>学术推送配置</b></span>
                                                 </a>
                                             </li>
-                                            <li class="nav-main-item">
-                                                <a class="nav-main-link" href="cron_config.php">
-                                                    <i class="nav-main-link-icon fa fa-clock"></i>
-                                                    <span class="nav-main-link-name"><b>定时任务配置</b></span>
-                                                </a>
-                                            </li>
                                             <li class="nav-main-heading">Content</li>
                                             <li class="nav-main-item">
                                                 <a class="nav-main-link" href="feature_settings.php">
                                                     <i class="nav-main-link-icon fa fa-toggle-on"></i>
                                                     <span class="nav-main-link-name"><b>功能设置</b></span>
-                                                </a>
-                                            </li>
-                                            <li class="nav-main-item">
-                                                <a class="nav-main-link" href="announcements.php">
-                                                    <i class="nav-main-link-icon fa fa-bullhorn"></i>
-                                                    <span class="nav-main-link-name"><b>公告管理</b></span>
                                                 </a>
                                             </li>
                                             <li class="nav-main-item">
@@ -552,7 +549,6 @@ include('../Common/Core_brain.php');
                                                     <span class="nav-main-link-name"><b>轮播图配置</b></span>
                                                 </a>
                                             </li>
-                                            <li class="nav-main-heading">Settings</li>
                                             <li class="nav-main-item">
                                                 <a class="nav-main-link" href="set.php">
                                                     <i class="nav-main-link-icon fa fa-cogs"></i>
@@ -565,6 +561,7 @@ include('../Common/Core_brain.php');
                                                     <span class="nav-main-link-name"><b>邮箱配置</b></span>
                                                 </a>
                                             </li>
+                                            <li class="nav-main-heading">Settings</li>
                                             <li class="nav-main-item">
                                                 <a class="nav-main-link" href="wx_config.php">
                                                     <i class="nav-main-link-icon fab fa-weixin"></i>
@@ -624,6 +621,13 @@ include('../Common/Core_brain.php');
                                                 <a class="nav-main-link" href="api_doc.php">
                                                     <i class="nav-main-link-icon fa fa-code"></i>
                                                     <span class="nav-main-link-name"><b>API文档</b></span>
+                                                </a>
+                                            </li>
+                                            
+                                            <li class="nav-main-item">
+                                                <a class="nav-main-link" href="cron_config.php">
+                                                    <i class="nav-main-link-icon fa fa-clock"></i>
+                                                    <span class="nav-main-link-name"><b>定时任务说明</b></span>
                                                 </a>
                                             </li>
                                             <?php } ?>

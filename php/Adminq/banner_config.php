@@ -141,7 +141,12 @@ if ($tablesReady && isset($_GET['edit'])) {
                     <?php endif; ?>
 
                     <!-- ============ 新增 / 编辑表单 ============ -->
-                    <form id="bannerForm" onsubmit="return saveBanner(this)" method="post" name="banner-form">
+                    <?php if (!$editBanner): ?>
+                    <button type="button" class="btn btn-primary mb-3" id="addBannerBtn" onclick="document.getElementById('bannerForm').style.display='block'; this.style.display='none';">
+                        <i class="fa fa-plus me-1"></i> 增加轮播图
+                    </button>
+                    <?php endif; ?>
+                    <form id="bannerForm" onsubmit="return saveBanner(this)" method="post" name="banner-form"<?php if(!$editBanner) echo ' style="display:none;"'; ?>>
                         <input type="hidden" name="id" id="bannerId" value="<?php echo $editBanner ? intval($editBanner['id']) : 0; ?>">
                         <input type="hidden" name="image" id="bannerImage" value="<?php echo h($editBanner ? $editBanner['image'] : ''); ?>">
                         <div class="row">
@@ -215,6 +220,8 @@ if ($tablesReady && isset($_GET['edit'])) {
                             </button>
                             <?php if ($editBanner): ?>
                             <a href="banner_config.php" class="btn btn-alt-secondary">取消编辑</a>
+                            <?php else: ?>
+                            <a href="javascript:void(0)" class="btn btn-alt-secondary" onclick="document.getElementById('bannerForm').style.display='none'; document.getElementById('addBannerBtn').style.display='inline-block';">取消</a>
                             <?php endif; ?>
                         </div>
                     </form>

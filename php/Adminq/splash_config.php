@@ -162,7 +162,12 @@ $siteRoot = isset($siteBasePath) ? $siteBasePath : '';
                 <?php else: ?>
 
                 <!-- ============ 新增 / 编辑表单 ============ -->
-                <form id="splashForm" onsubmit="return saveSplash(this)" method="post" name="splash-form">
+                <?php if (!$editAd): ?>
+                <button type="button" class="btn btn-primary mb-3" id="addSplashBtn" onclick="document.getElementById('splashForm').style.display='block'; this.style.display='none';">
+                    <i class="fa fa-plus me-1"></i> 增加广告
+                </button>
+                <?php endif; ?>
+                <form id="splashForm" onsubmit="return saveSplash(this)" method="post" name="splash-form"<?php if(!$editAd) echo ' style="display:none;"'; ?>>
                     <input type="hidden" name="id" id="splashId" value="<?php echo $editAd ? intval($editAd['id']) : 0; ?>">
                     <input type="hidden" name="image" id="splashImage" value="<?php echo h(isset($editAd['image']) ? $editAd['image'] : ''); ?>">
                     <div class="row">
@@ -228,6 +233,8 @@ $siteRoot = isset($siteBasePath) ? $siteBasePath : '';
                         </button>
                         <?php if ($editAd): ?>
                         <a href="splash_config.php" class="btn btn-alt-secondary">取消编辑</a>
+                        <?php else: ?>
+                        <a href="javascript:void(0)" class="btn btn-alt-secondary" onclick="document.getElementById('splashForm').style.display='none'; document.getElementById('addSplashBtn').style.display='inline-block';">取消</a>
                         <?php endif; ?>
                     </div>
                 </form>

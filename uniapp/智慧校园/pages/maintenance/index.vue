@@ -93,6 +93,8 @@
 				</view>
 			</view>
 		</view>
+		<!-- 联系客服自定义弹窗（参考更新弹窗样式） -->
+		<contact-modal :show="contactShow" :lines="contactLines" @close="contactShow = false" />
 	</view>
 </template>
 
@@ -140,7 +142,9 @@ export default {
 			featureName: '',        // 后台功能名称
 			currentTime: '',        // 当前时间 HH:mm
 			startText: DEFAULT_START, // 后台配置的维护开始时间
-			endText: DEFAULT_END      // 后台配置的维护结束时间
+			endText: DEFAULT_END,     // 后台配置的维护结束时间
+			contactShow: false,
+			contactLines: []
 		};
 	},
 
@@ -309,20 +313,9 @@ export default {
 				lines.push('暂未配置联系方式，请在「我的」页面通过「联系客服」功能与我们取得联系。');
 			}
 
-			uni.showModal({
-				title: '联系客服',
-				content: lines.join('\n'),
-				confirmText: '复制',
-				cancelText: '关闭',
-				success: (r) => {
-					if (!r.confirm || !lines.length) return;
-					uni.setClipboardData({
-						data: lines.join('\n'),
-						success: () => uni.showToast({ title: '已复制', icon: 'none' })
-					});
-				}
-			});
-		}
+			this.contactLines = lines;
+			this.contactShow = true;
+			}
 	}
 };
 </script>

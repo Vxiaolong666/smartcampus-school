@@ -198,6 +198,8 @@
 				</view>
 			</view>
 		</view>
+		<!-- 联系客服自定义弹窗（参考更新弹窗样式） -->
+		<contact-modal :show="contactShow" :lines="contactLines" @close="contactShow = false" />
 	</view>
 </template>
 
@@ -227,7 +229,9 @@ export default {
 			// 缓存占用展示文案（如 "1.24 MB"）
 			cacheSizeText: '--',
 			// 上次加载数据的时间戳，用于避免频繁切换页面时重复请求
-			_lastLoadAt: 0
+			_lastLoadAt: 0,
+			contactShow: false,
+			contactLines: []
 		};
 	},
 
@@ -471,20 +475,9 @@ export default {
 				lines.push('暂未配置联系方式，请通过「我的」页面中的「联系客服」与我们取得联系。');
 			}
 
-			uni.showModal({
-				title: '联系客服',
-				content: lines.join('\n'),
-				confirmText: '复制',
-				cancelText: '关闭',
-				success: (r) => {
-					if (!r.confirm) return;
-					uni.setClipboardData({
-						data: lines.join('\n'),
-						success: () => uni.showToast({ title: '已复制', icon: 'none' })
-					});
-				}
-			});
-		},
+			this.contactLines = lines;
+			this.contactShow = true;
+			},
 
 		handleLogin() {
 			uni.navigateTo({

@@ -21,14 +21,7 @@ try {
     $tablesReady = false;
 }
 
-$cfg       = $tablesReady ? homeConfig() : array();
-$downloads = $tablesReady ? homeDownloadList(false) : array();
-$faqs      = $tablesReady ? homeFaqList(false) : array();
-$msgs      = array();
-if ($tablesReady) {
-    $rs = @$DB->query("SELECT * FROM nteam_contact_msgs ORDER BY `id` DESC LIMIT 100");
-    if ($rs) { while ($r = $rs->fetch()) $msgs[] = $r; }
-}
+$cfg = $tablesReady ? homeConfig() : array();
 
 function cfgVal($cfg, $k, $d = '') {
     return isset($cfg[$k]) && $cfg[$k] !== '' && $cfg[$k] !== null ? $cfg[$k] : $d;
@@ -49,6 +42,54 @@ if ($tablesReady && isset($_GET['edit_faq'])) {
     $eid = intval($_GET['edit_faq']);
     $rs = @$DB->query("SELECT * FROM nteam_home_faq WHERE `id`='{$eid}'");
     if ($rs) $editFaq = $rs->fetch();
+}
+
+// ===== 列表分页（每个 tab 使用独立页码） =====
+$pageSize = 15;
+$dlPage = isset($_GET['dpage']) ? max(1, intval($_GET['dpage'])) : 1;
+$fqPage = isset($_GET['fpage']) ? max(1, intval($_GET['fpage'])) : 1;
+$msPage = isset($_GET['mpage']) ? max(1, intval($_GET['mpage'])) : 1;
+$dlOffset = ($dlPage - 1) * $pageSize;
+$fqOffset = ($fqPage - 1) * $pageSize;
+$msOffset = ($msPage - 1) * $pageSize;
+
+$downloads = []; $downloadTotal = 0;
+$faqs      = []; $faqTotal = 0;
+$msgs      = []; $msgTotal = 0;
+if ($tablesReady) {
+    $downloadTotal = (int)$DB->getColumn("SELECT COUNT(*) FROM nteam_home_download");
+    $downloads = $DB->getAll("SELECT * FROM nteam_home_download ORDER BY `sort` ASC, `id` ASC LIMIT $dlOffset, $pageSize") ?: [];
+    $faqTotal = (int)$DB->getColumn("SELECT COUNT(*) FROM nteam_home_faq");
+    $faqs = $DB->getAll("SELECT * FROM nteam_home_faq ORDER BY `sort` ASC, `id` ASC LIMIT $fqOffset, $pageSize") ?: [];
+    $msgTotal = (int)$DB->getColumn("SELECT COUNT(*) FROM nteam_contact_msgs");
+    $msgs = $DB->getAll("SELECT * FROM nteam_contact_msgs ORDER BY `id` DESC LIMIT $msOffset, $pageSize") ?: [];
+}
+
+// 当前 tab（编辑态强制定位到对应 tab）
+$activeTab = isset($_GET['tab']) ? $_GET['tab'] : 'site';
+if ($editDl)  $activeTab = 'download';
+if ($editFaq) $activeTab = 'faq';
+
+// 分页渲染辅助（与 cancel_config 的 cancelPager 一致）
+if (!function_exists('homePager')) {
+    function homePager($page, $pages, $base) {
+        if ($pages <= 1) return '';
+        $html = '<nav class="mt-3"><ul class="pagination justify-content-center flex-wrap">';
+        if ($page > 1) {
+            $html .= '<li class="page-item"><a class="page-link" href="' . $base . ($page - 1) . '">上一页</a></li>';
+        }
+        $start = max(1, $page - 2);
+        $end   = min($pages, $page + 2);
+        for ($i = $start; $i <= $end; $i++) {
+            $active = ($i == $page) ? ' active' : '';
+            $html .= '<li class="page-item' . $active . '"><a class="page-link" href="' . $base . $i . '">' . $i . '</a></li>';
+        }
+        if ($page < $pages) {
+            $html .= '<li class="page-item"><a class="page-link" href="' . $base . ($page + 1) . '">下一页</a></li>';
+        }
+        $html .= '</ul></nav>';
+        return $html;
+    }
 }
 ?>
 <style>
@@ -141,6 +182,22 @@ if ($tablesReady && isset($_GET['edit_faq'])) {
 
         <?php if ($tablesReady): ?>
 
+        <ul class="nav nav-tabs mt-4" role="tablist">
+            <li class="nav-item">
+                <a class="nav-link <?php echo $activeTab === 'site' ? 'active' : ''; ?>" href="?tab=site">网站设置</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link <?php echo $activeTab === 'download' ? 'active' : ''; ?>" href="?tab=download">下载方式</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link <?php echo $activeTab === 'faq' ? 'active' : ''; ?>" href="?tab=faq">常见问题</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link <?php echo $activeTab === 'message' ? 'active' : ''; ?>" href="?tab=message">联系留言</a>
+            </li>
+        </ul>
+
+        <?php if ($activeTab === 'site'): ?>
         <!-- ============ 网站地址与联系方式 ============ -->
         <div class="block block-rounded">
             <div class="block-header block-header-default">
@@ -261,6 +318,9 @@ if ($tablesReady && isset($_GET['edit_faq'])) {
             </div>
         </div>
 
+        <?php endif; ?>
+
+        <?php if ($activeTab === 'download'): ?>
         <!-- ============ 下载方式 ============ -->
         <div class="block block-rounded">
             <div class="block-header block-header-default">
@@ -330,7 +390,7 @@ if ($tablesReady && isset($_GET['edit_faq'])) {
                             <i class="fa fa-check opacity-50 me-1"></i> <b><?php echo $editDl ? '保存修改' : '新增下载方式'; ?></b>
                         </button>
                         <?php if ($editDl): ?>
-                        <a href="home_config.php" class="btn btn-alt-secondary">取消编辑</a>
+                        <a href="?tab=download" class="btn btn-alt-secondary">取消编辑</a>
                         <?php endif; ?>
                     </div>
                 </form>
@@ -383,9 +443,13 @@ if ($tablesReady && isset($_GET['edit_faq'])) {
                         </tbody>
                     </table>
                 </div>
+                <?php echo homePager($dlPage, max(1, ceil($downloadTotal / $pageSize)), '?tab=download&dpage='); ?>
             </div>
         </div>
 
+        <?php endif; ?>
+
+        <?php if ($activeTab === 'faq'): ?>
         <!-- ============ 常见问题 ============ -->
         <div class="block block-rounded">
             <div class="block-header block-header-default">
@@ -449,7 +513,7 @@ if ($tablesReady && isset($_GET['edit_faq'])) {
                             <i class="fa fa-check opacity-50 me-1"></i> <b><?php echo $editFaq ? '保存修改' : '新增问题'; ?></b>
                         </button>
                         <?php if ($editFaq): ?>
-                        <a href="home_config.php" class="btn btn-alt-secondary">取消编辑</a>
+                        <a href="?tab=faq" class="btn btn-alt-secondary">取消编辑</a>
                         <?php endif; ?>
                     </div>
                 </form>
@@ -502,13 +566,20 @@ if ($tablesReady && isset($_GET['edit_faq'])) {
                         </tbody>
                     </table>
                 </div>
+                <?php echo homePager($fqPage, max(1, ceil($faqTotal / $pageSize)), '?tab=faq&fpage='); ?>
             </div>
         </div>
 
+        <?php endif; ?>
+
+        <?php if ($activeTab === 'message'): ?>
         <!-- ============ 联系我们留言 ============ -->
         <div class="block block-rounded">
             <div class="block-header block-header-default">
-                <h3 class="block-title"><i class="fa fa-envelope me-2"></i>联系我们留言（最近 100 条）</h3>
+                <h3 class="block-title"><i class="fa fa-envelope me-2"></i>联系我们留言</h3>
+                <div class="block-options">
+                    <span class="badge bg-primary">共 <?php echo $msgTotal; ?> 条</span>
+                </div>
                 <div class="block-options">
                     <button type="button" onclick="window.location.reload()" class="btn-block-option" data-toggle="block-option" data-action="state_toggle" data-action-mode="demo">
                         <i class="si si-refresh"></i>
@@ -580,9 +651,11 @@ if ($tablesReady && isset($_GET['edit_faq'])) {
                         </tbody>
                     </table>
                 </div>
+                <?php echo homePager($msPage, max(1, ceil($msgTotal / $pageSize)), '?tab=message&mpage='); ?>
             </div>
         </div>
 
+        <?php endif; ?>
         <?php endif; ?>
     </div>
 </div>
