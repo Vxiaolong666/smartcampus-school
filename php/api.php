@@ -1465,9 +1465,24 @@ switch($act) {
             }
         }
         
+        // 历史电费记录按电费增减筛选（服务端处理，仅过滤返回的记录列表，不影响统计与趋势）
+        $recordFilter = isset($_REQUEST['record_filter']) ? trim($_REQUEST['record_filter']) : '';
+        $filteredRecords = $processedRecords;
+        if ($recordFilter === 'increase') {
+            $filteredRecords = array_values(array_filter($processedRecords, function ($r) {
+                return floatval($r['usage_cost']) > 0;
+            }));
+        } elseif ($recordFilter === 'decrease') {
+            $filteredRecords = array_values(array_filter($processedRecords, function ($r) {
+                return floatval($r['usage_cost']) < 0;
+            }));
+        }
+
         jsonResponse(0, 'success', [
             'room_num' => $roomNum,
             'record_count' => $recordCount,
+            'filtered_count' => count($filteredRecords),
+            'record_filter' => $recordFilter,
             'total_usage_kwh' => round($totalUsage, 4),
             'total_cost' => round($totalCost, 2),
             'daily_avg_usage' => round($dailyAvgUsage, 4),
@@ -1485,7 +1500,7 @@ switch($act) {
             ],
             'recent_trend' => $recentTrend,
             'daily_trend' => $dailyTrend,
-            'records' => $processedRecords,
+            'records' => $filteredRecords,
             'latest_balance' => $latestBalance,
             'estimated_days' => $estimatedDays
         ]);

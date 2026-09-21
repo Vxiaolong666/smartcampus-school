@@ -71,7 +71,13 @@ Component({
         content: content,
         showCancel: true,
         cancelText: '联系客服',
-        confirmText: '我知道了'
+        confirmText: '我知道了',
+        success: (res) => {
+          if (res.cancel) {
+            const guide = this.selectComponent('#contactGuide');
+            if (guide) guide.open();
+          }
+        }
       });
     },
     

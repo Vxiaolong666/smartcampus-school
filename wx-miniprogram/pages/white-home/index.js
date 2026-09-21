@@ -404,7 +404,16 @@ Page({
         if (/^https?:\/\//i.test(url)) {
             wx.setClipboardData({
                 data: url,
-                success: () => wx.showToast({ title: '链接已复制，请在浏览器打开', icon: 'none' })
+                success: () => wx.showToast({ title: '链接已复制，请在浏览器打开', icon: 'none' }),
+                fail: (err) => {
+                    const msg = (err && err.errMsg) || '';
+                    // 隐私接口未授权：提示用户授权，其余情况提示手动打开
+                    if (msg.indexOf('privacy') > -1 || msg.indexOf('auth') > -1) {
+                        wx.showToast({ title: '未授权，暂时无法复制链接', icon: 'none' });
+                    } else {
+                        wx.showToast({ title: '复制失败，请在浏览器中打开链接', icon: 'none' });
+                    }
+                }
             });
             return;
         }
@@ -429,7 +438,16 @@ Page({
         if (/^https?:\/\//i.test(url)) {
             wx.setClipboardData({
                 data: url,
-                success: () => wx.showToast({ title: '链接已复制，请在浏览器打开', icon: 'none' })
+                success: () => wx.showToast({ title: '链接已复制，请在浏览器打开', icon: 'none' }),
+                fail: (err) => {
+                    const msg = (err && err.errMsg) || '';
+                    // 隐私接口未授权：提示用户授权，其余情况提示手动打开
+                    if (msg.indexOf('privacy') > -1 || msg.indexOf('auth') > -1) {
+                        wx.showToast({ title: '未授权，暂时无法复制链接', icon: 'none' });
+                    } else {
+                        wx.showToast({ title: '复制失败，请在浏览器中打开链接', icon: 'none' });
+                    }
+                }
             });
             return;
         }

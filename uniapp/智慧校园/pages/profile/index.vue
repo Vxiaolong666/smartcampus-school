@@ -127,6 +127,12 @@ export default {
 				sourceType: ['album', 'camera'],
 				success: res => {
 					this.uploadAvatar(res.tempFilePaths[0]);
+				},
+				fail: (err) => {
+					const msg = (err && err.errMsg) || '';
+					// 用户主动取消不做提示
+					if (msg.indexOf('cancel') > -1) return;
+					uni.showToast({ title: '无法访问相册，请在设置中授权', icon: 'none' });
 				}
 			});
 		},

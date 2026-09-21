@@ -85,11 +85,13 @@
       <view class="maintenance-footer">
         <!-- 一行两个按钮：联系客服（主）+ 重新检测（次） -->
         <view class="footer-actions">
-          <button class="action-btn action-primary" open-type="contact">联系客服</button>
+          <view class="action-btn action-primary" bindtap="openContactGuide">联系客服</view>
           <button class="action-btn action-plain" bindtap="onRecheck">重新检测</button>
         </view>
         <view class="footer-text">感谢您的耐心等待</view>
       </view>
     </view>
   </view>
+
+  <contact-guide id="contactGuide" />
 </view>

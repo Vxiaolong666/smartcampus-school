@@ -81,8 +81,18 @@ page {
 .policy-update {
     font-size: 24rpx;
     color: #948eb3;
-    margin-bottom: 30rpx;
+    margin-bottom: 24rpx;
     text-align: right;
+}
+
+.policy-note {
+    background: #f0fbfb;
+    border-radius: 12rpx;
+    padding: 20rpx 24rpx;
+    margin-bottom: 30rpx;
+    font-size: 25rpx;
+    color: #48416f;
+    line-height: 1.8;
 }
 
 .policy-section {
@@ -100,6 +110,13 @@ page {
     margin-bottom: 16rpx;
     padding-left: 16rpx;
     border-left: 6rpx solid #13c2c2;
+}
+
+.section-sub {
+    font-size: 26rpx;
+    font-weight: 600;
+    color: #48416f;
+    margin: 20rpx 0 12rpx;
 }
 
 .section-text {
@@ -133,4 +150,42 @@ page {
 .footer-text {
     font-size: 22rpx;
     color: #948eb3;
+}
+
+.policy-actions {
+    display: flex;
+    gap: 20rpx;
+    margin-top: 30rpx;
+}
+
+.policy-action-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12rpx;
+    height: 96rpx;
+    padding: 0;
+    margin: 0;
+    background: #ffffff;
+    border-radius: 16rpx;
+    box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.05);
+    font-size: 28rpx;
+    font-weight: 500;
+    color: #48416f;
+    line-height: normal;
+}
+
+.policy-action-btn::after {
+    border: none;
+}
+
+.policy-action-icon {
+    width: 36rpx;
+    height: 36rpx;
+}
+
+.policy-action-text {
+    font-size: 28rpx;
+    color: #48416f;
 }

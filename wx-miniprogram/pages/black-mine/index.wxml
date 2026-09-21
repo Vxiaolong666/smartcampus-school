@@ -143,11 +143,11 @@
       <view class="item-group">
         <view class="item-group-title">客服与支持</view>
         <view class="item-group-content">
-          <button class="item-item" open-type="contact">
+          <view class="item-item" bindtap="openContactGuide">
             <image class="item-logo" src="/assets/icon_cvoieudado/a-199_duihua.svg" mode="widthFix"></image>
             <view class="item-text">联系客服</view>
             <image class="item-right" src="/assets/wxmp-right.svg" mode="widthFix"></image>
-          </button>
+          </view>
 
           <view class="item-item" bind:tap="handleAgreement">
             <image class="item-logo" src="/assets/icon_cvoieudado/a-199_wenjian.svg" mode="widthFix"></image>
@@ -184,4 +184,5 @@
     </view>
   </view>
 
+  <contact-guide id="contactGuide" />
 </view>

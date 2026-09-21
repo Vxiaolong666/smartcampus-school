@@ -205,5 +205,11 @@ Page({
     wx.showLoading({ title: '检测中...' });
     this.detectStatus();
     setTimeout(() => wx.hideLoading(), 600);
+  },
+
+  //联系客服：先询问「在线客服 / 其他联系方式」
+  openContactGuide() {
+    const guide = this.selectComponent('#contactGuide');
+    if (guide) guide.open();
   }
 });

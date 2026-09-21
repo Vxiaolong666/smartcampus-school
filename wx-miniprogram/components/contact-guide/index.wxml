@@ -1,0 +1,37 @@
+<!-- 联系客服弹窗：二级弹窗（一级选择为原生 ActionSheet），视觉与 uniapp contact-modal 保持一致 -->
+<view class="cg-mask" wx:if="{{show}}" bindtap="close" catchtouchmove="noop">
+  <view class="cg-dialog" catchtap="noop">
+    <view class="cg-header">
+      <view class="cg-title">联系客服</view>
+      <view class="cg-subtitle">{{view === 'detail' ? '您也可以通过以下方式联系我们' : '点击下方按钮进入在线客服会话'}}</view>
+      <view class="cg-close" catchtap="close">×</view>
+    </view>
+
+    <view class="cg-body">
+      <block wx:if="{{view === 'online'}}">
+        <view class="cg-item cg-item-plain" wx:if="{{worktime}}">
+          <view class="cg-item-label is-time">在线时间</view>
+          <view class="cg-item-value">{{worktime}}</view>
+        </view>
+        <button class="cg-btn cg-btn-primary" open-type="contact" bindtap="onOnline">进入客服会话</button>
+      </block>
+
+      <block wx:else>
+        <view class="cg-loading" wx:if="{{loading}}">加载中…</view>
+        <block wx:else>
+          <view class="cg-item-wrap" wx:for="{{items}}" wx:key="index">
+            <view class="cg-item-hint" wx:if="{{!item.label}}">{{item.value}}</view>
+            <view class="cg-item" wx:else>
+              <view class="cg-item-label {{item.labelClass}}">{{item.label}}</view>
+              <view class="cg-item-value">{{item.value}}</view>
+            </view>
+          </view>
+        </block>
+      </block>
+    </view>
+
+    <view class="cg-tip">
+      <view class="cg-tip-text">温馨提示：请通过以上官方渠道联系我们，谨防冒充客服的诈骗行为。</view>
+    </view>
+  </view>
+</view>

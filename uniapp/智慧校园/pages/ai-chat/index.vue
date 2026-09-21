@@ -463,7 +463,15 @@ export default {
       if (!text) return;
       uni.setClipboardData({
         data: text,
-        success: () => uni.showToast({ title: '已复制', icon: 'none' })
+        success: () => uni.showToast({ title: '已复制', icon: 'none' }),
+        fail: (err) => {
+          const msg = (err && err.errMsg) || '';
+          if (msg.indexOf('privacy') > -1 || msg.indexOf('auth') > -1) {
+            uni.showToast({ title: '未授权，暂时无法复制', icon: 'none' });
+          } else {
+            uni.showToast({ title: '复制失败，请检查剪贴板权限', icon: 'none' });
+          }
+        }
       });
     },
 

@@ -115,7 +115,7 @@
 								</view>
 								<view class="stat-info">
 									<view class="stat-value">{{ stats.latestBalance || '-' }}<text class="stat-unit">元</text></view>
-									<view class="stat-label">当前余额</view>
+									<view class="stat-label">当前余额<text v-if="balanceLive" class="stat-live">实时</text></view>
 								</view>
 							</view>
 						</view>
@@ -131,13 +131,6 @@
 								</view>
 							</view>
 						</view>
-					</view>
-				</view>
-
-				<view class="ai-analyze-wrap">
-					<view class="ai-analyze-btn" :class="{ 'ai-loading': aiLoading }" @click="aiAnalyze">
-						<text v-if="!aiLoading">AI 智能分析</text>
-						<text v-else>分析中…</text>
 					</view>
 				</view>
 
@@ -219,11 +212,20 @@
 					<view class="section-header">
 						<image class="section-icon" src="/static/assets/wxmp-list.svg" mode="widthFix"></image>
 						<text class="section-title">历史电费记录</text>
-						<text class="section-count">共{{ stats ? stats.recordCount : 0 }}条</text>
+						<text class="section-count">共{{ records.length }}条</text>
 					</view>
-					<view v-if="records.length === 0" class="no-data">
+					<view class="record-filter">
+						<view class="record-filter-btn" :class="{ active: recordFilter === 'all' }" @click="setRecordFilter('all')">全部</view>
+						<view class="record-filter-btn" :class="{ active: recordFilter === 'increase' }" @click="setRecordFilter('increase')">电费增加</view>
+						<view class="record-filter-btn" :class="{ active: recordFilter === 'decrease' }" @click="setRecordFilter('decrease')">电费减少</view>
+					</view>
+					<view v-if="recordsLoading" class="records-loading">
+						<view class="records-loading-spinner"></view>
+						<text>加载中…</text>
+					</view>
+					<view v-else-if="records.length === 0" class="no-data">
 						<image class="no-data-icon" src="/static/assets/wxmp-coffee.svg" mode="widthFix"></image>
-						<text>暂无记录</text>
+						<text>{{ recordFilter === 'all' ? '暂无记录' : '无符合条件的记录' }}</text>
 					</view>
 					<view v-else class="records-timeline">
 						<view v-for="(item, index) in records" :key="item.id" class="record-item">
@@ -257,6 +259,14 @@
 						</view>
 					</view>
 										<view class="records-footer">用电量根据余额变化和电价({{ pricePerKwh }}元/度)自动计算</view>
+				</view>
+
+				<!-- AI 智能分析按钮：置于页面最下方 -->
+				<view class="ai-analyze-wrap">
+					<view class="ai-analyze-btn" :class="{ 'ai-loading': aiLoading }" @click="aiAnalyze">
+						<text v-if="!aiLoading">AI 智能分析</text>
+						<text v-else>分析中…</text>
+					</view>
 				</view>
 			</block>
 		</view>
@@ -317,6 +327,12 @@ export default {
 			timeRange: 'all',
 			customStart: '',
 			customEnd: '',
+			// 历史电费记录筛选：all=全部, increase=电费增加(消费), decrease=电费减少(余额增加/充值)
+			recordFilter: 'all',
+			// 当前余额是否已通过实时电费查询接口刷新
+			balanceLive: false,
+			// 切换记录筛选时的局部加载状态
+			recordsLoading: false,
 			showAiResult: false,
 			aiResult: '',
 			aiLoading: false,
@@ -426,6 +442,13 @@ export default {
 			this.loadStatistics();
 		},
 
+		setRecordFilter(filter) {
+			if (this.recordFilter === filter) return;
+			this.recordFilter = filter;
+			// 切换筛选后重新请求（服务端过滤），不整体刷新页面
+			this.loadRecords();
+		},
+
 		onCustomStart(e) {
 			this.customStart = e.detail.value;
 			this.loadStatistics();
@@ -448,6 +471,10 @@ export default {
 			} else if (range === 'custom') {
 				if (this.customStart) params.start = this.customStart;
 				if (this.customEnd) params.end = this.customEnd;
+			}
+			// 记录增减筛选交由服务端处理，避免前端过滤大量记录造成卡顿
+			if (this.recordFilter === 'increase' || this.recordFilter === 'decrease') {
+				params.record_filter = this.recordFilter;
 			}
 			return params;
 		},
@@ -477,59 +504,7 @@ export default {
 
 				const data = res.data;
 
-				const parseRecordTime = v => {
-					if (v === null || v === undefined || v === '') return 0;
-					if (typeof v === 'number') {
-						return v < 1e12 ? v * 1000 : v;
-					}
-					if (typeof v === 'string') {
-						if (/^\d+$/.test(v)) {
-							const n = parseInt(v, 10);
-							return n < 1e12 ? n * 1000 : n;
-						}
-						return new Date(v.replace(/-/g, '/')).getTime();
-					}
-					return 0;
-				};
-
-				const processedRecords = (data.records || [])
-					.map(r => {
-						const usageKwh = parseFloat(r.usage_kwh) || 0;
-						const usageCost = parseFloat(r.usage_cost) || 0;
-
-						let usageDisplay = '-';
-						let usageClass = '';
-						if (usageKwh > 0) {
-							usageDisplay = '↓' + usageKwh.toFixed(4);
-							usageClass = 'usage-down';
-						} else if (usageKwh < 0) {
-							usageDisplay = '↑' + Math.abs(usageKwh).toFixed(4);
-							usageClass = 'usage-up';
-						}
-
-						let costDisplay = '-';
-						let costClass = '';
-						if (usageCost > 0) {
-							costDisplay = '↓' + usageCost.toFixed(2);
-							costClass = 'usage-down';
-						} else if (usageCost < 0) {
-							costDisplay = '↑' + Math.abs(usageCost).toFixed(2);
-							costClass = 'usage-up';
-						}
-
-						return {
-							...r,
-							usageDisplay,
-							usageClass,
-							costDisplay,
-							costClass
-						};
-					})
-					.sort((a, b) => {
-						const ta = parseRecordTime(a.record_time || a.created_at);
-						const tb = parseRecordTime(b.record_time || b.created_at);
-						return tb - ta;
-					});
+				const processedRecords = this.processRecords(data.records);
 
 				this.stats = {
 					healthStatus: data.health_status,
@@ -549,6 +524,10 @@ export default {
 				this.pricePerKwh = data.price_per_kwh || 0.61;
 				this.loading = false;
 
+				// 当前余额改用实时电费查询接口获取（统计接口返回的是最后一条记录的余额，非实时）
+				this.balanceLive = false;
+				this.loadRealtimeBalance(dorm.room_num);
+
 				setTimeout(() => {
 					this.drawChart('recentChart', data.recent_trend || [], 'time');
 					this.drawChart('dailyChart', data.daily_trend || [], 'date');
@@ -556,6 +535,97 @@ export default {
 			} catch (err) {
 				this.loading = false;
 				uni.showToast({ title: err.msg || '获取数据失败', icon: 'none' });
+			}
+		},
+
+		// 统一处理记录：解析展示字段并按时间倒序（记录已由服务端按筛选条件返回）
+		processRecords(list) {
+			const parseRecordTime = v => {
+				if (v === null || v === undefined || v === '') return 0;
+				if (typeof v === 'number') {
+					return v < 1e12 ? v * 1000 : v;
+				}
+				if (typeof v === 'string') {
+					if (/^\d+$/.test(v)) {
+						const n = parseInt(v, 10);
+						return n < 1e12 ? n * 1000 : n;
+					}
+					return new Date(v.replace(/-/g, '/')).getTime();
+				}
+				return 0;
+			};
+
+			return (list || [])
+				.map(r => {
+					const usageKwh = parseFloat(r.usage_kwh) || 0;
+					const usageCost = parseFloat(r.usage_cost) || 0;
+
+					let usageDisplay = '-';
+					let usageClass = '';
+					if (usageKwh > 0) {
+						usageDisplay = '↓' + usageKwh.toFixed(4);
+						usageClass = 'usage-down';
+					} else if (usageKwh < 0) {
+						usageDisplay = '↑' + Math.abs(usageKwh).toFixed(4);
+						usageClass = 'usage-up';
+					}
+
+					let costDisplay = '-';
+					let costClass = '';
+					if (usageCost > 0) {
+						costDisplay = '↓' + usageCost.toFixed(2);
+						costClass = 'usage-down';
+					} else if (usageCost < 0) {
+						costDisplay = '↑' + Math.abs(usageCost).toFixed(2);
+						costClass = 'usage-up';
+					}
+
+					return {
+						...r,
+						usageDisplay,
+						usageClass,
+						costDisplay,
+						costClass
+					};
+				})
+				.sort((a, b) => {
+					const ta = parseRecordTime(a.record_time || a.created_at);
+					const tb = parseRecordTime(b.record_time || b.created_at);
+					return tb - ta;
+				});
+		},
+
+		// 切换记录筛选时仅重新拉取历史记录（服务端过滤），不整页刷新
+		async loadRecords() {
+			const dorm = this.dormitories[this.selectedIndex];
+			if (!dorm) return;
+			this.recordsLoading = true;
+			try {
+				const res = await api.request({
+					act: 'get_power_statistics',
+					method: 'GET',
+					data: this.buildQuery(dorm.room_num)
+				});
+				this.records = this.processRecords((res.data || {}).records);
+			} catch (err) {
+				uni.showToast({ title: err.msg || '获取记录失败', icon: 'none' });
+			} finally {
+				this.recordsLoading = false;
+			}
+		},
+
+		// 通过实时电费查询接口刷新「当前余额」
+		async loadRealtimeBalance(roomNum) {
+			if (!roomNum) return;
+			try {
+				const res = await api.queryPowerFee(roomNum);
+				const data = (res && res.data) || {};
+				if (this.stats && data.balance !== undefined && data.balance !== null) {
+					this.stats.latestBalance = data.balance;
+					this.balanceLive = true;
+				}
+			} catch (e) {
+				// 实时查询失败时保留统计接口返回的余额，不打断页面
 			}
 		},
 
@@ -1107,6 +1177,17 @@ page {
 	margin-top: 4rpx;
 }
 
+.stat-live {
+	display: inline-block;
+	margin-left: 8rpx;
+	padding: 0 10rpx;
+	font-size: 18rpx;
+	line-height: 1.6;
+	color: #13c2c2;
+	background: rgba(19, 194, 194, 0.12);
+	border-radius: 8rpx;
+}
+
 .stat-sub {
 	font-size: 20rpx;
 	color: #948eb3;
@@ -1200,6 +1281,47 @@ page {
 	padding: 24rpx;
 	margin-bottom: 10rpx;
 	box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.05);
+}
+
+.record-filter {
+	display: flex;
+	gap: 16rpx;
+	margin-bottom: 20rpx;
+}
+
+.record-filter-btn {
+	flex: 1;
+	text-align: center;
+	font-size: 24rpx;
+	color: #48416f;
+	padding: 12rpx 0;
+	border-radius: 12rpx;
+	background: #f5f6fa;
+	border: 2rpx solid transparent;
+}
+
+.record-filter-btn.active {
+	background: #13c2c2;
+	color: #fff;
+}
+
+.records-loading {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 12rpx;
+	padding: 40rpx 0;
+	font-size: 26rpx;
+	color: #948eb3;
+}
+
+.records-loading-spinner {
+	width: 32rpx;
+	height: 32rpx;
+	border: 3rpx solid #e0e0e0;
+	border-top-color: #13c2c2;
+	border-radius: 50%;
+	animation: spin 0.8s linear infinite;
 }
 
 .records-timeline {

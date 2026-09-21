@@ -6,3 +6,6 @@
     <text>×</text>
   </view>
 </view>
+
+<contact-guide id="contactGuide" />
+

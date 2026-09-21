@@ -71,6 +71,7 @@
     "navigationStyle": "custom"
   },
   "lazyCodeLoading": "requiredComponents",
+  "__usePrivacyCheck__": true,
   "usingComponents": {
     "top-menu": "/components/cb-nav-bar/index"
   }

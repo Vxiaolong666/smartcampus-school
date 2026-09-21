@@ -1,3 +1,6 @@
 {
-  "component": true
+  "component": true,
+  "usingComponents": {
+    "contact-guide": "/components/contact-guide/index"
+  }
 }

@@ -340,6 +340,17 @@ const getMaintenanceConfig = () => {
 };
 
 /**
+ * 获取联系方式（后台「首页配置」维护，免登录）
+ * @returns {Promise} data: {email, phone, qq, address, worktime, desc}
+ */
+const getContactInfo = () => {
+  return request({
+    act: 'get_contact_info',
+    method: 'GET'
+  });
+};
+
+/**
  * AI 智能分析成绩
  * @param {Object} payload {achievement:[], gpa, credit, semester}
  */
@@ -968,6 +979,7 @@ module.exports = {
   getSplashAd,
   getAiModels,
   getMaintenanceConfig,
+  getContactInfo,
   aiAnalyzeGrades,
   aiAnalyzePower,
   aiAnalyzeSchedule,
