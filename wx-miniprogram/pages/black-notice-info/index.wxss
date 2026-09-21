@@ -142,12 +142,18 @@ page {
     padding: 0 30rpx 30rpx 30rpx;
     color: #48416f;
     font-size: 30rpx;
-    text-indent: 2em;
-    letter-spacing: 2rpx;
+    letter-spacing: 1rpx;
     line-height: 1.8;
     word-wrap: break-word;
     word-break: break-all;
-    white-space: pre-wrap;
+}
+
+/* 正文图片：原生 image mode="widthFix" 渲染，宽度自适应、高度自动，各端稳定显示 */
+.notice-content-img {
+    display: block;
+    width: 100%;
+    margin: 24rpx 0;
+    border-radius: 12rpx;
 }
 
 .notice-image {

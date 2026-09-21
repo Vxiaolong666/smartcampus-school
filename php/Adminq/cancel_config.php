@@ -273,7 +273,7 @@ if (!function_exists('cancelPager')) {
                     </div>
 
                     <div class="mb-4">
-                        <label class="form-label"><b>《用户注销服务协议》</b>（支持 Markdown）</label>
+                        <label class="form-label"><b>《用户注销服务协议》</b></label>
                         <textarea class="form-control" name="agreement" id="agreementText" rows="12" style="font-size:13px;"><?php echo htmlspecialchars($cfg['agreement']); ?></textarea>
                         <div class="form-text">
                             使用 Markdown 编写，用户端按 Markdown 渲染；用户须阅读并同意本协议后方可进入注销流程。

@@ -7,7 +7,8 @@ Page({
         notice: null,        // 通知详情
         loading: true,       // 加载状态
         aiLoading: false,    // AI 总结加载状态
-        summaryHtml: ''      // AI 总结（Markdown 渲染后 HTML）
+        summaryHtml: '',     // AI 总结（Markdown 渲染后 HTML）
+        contentBlocks: []    // 正文拆分块：{type:'html',html} 或 {type:'image',src,alt}
     },
 
     // 页面加载时触发
@@ -17,12 +18,15 @@ Page({
             const res = await api.getNoticeDetail(options.id);
             
             // 处理数据，图片输出完整 URL（由 getFileUrl 自动拼接站点地址）
+            // 正文拆成「文本块 + 图片块」：文本块交给 rich-text 解析 Markdown，
+            // 图片块交给原生 <image mode="widthFix"> 渲染，保证图片在各端稳定显示
             this.setData({
                 notice: {
                     ...res.data,
                     cover: api.getFileUrl(res.data.cover),
                     image: api.getFileUrl(res.data.image)
                 },
+                contentBlocks: markdownToHtml.markdownToBlocks(res.data.content || '', { resolveUrl: api.getFileUrl }),
                 loading: false
             });
             // 通知加载完成后自动异步获取 AI 总结（命中历史缓存不重复消耗额度）
@@ -52,6 +56,17 @@ Page({
             wx.previewImage({
                 current: this.data.notice.image,
                 urls: [this.data.notice.image]
+            });
+        }
+    },
+
+    // 预览正文中的图片（原生 image 渲染，点击可放大）
+    onPreviewContentImage(e) {
+        const src = e.currentTarget.dataset.src;
+        if (src) {
+            wx.previewImage({
+                current: src,
+                urls: [src]
             });
         }
     },

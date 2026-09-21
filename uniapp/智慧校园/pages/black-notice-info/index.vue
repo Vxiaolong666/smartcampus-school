@@ -45,7 +45,12 @@
 
 					<view v-if="summaryHtml" class="ai-summary-divider"></view>
 
-					<view class="notice-content">{{ notice.content }}</view>
+					<view v-if="contentBlocks.length" class="notice-content">
+						<block v-for="(block, idx) in contentBlocks" :key="idx">
+							<rich-text v-if="block.type === 'html'" :nodes="block.html"></rich-text>
+							<image v-else class="notice-content-img" :src="block.src" mode="widthFix" @click="onPreviewContentImage(block.src)"></image>
+						</block>
+					</view>
 					<image v-if="notice.image" class="notice-image" :src="notice.image" mode="widthFix" @click="onPreviewImage"></image>
 				</view>
 			</view>
@@ -60,7 +65,7 @@
 
 <script>
 import api from '../../utils/api.js';
-import markdownToHtml from '../../utils/markdown.js';
+import markdownToHtml, { markdownToBlocks } from '../../utils/markdown.js';
 
 export default {
 	data() {
@@ -70,6 +75,14 @@ export default {
 			aiLoading: false,
 			summaryHtml: ''
 		};
+	},
+
+	computed: {
+		// 公告正文：拆成「文本块 + 图片块」。文本块走 rich-text（markdown 解析各端一致），
+		// 图片块走原生 <image mode="widthFix">，避免 rich-text 忽略 img 内联样式 / 真机图片不显示
+		contentBlocks() {
+			return this.notice ? markdownToBlocks(this.notice.content || '', { resolveUrl: api.getFileUrl }) : [];
+		}
 	},
 
 	async onLoad(options) {
@@ -117,6 +130,16 @@ export default {
 				uni.previewImage({
 					current: this.notice.image,
 					urls: [this.notice.image]
+				});
+			}
+		},
+
+		// 预览正文中的图片（原生 image 渲染，点击可放大）
+		onPreviewContentImage(src) {
+			if (src) {
+				uni.previewImage({
+					current: src,
+					urls: [src]
 				});
 			}
 		},
@@ -287,15 +310,23 @@ page {
 }
 
 .notice-content {
+	display: block;
+	box-sizing: border-box;
 	padding: 0 30rpx 30rpx 30rpx;
 	color: #48416f;
 	font-size: 30rpx;
-	text-indent: 2em;
-	letter-spacing: 2rpx;
+	letter-spacing: 1rpx;
 	line-height: 1.8;
 	word-wrap: break-word;
 	word-break: break-all;
-	white-space: pre-wrap;
+}
+
+/* 正文图片：原生 image mode="widthFix" 渲染，宽度自适应、高度自动，各端稳定显示 */
+.notice-content-img {
+	display: block;
+	width: 100%;
+	margin: 24rpx 0;
+	border-radius: 12rpx;
 }
 
 .notice-image {

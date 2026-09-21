@@ -68,22 +68,8 @@ function resolveUploadUrl($url) {
                             </div>
                             
                             <div class="mb-3">
-                                <label class="form-label">公告内容 <span class="text-danger">*</span> <small class="text-muted">(支持Markdown语法)</small></label>
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <textarea class="form-control" name="content" id="content" rows="15" style="font-family: monospace;" required><?php echo $announcement ? htmlspecialchars($announcement['content']) : ''; ?></textarea>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="card h-100">
-                                            <div class="card-header">
-                                                <strong>预览</strong>
-                                            </div>
-                                            <div class="card-body" id="preview" style="max-height: 400px; overflow-y: auto;">
-                                                <p class="text-muted">预览区域</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                                <label class="form-label">公告内容 <span class="text-danger">*</span> <small class="text-muted">(支持 Markdown 语法，可使用工具栏实时预览)</small></label>
+                                <textarea class="form-control" name="content" id="content" rows="15" style="font-family: monospace;"><?php echo $announcement ? htmlspecialchars($announcement['content']) : ''; ?></textarea>
                             </div>
                         </div>
                         
@@ -145,10 +131,11 @@ function resolveUploadUrl($url) {
                         </div>
                     </div>
                     
-                    <div class="d-flex">
+                    <div class="d-flex align-items-center">
                         <button type="button" class="btn btn-alt-primary me-2" onclick="saveAnnouncement()">
-                            <i class="fa fa-save me-1"></i>保存
+                            <i class="fa fa-save me-1"></i>保存公告
                         </button>
+                        <span class="text-muted fs-sm me-3">Ctrl + S 保存</span>
                         <a href="announcements.php" class="btn btn-alt-secondary">
                             <i class="fa fa-arrow-left me-1"></i>返回列表
                         </a>
@@ -159,35 +146,47 @@ function resolveUploadUrl($url) {
     </div>
 </div>
 
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/github-markdown-css@5.2.0/github-markdown.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css">
 <style>
-.markdown-body {
+.editor-toolbar {
+    border-color: #e4e7ed;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+}
+.CodeMirror, .editor-preview-side, .editor-preview {
+    border-bottom-left-radius: 6px;
+    border-bottom-right-radius: 6px;
+}
+.CodeMirror {
+    border: 1px solid #e4e7ed;
+    border-top: none;
     font-size: 14px;
 }
-.markdown-body img {
-    max-width: 100%;
-}
 </style>
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js"></script>
 <script>
-marked.setOptions({
-    breaks: true,
-    gfm: true
-});
+var announcementMDE = null;
 
-$('#content').on('input', function() {
-    var content = $(this).val();
-    if (content) {
-        $('#preview').html('<div class="markdown-body">' + marked.parse(content) + '</div>');
-    } else {
-        $('#preview').html('<p class="text-muted">预览区域</p>');
-    }
-});
-
-$(document).ready(function() {
-    var content = $('#content').val();
-    if (content) {
-        $('#preview').html('<div class="markdown-body">' + marked.parse(content) + '</div>');
+$(function () {
+    if (window.EasyMDE && document.getElementById('content')) {
+        announcementMDE = new EasyMDE({
+            element: document.getElementById('content'),
+            spellChecker: false,
+            status: false,
+            autoDownloadFontAwesome: false,
+            minHeight: '380px',
+            placeholder: '在此使用 Markdown 编写公告内容…',
+            toolbar: ['bold', 'italic', 'heading', '|', 'quote', 'unordered-list', 'ordered-list', '|', 'link',
+                {
+                    name: 'insert-image',
+                    action: function (editor) {
+                        openImageDialog(editor);
+                    },
+                    className: 'fa fa-image',
+                    title: '插入图片（支持远程链接或上传本地图片）'
+                },
+                'code', '|', 'preview', 'side-by-side', 'fullscreen', '|', 'guide']
+        });
     }
 });
 
@@ -255,6 +254,113 @@ $('#imageInput').on('change', function() {
     });
 });
 
+// 工具栏「插入图片」：弹出选择窗口，支持「远程链接」与「上传本地图片」两种方式
+var imageDialogLayer = null;
+var activeEditor = null;
+
+function openImageDialog(editor) {
+    if (!editor || !editor.codemirror) return;
+    activeEditor = editor;
+
+    var html = [
+        '<div style="padding:18px 20px;">',
+        '  <div class="mb-2 fw-semibold">方式一：图片链接（远程 URL）</div>',
+        '  <div class="mb-3">',
+        '    <input type="text" id="insImgUrl" class="form-control" placeholder="https://example.com/a.jpg 或 /uploads/xxx.jpg">',
+        '  </div>',
+        '  <div class="mb-2">',
+        '    <label class="form-label mb-1">图片描述（可选，作为 alt）</label>',
+        '    <input type="text" id="insImgAlt" class="form-control" placeholder="图片说明">',
+        '  </div>',
+        '  <button type="button" class="btn btn-alt-primary btn-sm" onclick="insertRemoteImage()">',
+        '    <i class="fa fa-link me-1"></i>插入链接图片',
+        '  </button>',
+        '  <hr class="my-4">',
+        '  <div class="mb-2 fw-semibold">方式二：上传本地图片</div>',
+        '  <div class="mb-3 text-muted fs-sm">保存到本站（与右侧缩略图/大图上传共用同一接口），插入后为相对路径。</div>',
+        '  <button type="button" class="btn btn-alt-secondary btn-sm" onclick="pickLocalImage()">',
+        '    <i class="fa fa-upload me-1"></i>选择本地图片上传',
+        '  </button>',
+        '</div>'
+    ].join('');
+
+    imageDialogLayer = layer.open({
+        type: 1,
+        title: '插入图片',
+        area: ['460px', 'auto'],
+        shadeClose: true,
+        content: html
+    });
+
+    setTimeout(function () { var el = document.getElementById('insImgUrl'); if (el) el.focus(); }, 50);
+}
+
+function closeImageDialog() {
+    if (imageDialogLayer !== null) {
+        try { layer.close(imageDialogLayer); } catch (e) {}
+        imageDialogLayer = null;
+    }
+}
+
+// 方式一：插入远程链接
+function insertRemoteImage() {
+    var url = ($('#insImgUrl').val() || '').trim();
+    var alt = ($('#insImgAlt').val() || '').trim();
+    if (!url) { layer.msg('请输入图片链接', {icon: 0}); return; }
+    if (!activeEditor) { layer.msg('编辑器未就绪', {icon: 2}); return; }
+
+    activeEditor.codemirror.replaceSelection('![' + alt + '](' + url + ')');
+    activeEditor.codemirror.focus();
+    closeImageDialog();
+    layer.msg('图片已插入', {icon: 1});
+}
+
+// 方式二：上传本地图片后插入（与右侧上传共用接口 Ajax.php?act=upload_announcement_image）
+function pickLocalImage() {
+    var input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = function () {
+        if (!input.files || !input.files[0]) return;
+        var file = input.files[0];
+
+        var formData = new FormData();
+        formData.append('file', file);
+        formData.append('type', 'image');
+
+        var loadIndex = layer.load(1);
+        $.ajax({
+            url: 'Ajax.php?act=upload_announcement_image',
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            dataType: 'json',
+            success: function (res) {
+                layer.close(loadIndex);
+                if (res.code == 0) {
+                    var url = res.data.url;
+                    var alt = (file.name || 'image').replace(/\.[^.]+$/, '');
+                    // 在光标处插入 Markdown 图片语法，url 与右侧上传一致（相对路径）
+                    if (activeEditor) {
+                        activeEditor.codemirror.replaceSelection('![' + alt + '](' + url + ')');
+                        activeEditor.codemirror.focus();
+                    }
+                    closeImageDialog();
+                    layer.msg('图片已插入', {icon: 1});
+                } else {
+                    layer.msg(res.msg || '上传失败', {icon: 2});
+                }
+            },
+            error: function () {
+                layer.close(loadIndex);
+                layer.msg('上传失败', {icon: 2});
+            }
+        });
+    };
+    input.click();
+}
+
 function removeThumbnail() {
     $('#thumbnail').val('');
     $('#thumbnailInput').val('');
@@ -268,6 +374,12 @@ function removeImage() {
 }
 
 function saveAnnouncement() {
+    // 防御：仅当处于公告编辑页（存在表单）时才保存，避免快捷键在其他页面被误触发
+    if (!document.getElementById('announcementForm')) return;
+
+    // 同步 Markdown 编辑器内容到原始 textarea，确保表单提交包含最新内容
+    if (announcementMDE) { try { announcementMDE.codemirror.save(); } catch (e) {} }
+
     var title = $('#title').val().trim();
     var content = $('#content').val().trim();
     
@@ -305,6 +417,27 @@ function saveAnnouncement() {
         }
     });
 }
+
+// 快捷键：Ctrl+S / Cmd+S 保存公告（替换浏览器默认的「保存网页」）
+// 注意：后台使用 pjax 局部刷新，document 上的监听会跨页面保留，
+//       因此在注册前先移除上一次的监听，并在回调里判断当前是否处于公告编辑页，
+//       避免在其他后台页面误触发、或重复注册导致多次保存。
+if (window.__annSaveKeydown) {
+    document.removeEventListener('keydown', window.__annSaveKeydown, true);
+    window.__annSaveKeydown = null;
+}
+window.__annSaveKeydown = function (e) {
+    if (!document.getElementById('announcementForm')) return; // 不在编辑页则忽略
+    var key = e.key || '';
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && (key === 's' || key === 'S' || e.keyCode === 83)) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof e.stopImmediatePropagation === 'function') { e.stopImmediatePropagation(); }
+        saveAnnouncement();
+        return false;
+    }
+};
+document.addEventListener('keydown', window.__annSaveKeydown, true);
 </script>
 
 <?php include 'foot.php'; ?>

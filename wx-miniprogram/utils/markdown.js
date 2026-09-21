@@ -10,10 +10,21 @@ function escapeHtml(str) {
 		.replace(/>/g, '&gt;');
 }
 
-function inline(str) {
+function inline(str, options) {
 	// 行内代码（先处理，避免其中 * 被后续规则误伤）
 	str = str.replace(/`([^`]+)`/g, (m, c) => {
 		return '<code style="background:#f2f2f2;padding:1px 5px;border-radius:3px;font-size:13px;color:#d6336c;">' + c + '</code>';
+	});
+	// 图片 ![alt](url) —— 必须在链接规则之前处理，否则会被 [text](url) 误判
+	// 相对路径（如 /uploads/...）需转成完整地址，否则真机 rich-text 无法加载
+	str = str.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (m, alt, url) => {
+		let src = (url || '').trim();
+		if (options && typeof options.resolveUrl === 'function') {
+			src = options.resolveUrl(src);
+		} else if (options && options.fileBase && !/^https?:\/\//i.test(src)) {
+			src = options.fileBase.replace(/\/$/, '') + (src.charAt(0) === '/' ? src : '/' + src);
+		}
+		return '<img src="' + src + '" alt="' + alt + '" style="max-width:100%;width:100%;border-radius:8px;margin:12px 0;display:block;"/>';
 	});
 	// 粗体
 	str = str.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
@@ -43,7 +54,7 @@ function parseTableAlign(sep) {
 
 const HEADING_SIZE = { 1: '20px', 2: '18px', 3: '16px', 4: '15px', 5: '14px', 6: '13px' };
 
-function markdownToHtml(md) {
+function markdownToHtml(md, options) {
 	if (!md) return '';
 	const raw = escapeHtml(md).replace(/\r\n?/g, '\n');
 	const lines = raw.split('\n');
@@ -53,7 +64,7 @@ function markdownToHtml(md) {
 
 	function flushParagraph() {
 		if (paragraph.length) {
-			html += '<p style="margin:0 0 10px;line-height:1.7;font-size:14px;">' + inline(paragraph.join('<br/>')) + '</p>';
+			html += '<p style="margin:0 0 10px;line-height:1.7;font-size:14px;">' + inline(paragraph.join('<br/>'), options) + '</p>';
 			paragraph = [];
 		}
 	}
@@ -99,7 +110,7 @@ function markdownToHtml(md) {
 				let tableHtml = '<table style="width:100%;table-layout:fixed;border-collapse:collapse;margin:0 0 10px;font-size:14px;">';
 				tableHtml += '<thead><tr>';
 				headers.forEach((h, idx) => {
-					tableHtml += '<th style="border:1px solid #ddd;padding:12px 14px;background:#f5f5f5;text-align:' + (aligns[idx] || 'left') + ';word-break:break-word;box-sizing:border-box;">' + inline(h) + '</th>';
+					tableHtml += '<th style="border:1px solid #ddd;padding:12px 14px;background:#f5f5f5;text-align:' + (aligns[idx] || 'left') + ';word-break:break-word;box-sizing:border-box;">' + inline(h, options) + '</th>';
 				});
 				tableHtml += '</tr></thead><tbody>';
 				for (let r = 2; r < tableLines.length; r++) {
@@ -107,7 +118,7 @@ function markdownToHtml(md) {
 					tableHtml += '<tr>';
 					headers.forEach((_, idx) => {
 						const cell = cells[idx] || '';
-						tableHtml += '<td style="border:1px solid #ddd;padding:12px 14px;text-align:' + (aligns[idx] || 'left') + ';word-break:break-word;box-sizing:border-box;">' + inline(cell) + '</td>';
+						tableHtml += '<td style="border:1px solid #ddd;padding:12px 14px;text-align:' + (aligns[idx] || 'left') + ';word-break:break-word;box-sizing:border-box;">' + inline(cell, options) + '</td>';
 					});
 					tableHtml += '</tr>';
 				}
@@ -115,7 +126,7 @@ function markdownToHtml(md) {
 				html += tableHtml;
 			} else {
 				tableLines.forEach(l => {
-					html += '<p style="margin:0 0 10px;line-height:1.7;font-size:14px;">' + inline(l) + '</p>';
+					html += '<p style="margin:0 0 10px;line-height:1.7;font-size:14px;">' + inline(l, options) + '</p>';
 				});
 			}
 			continue;
@@ -127,7 +138,7 @@ function markdownToHtml(md) {
 			flushParagraph();
 			closeList();
 			const level = h[1].length;
-			html += '<h' + level + ' style="font-size:' + HEADING_SIZE[level] + ';font-weight:bold;margin:14px 0 8px;line-height:1.4;color:#333;">' + inline(h[2]) + '</h' + level + '>';
+			html += '<h' + level + ' style="font-size:' + HEADING_SIZE[level] + ';font-weight:bold;margin:14px 0 8px;line-height:1.4;color:#333;">' + inline(h[2], options) + '</h' + level + '>';
 			i++;
 			continue;
 		}
@@ -150,7 +161,7 @@ function markdownToHtml(md) {
 				quoteLines.push(lines[i].replace(/^&gt;\s?/, ''));
 				i++;
 			}
-			html += '<blockquote style="border-left:3px solid #1989fa;padding:6px 12px;margin:0 0 10px;color:#666;background:#f7f8fa;line-height:1.7;font-size:14px;">' + inline(quoteLines.join('<br/>')) + '</blockquote>';
+			html += '<blockquote style="border-left:3px solid #1989fa;padding:6px 12px;margin:0 0 10px;color:#666;background:#f7f8fa;line-height:1.7;font-size:14px;">' + inline(quoteLines.join('<br/>'), options) + '</blockquote>';
 			continue;
 		}
 
@@ -163,7 +174,7 @@ function markdownToHtml(md) {
 				html += '<ul style="padding-left:20px;margin:0 0 10px;font-size:14px;">';
 				listType = 'ul';
 			}
-			html += '<li style="margin:4px 0;line-height:1.7;">' + inline(ul[1]) + '</li>';
+			html += '<li style="margin:4px 0;line-height:1.7;">' + inline(ul[1], options) + '</li>';
 			i++;
 			continue;
 		}
@@ -177,7 +188,7 @@ function markdownToHtml(md) {
 				html += '<ol style="padding-left:20px;margin:0 0 10px;font-size:14px;">';
 				listType = 'ol';
 			}
-			html += '<li style="margin:4px 0;line-height:1.7;">' + inline(ol[1]) + '</li>';
+			html += '<li style="margin:4px 0;line-height:1.7;">' + inline(ol[1], options) + '</li>';
 			i++;
 			continue;
 		}
@@ -199,4 +210,69 @@ function markdownToHtml(md) {
 	return html;
 }
 
+/**
+ * 把 Markdown 拆成「文本块 + 图片块」序列（高可用渲染方案）
+ * - 文本块：仍由 markdownToHtml 生成 HTML，交给 rich-text 渲染
+ * - 图片块：交给原生 <image mode="widthFix"> 渲染
+ * 原因：rich-text 会忽略 <img> 内联样式、真机上相对路径/百分比高度也易失效，
+ *       导致图片不显示或尺寸异常；拆出图片用原生 image 可保证所有端稳定显示。
+ * @param {string} md Markdown 源码
+ * @param {Object} [options] 同 markdownToHtml，支持 resolveUrl / fileBase
+ * @returns {Array<{type:'html',html:string}|{type:'image',src:string,alt:string}>}
+ */
+function markdownToBlocks(md, options) {
+	if (!md) return [];
+
+	const resolve = (src) => {
+		if (options && typeof options.resolveUrl === 'function') return options.resolveUrl(src);
+		if (options && options.fileBase && !/^https?:\/\//i.test(src)) {
+			return options.fileBase.replace(/\/$/, '') + (src.charAt(0) === '/' ? src : '/' + src);
+		}
+		return src;
+	};
+
+	const lines = String(md).replace(/\r\n?/g, '\n').split('\n');
+	const blocks = [];
+	let buf = [];
+	let inFence = false;
+	const IMG_TEST = /!\[([^\]]*)\]\(([^)]+)\)/;
+
+	function flush() {
+		if (buf.length) {
+			const html = markdownToHtml(buf.join('\n'), options);
+			if (html) blocks.push({ type: 'html', html: html, key: blocks.length });
+			buf = [];
+		}
+	}
+
+	lines.forEach((line) => {
+		// 代码块（```）内的 ![] 不拆分，保持原样
+		if (/^```/.test(line.trim())) {
+			inFence = !inFence;
+			buf.push(line);
+			return;
+		}
+		if (inFence) { buf.push(line); return; }
+
+		if (!IMG_TEST.test(line)) { buf.push(line); return; }
+
+		const re = /!\[([^\]]*)\]\(([^)]+)\)/g;
+		let cursor = 0;
+		let m;
+		while ((m = re.exec(line)) !== null) {
+			buf.push(line.slice(cursor, m.index));
+			flush();
+			blocks.push({ type: 'image', src: resolve((m[2] || '').trim()), alt: m[1] || '', key: blocks.length });
+			cursor = re.lastIndex;
+		}
+		buf.push(line.slice(cursor));
+	});
+
+	flush();
+	return blocks;
+}
+
+// 保持 module.exports 仍为可调用的 markdownToHtml（兼容所有既有调用方），
+// 同时以属性形式挂载 markdownToBlocks 供公告正文使用
+markdownToHtml.markdownToBlocks = markdownToBlocks;
 module.exports = markdownToHtml;

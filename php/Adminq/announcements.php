@@ -151,6 +151,9 @@ $announcements = $DB->getAll("SELECT * FROM nteam_announcements $whereClause ORD
                                     <td class="text-center"><?php echo $ann['view_count']; ?></td>
                                     <td><small><?php echo $ann['create_time']; ?></small></td>
                                     <td class="text-center" style="white-space: nowrap;">
+                                        <a href="announcement_preview.php?id=<?php echo $ann['id']; ?>" target="_blank" class="btn btn-sm btn-alt-secondary me-1" title="预览">
+                                            <i class="fa fa-eye"></i>
+                                        </a>
                                         <a href="announcement_edit.php?id=<?php echo $ann['id']; ?>" class="btn btn-sm btn-alt-primary me-1">
                                             <i class="fa fa-edit"></i>
                                         </a>
