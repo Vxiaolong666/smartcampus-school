@@ -195,6 +195,10 @@
 			:changelog="updateInfo.changelog"
 			:force="updateInfo.force"
 			:download-url="updateInfo.downloadUrl"
+			:download-type="updateInfo.downloadType"
+			:download-source="updateInfo.downloadSource"
+			:download-pwd="updateInfo.downloadPwd"
+			:download-page="updateInfo.downloadPage"
 			@close="updateVisible = false"
 		/>
 
@@ -534,7 +538,11 @@ export default {
 						version: d.version || '',
 						changelog: d.changelog || '',
 						force: parseInt(d.force_update, 10) === 1,
-						downloadUrl: d.download_url || ''
+						downloadUrl: d.download_url || '',
+						downloadType: d.download_type || 'external',
+						downloadSource: d.download_source || 'external',
+						downloadPwd: d.download_pwd || '',
+						downloadPage: d.download_page || ''
 					};
 					this.updateVisible = true;
 				}).catch(() => {});

@@ -108,7 +108,7 @@
                             </view>
                             <view class="stat-info">
                                 <view class="stat-value">{{stats.latestBalance || '-'}}<text class="stat-unit">元</text></view>
-                                <view class="stat-label">当前余额</view>
+                                <view class="stat-label">当前余额<text wx:if="{{balanceLive}}" class="stat-live">实时</text></view>
                             </view>
                         </view>
                     </view>
@@ -170,16 +170,25 @@
             </view>
             
             <view class="records-section">
-                <view class="section-header">
-                    <image class="section-icon" src="/assets/wxmp-list.svg" mode="widthFix"></image>
-                    <text class="section-title">历史电费记录</text>
-                    <text class="section-count">共{{stats.recordCount}}条</text>
-                </view>
-                <view wx:if="{{records.length === 0}}" class="no-data">
-                    <image class="no-data-icon" src="/assets/wxmp-coffee.svg" mode="widthFix"></image>
-                    <text>暂无记录</text>
-                </view>
-                <view wx:else class="records-timeline">
+            <view class="section-header">
+                <image class="section-icon" src="/assets/wxmp-list.svg" mode="widthFix"></image>
+                <text class="section-title">历史电费记录</text>
+                <text class="section-count">共{{records.length}}条</text>
+            </view>
+            <view class="record-filter">
+                <view class="record-filter-btn {{recordFilter === 'all' ? 'active' : ''}}" bindtap="setRecordFilter" data-filter="all">全部</view>
+                <view class="record-filter-btn {{recordFilter === 'increase' ? 'active' : ''}}" bindtap="setRecordFilter" data-filter="increase">电费增加</view>
+                <view class="record-filter-btn {{recordFilter === 'decrease' ? 'active' : ''}}" bindtap="setRecordFilter" data-filter="decrease">电费减少</view>
+            </view>
+            <view wx:if="{{recordsLoading}}" class="records-loading">
+                <view class="records-loading-spinner"></view>
+                <text>加载中…</text>
+            </view>
+            <view wx:elif="{{records.length === 0}}" class="no-data">
+                <image class="no-data-icon" src="/assets/wxmp-coffee.svg" mode="widthFix"></image>
+                <text>暂无记录</text>
+            </view>
+            <view wx:else class="records-timeline">
                     <view wx:for="{{records}}" wx:key="id" class="record-item">
                         <view class="record-timeline-left">
                             <view class="record-dot {{item.usageClass}}"></view>

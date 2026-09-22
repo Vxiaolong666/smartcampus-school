@@ -2,6 +2,7 @@
 $mod = 'admin';
 $title = '版本管理';
 include('./head.php');
+require_once __DIR__ . '/../funsion/LanzouHelper.php';
 
 if ($adminData['adminRank'] != 1) {
     echo '<div class="alert alert-danger m-3">您的账号没有权限使用此功能</div>';
@@ -172,7 +173,19 @@ $platformText = array('all' => '全平台', 'android' => 'Android', 'ios' => 'iO
                                     <td><?php echo intval($v['version_code']); ?></td>
                                     <td><?php echo $platformText[$v['platform']] ?? hv($v['platform']); ?></td>
                                     <td><?php echo intval($v['force_update']) ? '<span class="badge bg-danger">强制</span>' : '<span class="text-muted">否</span>'; ?></td>
-                                    <td class="fs-sm"><code class="text-break"><?php echo hv($v['download_url']); ?></code></td>
+                                    <td class="fs-sm">
+                                        <code class="text-break"><?php echo hv($v['download_url']); ?></code>
+                                        <?php
+                                        $vRawUrl = (string) $v['download_url'];
+                                        $vSplit = lanzouSplitPassword($vRawUrl);
+                                        ?>
+                                        <?php if (lanzouIsUrl($vSplit['url'])): ?>
+                                            <span class="badge bg-primary ms-1">蓝奏云</span>
+                                        <?php endif; ?>
+                                        <?php if ($vSplit['pwd'] !== ''): ?>
+                                            <span class="badge bg-info ms-1">含密码</span>
+                                        <?php endif; ?>
+                                    </td>
                                     <td><?php echo intval($v['status']) ? '<span class="badge bg-success">上架</span>' : '<span class="badge bg-secondary">下架</span>'; ?></td>
                                     <td class="fs-sm text-muted"><?php echo hv($v['updated_at']); ?></td>
                                     <td>
@@ -240,7 +253,15 @@ $platformText = array('all' => '全平台', 'android' => 'Android', 'ios' => 'iO
                     </div>
                     <div class="mb-3">
                         <label class="form-label">下载地址 <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" name="download_url" id="vUrl" placeholder="应用商店链接或 apk 直链">
+                        <div class="input-group">
+                            <input type="text" class="form-control" name="download_url" id="vUrl" placeholder="apk 直链 / 应用商店链接 / 蓝奏云分享链接">
+                            <button type="button" class="btn btn-alt-info" onclick="testLanzou()"><i class="fa fa-cloud-download-alt me-1"></i>测试解析</button>
+                        </div>
+                        <div class="form-text">
+                            支持 apk 直链、应用商店链接或蓝奏云分享链接。若为蓝奏云且文件设有密码，请在链接末尾追加
+                            <code>&pwd=密码</code>（如 <code>https://www.lanzouq.com/xxxx&pwd=1234</code>），否则客户端无法自动解析。
+                        </div>
+                        <div id="vLanzouTip" class="alert alert-info py-2 px-3 mt-2 mb-0 fs-sm d-none"></div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">更新日志</label>
@@ -312,6 +333,7 @@ function openAdd() {
     $('#vId').val(0);
     $('#vStatus').val(1);
     $('#vForce').prop('checked', false);
+    refreshUrlTip();
     new bootstrap.Modal(document.getElementById('versionModal')).show();
 }
 
@@ -330,6 +352,7 @@ function openEdit(id) {
     $('#vForce').prop('checked', parseInt(v.force_update) === 1);
     $('#vUrl').val(v.download_url);
     $('#vLog').val(v.changelog);
+    refreshUrlTip();
     new bootstrap.Modal(document.getElementById('versionModal')).show();
 }
 
@@ -343,6 +366,71 @@ function saveVersion() {
     postAct('app_version_save', $('#versionForm').serialize());
     return false;
 }
+
+// ===== 蓝奏云链接识别与提示（与后端 funsion/LanzouHelper.php 规则保持一致） =====
+var LANZOU_RE = /^https?:\/\/([a-z0-9-]+\.)*(lanzou[a-z]*|lanzn)\.(com|cn)(\/|$)/i;
+
+function escHtml(s) {
+    return $('<div>').text(s == null ? '' : s).html();
+}
+
+// 解析链接里的 pwd 参数（末尾追加的 &pwd=xxxx 或 ?pwd=xxxx）
+function getUrlPwd(url) {
+    var m = (url || '').match(/[?&]pwd=([^&\s#]+)/i);
+    return m ? m[1] : '';
+}
+
+// 根据当前填写的下载地址，动态提示是否为蓝奏云、是否需要补密码
+function refreshUrlTip() {
+    var url = ($('#vUrl').val() || '').trim();
+    var $tip = $('#vLanzouTip');
+    if (!LANZOU_RE.test(url)) {
+        $tip.addClass('d-none').empty();
+        return;
+    }
+    var pwd = getUrlPwd(url);
+    var msg = pwd
+        ? '<i class="fa fa-check-circle me-1"></i>已识别蓝奏云链接，下载密码：<b>' + escHtml(pwd) + '</b>。保存后客户端检查更新时会自动解析为直链下载。'
+        : '<i class="fa fa-exclamation-circle me-1"></i>已识别蓝奏云链接。若该文件设置了分享密码，请在链接末尾追加 <code>&pwd=密码</code>，否则客户端将解析失败。';
+    $tip.removeClass('d-none').html(msg);
+}
+
+// 测试解析：调用后端，展示直链/文件名/大小，便于核对链接与密码是否正确
+function testLanzou() {
+    var url = ($('#vUrl').val() || '').trim();
+    if (!url) { layer.msg('请先填写下载地址', {icon: 2}); return; }
+    if (!LANZOU_RE.test(url)) { layer.msg('不是蓝奏云链接，无需解析（普通直链客户端会直接下载）', {icon: 0}); return; }
+    var ii = layer.load(2, {shade: [0.1, '#fff']});
+    $.ajax({
+        type: 'POST',
+        url: 'Ajax.php?act=app_version_test_lanzou',
+        data: {url: url},
+        dataType: 'json',
+        success: function (res) {
+            layer.close(ii);
+            if (res && res.code === 0 && res.data) {
+                var d = res.data;
+                layer.alert(
+                    '<div style="max-width:440px;word-break:break-all;line-height:1.9">'
+                    + '解析成功！<br>文件名：' + escHtml(d.name || '-')
+                    + '<br>大小：' + escHtml(d.filesize || '-')
+                    + (d.pwd ? '<br>下载密码：<b>' + escHtml(d.pwd) + '</b>' : '')
+                    + '<br><br>直链：<br><span style="color:#888">' + escHtml(d.direct_url || '') + '</span></div>',
+                    {title: '蓝奏云解析结果', area: ['480px', 'auto']}
+                );
+            } else {
+                layer.alert((res && res.msg) ? res.msg : '解析失败', {icon: 2});
+            }
+        },
+        error: function () {
+            layer.close(ii);
+            layer.msg('服务器错误', {icon: 2});
+        }
+    });
+}
+
+// 输入下载地址时实时刷新提示
+$(document).on('input', '#vUrl', refreshUrlTip);
 </script>
 </body>
 </html>

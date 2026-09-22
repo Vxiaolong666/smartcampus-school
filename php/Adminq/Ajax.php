@@ -8,6 +8,7 @@ $ip = $Gets->ip();
 
 require_once '../funsion/OAuthHelper.php';
 require_once '../funsion/ScheduleTime.php';
+require_once '../funsion/LanzouHelper.php';
 
 @header('Content-Type: application/json; charset=UTF-8');
 
@@ -1528,6 +1529,37 @@ switch($act){
         }
         $DB->query("insert into `nteam_log` (`adminUser`,`type`,`data`,`ip`,`city`) values ('" . $_SESSION['adminUser'] . "','删除了App版本(ID:{$id})', NOW(), '".$ip."', '')");
         exit('{"code":0,"msg":"删除成功！"}');
+    break;
+
+    // 版本管理：测试蓝奏云链接解析（返回直链/文件名/大小，便于管理员核对密码是否正确）
+    case 'app_version_test_lanzou':
+        if(!$isLogin)exit('{"code":0,"msg":"未登录"}');
+        if($adminData['adminRank']!=1){exit('{"code":-1,"msg":"您的账号没有权限使用此功能！"}');}
+        $raw = trim($_POST['url'] ?? '');
+        if ($raw === '') exit('{"code":-1,"msg":"请先填写下载地址"}');
+        $split = lanzouSplitPassword($raw);
+        if (!lanzouIsUrl($split['url'])) {
+            exit('{"code":-1,"msg":"不是蓝奏云链接，无需解析（普通直链客户端会直接下载）"}');
+        }
+        $resolved = lanzouResolve($split['url'], $split['pwd']);
+        if (!$resolved) {
+            exit(json_encode(array(
+                'code' => -1,
+                'msg' => $split['pwd'] === ''
+                    ? '解析失败：若该文件设置了分享密码，请在链接末尾追加 &pwd=密码 后重试'
+                    : '解析失败：请检查链接是否有效、分享密码是否正确'
+            ), JSON_UNESCAPED_UNICODE));
+        }
+        exit(json_encode(array(
+            'code' => 0,
+            'msg'  => '解析成功',
+            'data' => array(
+                'direct_url' => $resolved['directUrl'],
+                'name'       => $resolved['name'],
+                'filesize'   => $resolved['filesize'],
+                'pwd'        => $split['pwd']
+            )
+        ), JSON_UNESCAPED_UNICODE));
     break;
 
     // ===== 开屏广告：图片上传 =====

@@ -27,7 +27,10 @@ Page({
         aiLoading: false,      // 是否正在分析
         aiCache: {},           // 分析结果缓存
         windowHeight: 0,
-        sheetHeight: 0         // 浮层高度（视口 80%）
+        sheetHeight: 0,        // 浮层高度（视口 80%）
+        recordFilter: 'all',   // 历史电费记录筛选：all=全部, increase=电费增加, decrease=电费减少
+        recordsLoading: false, // 切换记录筛选时的局部加载状态
+        balanceLive: false     // 当前余额是否已通过实时电费查询接口刷新
     },
 
     //页面加载
@@ -118,6 +121,14 @@ Page({
         this.loadStatistics();
     },
 
+    //历史电费记录筛选切换
+    setRecordFilter(e) {
+        const filter = e.currentTarget.dataset.filter;
+        if (this.data.recordFilter === filter) return;
+        this.setData({ recordFilter: filter });
+        this.loadRecords();
+    },
+
     //自定义开始日期
     onCustomStart(e) {
         this.setData({ customStart: e.detail.value });
@@ -143,6 +154,11 @@ Page({
         } else if (range === 'custom') {
             if (this.data.customStart) params.start = this.data.customStart;
             if (this.data.customEnd) params.end = this.data.customEnd;
+        }
+        // 记录增减筛选交由服务端处理，避免前端过滤大量记录造成卡顿
+        const rf = this.data.recordFilter;
+        if (rf === 'increase' || rf === 'decrease') {
+            params.record_filter = rf;
         }
         return params;
     },
@@ -180,46 +196,8 @@ Page({
             // 取出响应数据
             const data = res.data;
             
-            // 处理用电记录：为每条记录生成显示文本和样式类名
-            const processedRecords = (data.records || []).map(r => {
-                // 解析用电量（千瓦时），正数表示用电减少（余额减少），负数表示用电增加
-                const usageKwh = parseFloat(r.usage_kwh) || 0;
-                // 解析费用（元）
-                const usageCost = parseFloat(r.usage_cost) || 0;
-                
-                // 处理用电量显示：正数↓表示用电减少，负数↑表示用电增加
-                let usageDisplay = '-';
-                let usageClass = '';
-                if (usageKwh > 0) {
-                    // 正数：用电减少，显示↓
-                    usageDisplay = '↓' + usageKwh.toFixed(4);
-                    usageClass = 'usage-down';
-                } else if (usageKwh < 0) {
-                    // 负数：用电增加，显示↑，取绝对值显示
-                    usageDisplay = '↑' + Math.abs(usageKwh).toFixed(4);
-                    usageClass = 'usage-up';
-                }
-                
-                // 处理费用显示：逻辑同用电量
-                let costDisplay = '-';
-                let costClass = '';
-                if (usageCost > 0) {
-                    costDisplay = '↓' + usageCost.toFixed(2);
-                    costClass = 'usage-down';
-                } else if (usageCost < 0) {
-                    costDisplay = '↑' + Math.abs(usageCost).toFixed(2);
-                    costClass = 'usage-up';
-                }
-                
-                // 返回处理后的记录对象，保留原始字段并追加显示字段
-                return {
-                    ...r,
-                    usageDisplay,    // 用电量显示文本（如"↓0.1234"）
-                    usageClass,      // 用电量样式类名
-                    costDisplay,     // 费用显示文本（如"↑1.23"）
-                    costClass        // 费用样式类名
-                };
-            });
+            // 处理用电记录：为每条记录生成显示文本和样式类名（记录已由服务端按筛选条件返回）
+            const processedRecords = this.processRecords(data.records);
             
             // 更新页面数据：统计摘要、趋势数据、用电记录、电价、取消加载状态
             this.setData({ 
@@ -239,8 +217,12 @@ Page({
                 dailyTrend: data.daily_trend || [],         // 每日趋势数据
                 records: processedRecords,                   // 处理后的用电记录
                 pricePerKwh: data.price_per_kwh || 0.61,    // 每度电价格
-                loading: false                               // 取消加载状态
+                loading: false,                              // 取消加载状态
+                balanceLive: false                           // 先置为离线，待实时查询成功后再标记
             });
+            
+            // 当前余额改用实时电费查询接口获取（统计接口返回的是最后一条记录的余额，非实时）
+            this.loadRealtimeBalance(dorm.room_num);
             
             // 延迟200ms绘制图表，等待DOM渲染完成
             setTimeout(() => {
@@ -253,6 +235,80 @@ Page({
             // 获取统计数据失败
             this.setData({ loading: false });
             wx.showToast({ title: err.msg || '获取数据失败', icon: 'none' });
+        }
+    },
+
+    // 统一处理记录：解析展示字段（记录已由服务端按筛选条件返回）
+    processRecords(list) {
+        return (list || []).map(r => {
+            const usageKwh = parseFloat(r.usage_kwh) || 0;
+            const usageCost = parseFloat(r.usage_cost) || 0;
+
+            let usageDisplay = '-';
+            let usageClass = '';
+            if (usageKwh > 0) {
+                usageDisplay = '↓' + usageKwh.toFixed(4);
+                usageClass = 'usage-down';
+            } else if (usageKwh < 0) {
+                usageDisplay = '↑' + Math.abs(usageKwh).toFixed(4);
+                usageClass = 'usage-up';
+            }
+
+            let costDisplay = '-';
+            let costClass = '';
+            if (usageCost > 0) {
+                costDisplay = '↓' + usageCost.toFixed(2);
+                costClass = 'usage-down';
+            } else if (usageCost < 0) {
+                costDisplay = '↑' + Math.abs(usageCost).toFixed(2);
+                costClass = 'usage-up';
+            }
+
+            return {
+                ...r,
+                usageDisplay,
+                usageClass,
+                costDisplay,
+                costClass
+            };
+        });
+    },
+
+    // 切换记录筛选时仅重新拉取历史记录（服务端过滤），不整页刷新
+    async loadRecords() {
+        const { dormitories, selectedIndex } = this.data;
+        const dorm = dormitories[selectedIndex];
+        if (!dorm) return;
+        this.setData({ recordsLoading: true });
+        try {
+            const res = await api.request({
+                act: 'get_power_statistics',
+                method: 'GET',
+                data: this.buildQuery(dorm.room_num)
+            });
+            this.setData({
+                records: this.processRecords((res.data || {}).records),
+                recordsLoading: false
+            });
+        } catch (err) {
+            this.setData({ recordsLoading: false });
+            wx.showToast({ title: err.msg || '获取记录失败', icon: 'none' });
+        }
+    },
+
+    // 通过实时电费查询接口刷新「当前余额」
+    async loadRealtimeBalance(roomNum) {
+        if (!roomNum) return;
+        try {
+            const res = await api.queryPowerFee(roomNum);
+            const data = (res && res.data) || {};
+            if (this.data.stats && data.balance !== undefined && data.balance !== null) {
+                const stats = Object.assign({}, this.data.stats);
+                stats.latestBalance = data.balance;
+                this.setData({ stats: stats, balanceLive: true });
+            }
+        } catch (e) {
+            // 实时查询失败时保留统计接口返回的余额，不打断页面
         }
     },
 

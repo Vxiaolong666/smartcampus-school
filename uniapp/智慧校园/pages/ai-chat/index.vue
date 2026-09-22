@@ -196,7 +196,7 @@
 import api from '../../utils/api';
 import MsgBubble from './msg-bubble.vue';
 
-const SYSTEM_PROMPT = '你是“智慧校园”AI 助手，帮助学生解答校园生活、学习规划、教务查询、宿舍用电等方面的问题。回答简洁友好、条理清晰，可适当使用 Markdown。';
+const SYSTEM_PROMPT = '你是“智慧校园”AI 助手，帮助学生解答校园生活、学习规划、教务查询（成绩/课表）、宿舍用电等方面的问题。回答简洁友好、条理清晰，可适当使用 Markdown。展示数据时使用友好的中文名称（如宿舍名称、“第X节/上午第1节/下午第2节”等），不要展示系统内部的编码或编号（如宿舍 ID、classTime 等）。';
 
 const SUGGESTIONS = [
   '我最近的成绩怎么样？',
