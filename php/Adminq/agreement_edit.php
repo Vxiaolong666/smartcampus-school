@@ -47,7 +47,7 @@ $pageName = $isEdit ? ('编辑协议 #' . $data['id']) : '新增协议';
             <div class="d-flex flex-column flex-sm-row justify-content-sm-between align-items-sm-center py-2">
                 <div class="flex-grow-1">
                     <h1 class="h3 fw-bold mb-2"><?php echo $pageName; ?></h1>
-                    <div class="text-muted fs-sm">协议内容使用 Markdown 编写，用户端《协议中心》按 Markdown 渲染。保存后用户端自动同步。</div>
+                    <div class="text-muted fs-sm"></div>
                 </div>
                 <nav class="flex-shrink-0 mt-3 mt-sm-0 ms-sm-3" aria-label="breadcrumb">
                     <ol class="breadcrumb breadcrumb-alt">
@@ -129,7 +129,7 @@ $pageName = $isEdit ? ('编辑协议 #' . $data['id']) : '新增协议';
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">协议内容（Markdown）<span class="text-danger">*</span> <small class="text-muted">工具栏「插入图片」可上传本地图片或填写图片链接，用户端协议页会自适应展示</small></label>
+                        <label class="form-label">协议内容（Markdown）<span class="text-danger">*</span> <small class="text-muted"></small></label>
                         <textarea class="form-control" name="content" id="aContent" rows="18" style="font-size:13px;"><?php echo hv($data['content']); ?></textarea>
                     </div>
 
