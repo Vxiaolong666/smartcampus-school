@@ -40,6 +40,9 @@
         </text>
       </view>
 
+      <!-- 图片验证码（服务端出图，点击图片可刷新） -->
+      <captcha-image id="captchaImg" />
+
       <button class="submit-btn" bindtap="onSubmit" loading="{{loading}}">
         <text>发送验证邮件</text>
       </button>

@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>安全验证</title>
+<!-- 与官网登录使用同一个腾讯云验证码 SDK -->
+<script src="https://ssl.captcha.qq.com/TCaptcha.js"></script>
+<style>
+	html, body {
+		height: 100%;
+		margin: 0;
+		background: rgba(0, 0, 0, 0.45);
+	}
+	body {
+		font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+		-webkit-tap-highlight-color: transparent;
+	}
+	.foot {
+		position: fixed;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		padding: 0 40px 40px;
+		text-align: center;
+	}
+	.tip {
+		color: rgba(255, 255, 255, 0.85);
+		font-size: 13px;
+		line-height: 1.7;
+		margin-bottom: 18px;
+	}
+	.btn {
+		display: block;
+		width: 100%;
+		height: 44px;
+		line-height: 44px;
+		padding: 0;
+		border: none;
+		border-radius: 8px;
+		font-size: 15px;
+		color: #fff;
+		background: #13c2c2;
+	}
+	.btn-plain {
+		margin-top: 12px;
+		background: rgba(255, 255, 255, 0.16);
+		color: rgba(255, 255, 255, 0.9);
+	}
+</style>
+</head>
+<body>
+	<div class="foot">
+		<div class="tip" id="tip">正在唤起安全验证…</div>
+		<button class="btn" id="startBtn">重新唤起验证</button>
+		<button class="btn btn-plain" id="cancelBtn">取消</button>
+	</div>
+
+	<script>
+		(function () {
+			/*
+			 * App 端本地验证页：加载腾讯云验证码（TCaptcha 依赖浏览器 DOM，无法直接在 App 页面内运行），
+			 * 验证完成后把 ticket / randstr 回传给 uni-app 页面：
+			 *   优先 plus.webview.currentWebview().opener().evalJS(...)（App 端即时可靠，页面内定义 window.__tcResult）
+			 *   兜底 uni.postMessage（若引入了 uni.webview.js）
+			 */
+			function getQuery(name) {
+				var m = new RegExp('[?&]' + name + '=([^&#]*)').exec(location.search || '');
+				return m ? decodeURIComponent(m[1]) : '';
+			}
+
+			var appid = getQuery('appid');
+			var tipEl = document.getElementById('tip');
+
+			function sendToApp(data) {
+				var payload = encodeURIComponent(JSON.stringify(data));
+				var sent = false;
+				try {
+					if (window.plus && plus.webview && plus.webview.currentWebview) {
+						var wv = plus.webview.currentWebview();
+						var opener = wv && wv.opener ? wv.opener() : null;
+						if (opener && opener.evalJS) {
+							opener.evalJS('window.__tcResult && window.__tcResult(JSON.parse(decodeURIComponent("' + payload + '")))');
+							sent = true;
+						}
+					}
+				} catch (e) {}
+				try {
+					if (!sent && window.uni && typeof uni.postMessage === 'function') {
+						uni.postMessage({ data: data });
+					}
+				} catch (e) {}
+			}
+
+			var opened = false;
+
+			function start() {
+				if (opened) return;
+				if (!appid) {
+					tipEl.innerText = '缺少验证参数，请返回重试。';
+					return;
+				}
+				if (typeof TencentCaptcha !== 'function') {
+					tipEl.innerText = '验证组件加载失败，请检查网络后点击下方按钮重试。';
+					return;
+				}
+				try {
+					var captcha = new TencentCaptcha(appid, function (res) {
+						opened = false;
+						if (res && res.ret === 0) {
+							sendToApp({ type: 'success', ticket: res.ticket || '', randstr: res.randstr || '' });
+						} else {
+							sendToApp({ type: 'fail', ret: (res && res.ret) || -1 });
+						}
+					}, {});
+					captcha.show();
+					opened = true;
+					tipEl.innerText = '请完成下方滑块验证';
+				} catch (e) {
+					tipEl.innerText = '验证组件初始化失败，请点击下方按钮重试。';
+				}
+			}
+
+			document.getElementById('startBtn').addEventListener('click', start);
+			document.getElementById('cancelBtn').addEventListener('click', function () {
+				sendToApp({ type: 'fail', ret: -1 });
+			});
+
+			if (document.readyState === 'complete' || document.readyState === 'interactive') {
+				start();
+			} else {
+				window.addEventListener('DOMContentLoaded', start);
+			}
+		})();
+	</script>
+</body>
+</html>

@@ -60,9 +60,9 @@ Page({
         }
     },
 
-    // 预览正文中的图片（原生 image 渲染，点击可放大）
+    // 预览正文中的图片（md-blocks 组件事件 / 原生 image 均可）
     onPreviewContentImage(e) {
-        const src = e.currentTarget.dataset.src;
+        const src = (e && e.detail && e.detail.src) || (e && e.currentTarget && e.currentTarget.dataset.src);
         if (src) {
             wx.previewImage({
                 current: src,

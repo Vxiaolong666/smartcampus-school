@@ -3,6 +3,7 @@
  * 处理用户注册流程
  */
 const api = require('../../utils/api.js');
+const validate = require('../../utils/validate.js');
 
 Page({
     data: {
@@ -46,9 +47,21 @@ Page({
             return;
         }
 
+        // 验证用户名格式（与后端一致：4-20 位字母、数字或下划线）
+        if (!validate.isUsername(username)) {
+            wx.showToast({ title: '用户名需为4-20位字母、数字或下划线', icon: 'none' });
+            return;
+        }
+
         // 验证邮箱
         if (!email.trim()) {
             wx.showToast({ title: '请输入邮箱', icon: 'none' });
+            return;
+        }
+
+        // 验证邮箱格式（避免把必然失败的请求发到后端）
+        if (!validate.isEmail(email)) {
+            wx.showToast({ title: '邮箱格式不正确', icon: 'none' });
             return;
         }
 
@@ -70,12 +83,20 @@ Page({
             return;
         }
 
+        // 图片验证码校验（本地先拦，避免无效请求）
+        const captchaComp = this.selectComponent('#captchaImg');
+        const captchaCheck = captchaComp ? captchaComp.check() : { ok: true };
+        if (!captchaCheck.ok) {
+            wx.showToast({ title: captchaCheck.msg || '请输入图片验证码', icon: 'none' });
+            return;
+        }
+
         // 开始注册
         this.setData({ loading: true });
         wx.showLoading({ title: '注册中...' });
 
-        // 调用注册API
-        api.register(username, password, email, confirmPassword)
+        // 调用注册API（验证码随表单一起提交）
+        api.register(username, password, email, confirmPassword, { captcha: captchaComp ? captchaComp.getCode() : '' })
             .then(res => {
                 // 注册成功
                 wx.hideLoading();

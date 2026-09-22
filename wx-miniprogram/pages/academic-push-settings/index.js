@@ -5,6 +5,7 @@
 const app = getApp()
 const api = require('../../utils/api.js')
 const feature = require('../../utils/feature.js')
+const validate = require('../../utils/validate.js')
 
 // 入口场景 → 页面标题 / 卡片副标题
 // 「我的」页的「课程推送设置」与「成绩推送设置」共用本页，按入口动态展示标题与说明
@@ -214,6 +215,12 @@ Page({
         const pushTypes = []
         if (that.data.pushWechat) pushTypes.push('wechat')  // 微信推送开启则加入
         if (that.data.pushEmail) pushTypes.push('email')    // 邮件推送开启则加入
+
+        // 表单校验：开启推送时必须至少选择一种推送方式，否则本次请求没有意义
+        if (!disableOnly && that.data.isEnabled && pushTypes.length === 0) {
+            wx.showToast({ title: '请至少选择一种推送方式', icon: 'none' })
+            return
+        }
         
         // 设置保存中状态
         that.setData({ saving: true })

@@ -3,6 +3,7 @@
  * 处理密码重置流程
  */
 const api = require('../../utils/api.js');
+const validate = require('../../utils/validate.js');
 
 Page({
   data: {
@@ -28,12 +29,26 @@ Page({
       return;
     }
 
+    // 验证邮箱格式（避免把必然失败的请求发到后端）
+    if (!validate.isEmail(email)) {
+      wx.showToast({ title: '邮箱格式不正确', icon: 'none' });
+      return;
+    }
+
+    // 图片验证码校验（本地先拦，避免无效请求）
+    const captchaComp = this.selectComponent('#captchaImg');
+    const captchaCheck = captchaComp ? captchaComp.check() : { ok: true };
+    if (!captchaCheck.ok) {
+      wx.showToast({ title: captchaCheck.msg || '请输入图片验证码', icon: 'none' });
+      return;
+    }
+
     // 开始发送
     this.setData({ loading: true });
     wx.showLoading({ title: '发送中...' });
 
-    // 调用忘记密码API
-    api.forgotPassword(email)
+    // 调用忘记密码API（验证码随表单一起提交）
+    api.forgotPassword(email, { captcha: captchaComp ? captchaComp.getCode() : '' })
       .then(res => {
         // 发送成功
         wx.hideLoading();

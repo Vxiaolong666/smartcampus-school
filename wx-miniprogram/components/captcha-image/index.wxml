@@ -1,0 +1,14 @@
+<view class="cap-wrap{{variant === 'form' ? ' cap-wrap-form' : ''}}">
+  <view class="cap-row">
+    <input
+      class="cap-input{{variant === 'form' ? ' cap-input-form' : ''}}"
+      type="text"
+      maxlength="4"
+      placeholder="请输入图片验证码"
+      value="{{code}}"
+      bindinput="onInput"
+    />
+    <image class="cap-img{{variant === 'form' ? ' cap-img-form' : ''}}" src="{{imgUrl}}" mode="widthFix" bindtap="refresh"></image>
+  </view>
+  <view class="cap-tip{{variant === 'form' ? ' cap-tip-form' : ''}}" bindtap="refresh">看不清？点击图片可刷新</view>
+</view>

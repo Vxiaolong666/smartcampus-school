@@ -74,11 +74,13 @@
 					</view>
 				</view>
 
+				<!-- 人机验证：仅 H5 / App 端启用（小程序端由组件内条件编译自动隐藏） -->
+				<captcha-verify ref="captcha" />
+
 				<button
 					class="register-btn"
 					@click="onRegister"
 					:loading="loading"
-					style="height: 95rpx; display: flex; box-sizing: border-box; left: -1rpx; top: 4rpx; width: 351rpx; position: relative"
 				>
 					<text>注 册</text>
 				</button>
@@ -103,6 +105,7 @@
  * 处理用户注册流程
  */
 import api from '../../utils/api.js';
+import validate from '../../utils/validate.js';
 
 export default {
 	data() {
@@ -142,8 +145,20 @@ export default {
 				return;
 			}
 
+			// 用户名格式（与后端一致：4-20 位字母、数字或下划线）
+			if (!validate.isUsername(username)) {
+				uni.showToast({ title: '用户名需为4-20位字母、数字或下划线', icon: 'none' });
+				return;
+			}
+
 			if (!email.trim()) {
 				uni.showToast({ title: '请输入邮箱', icon: 'none' });
+				return;
+			}
+
+			// 邮箱格式（避免把必然失败的请求发到后端）
+			if (!validate.isEmail(email)) {
+				uni.showToast({ title: '邮箱格式不正确', icon: 'none' });
 				return;
 			}
 
@@ -162,10 +177,26 @@ export default {
 				return;
 			}
 
+			// 人机验证参数（仅在 H5 / App 端存在验证码组件）
+			let captchaData = {};
+
+			// #ifdef H5 || APP-PLUS
+			// 与官网注册一致：需先通过腾讯云滑块验证（异常时可用图片验证码兜底）
+			const cap = this.$refs.captcha;
+			if (cap) {
+				const capCheck = cap.check();
+				if (!capCheck.ok) {
+					uni.showToast({ title: capCheck.msg || '请先完成人机验证', icon: 'none' });
+					return;
+				}
+				captchaData = capCheck.data || {};
+			}
+			// #endif
+
 			this.loading = true;
 			uni.showLoading({ title: '注册中...' });
 
-			api.register(username, password, email, confirmPassword)
+			api.register(username, password, email, confirmPassword, captchaData)
 				.then(res => {
 					uni.hideLoading();
 					this.loading = false;

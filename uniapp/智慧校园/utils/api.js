@@ -52,35 +52,53 @@ const request = (options) => {
 
 /* ==================== 认证相关接口 ==================== */
 
-const login = (username, password) => {
+/**
+ * 账号密码登录
+ * @param {string} username
+ * @param {string} password
+ * @param {Object} [extra] 额外参数（人机验证：tc_ticket / tc_randstr / captcha）
+ */
+const login = (username, password, extra) => {
   return request({
     act: 'login',
     method: 'POST',
-    data: { username, password }
+    data: Object.assign({ username, password }, extra || {})
   });
 };
 
-const register = (username, password, email, confirmPassword) => {
+/**
+ * 注册
+ * @param {Object} [extra] 额外参数（人机验证：tc_ticket / tc_randstr / captcha）
+ */
+const register = (username, password, email, confirmPassword, extra) => {
   return request({
     act: 'register',
     method: 'POST',
-    data: { username, password, email, confirm_password: confirmPassword }
+    data: Object.assign({ username, password, email, confirm_password: confirmPassword }, extra || {})
   });
 };
 
-const forgotPassword = (email) => {
+/**
+ * 忘记密码（发送重置邮件）
+ * @param {Object} [extra] 额外参数（人机验证）
+ */
+const forgotPassword = (email, extra) => {
   return request({
     act: 'forgot_password',
     method: 'POST',
-    data: { email }
+    data: Object.assign({ email }, extra || {})
   });
 };
 
-const sendVerifyEmail = (email) => {
+/**
+ * 重新发送验证邮件
+ * @param {Object} [extra] 额外参数（人机验证）
+ */
+const sendVerifyEmail = (email, extra) => {
   return request({
     act: 'send_verify_email',
     method: 'POST',
-    data: { email }
+    data: Object.assign({ email }, extra || {})
   });
 };
 
@@ -693,10 +711,15 @@ const getCancelConfig = () => {
   });
 };
 
-const sendCancelCode = () => {
+/**
+ * 发送注销邮箱验证码
+ * @param {Object} data - { tc_ticket, tc_randstr, captcha } 人机验证参数（H5 / App 端提供）
+ */
+const sendCancelCode = (data) => {
   return request({
     act: 'send_cancel_code',
-    method: 'POST'
+    method: 'POST',
+    data: data || {}
   });
 };
 

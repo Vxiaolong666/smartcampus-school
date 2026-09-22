@@ -1,4 +1,5 @@
 const api = require('../../utils/api.js');
+const validate = require('../../utils/validate.js');
 
 Page({
     // 页面数据
@@ -100,6 +101,12 @@ Page({
         // 验证昵称
         if (!nickname.trim()) {
             wx.showToast({ title: '请输入昵称', icon: 'none' });
+            return;
+        }
+
+        // 昵称长度（与输入框 maxlength 保持一致）
+        if (validate.trim(nickname).length > 20) {
+            wx.showToast({ title: '昵称最多20个字符', icon: 'none' });
             return;
         }
 

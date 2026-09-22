@@ -166,6 +166,7 @@
  */
 import api from '../../utils/api.js';
 import feature from '../../utils/feature.js';
+import validate from '../../utils/validate.js';
 
 export default {
 	data() {
@@ -316,6 +317,22 @@ export default {
 
 		saveSettings(index, disableOnly = false) {
 			const dorm = this.dormitories[index];
+
+			// 表单校验：阈值必须是不小于 0 的数字，且危险阈值不能高于低余额阈值
+			const lowThreshold = parseFloat(dorm.balanceLowThreshold);
+			const criticalThreshold = parseFloat(dorm.balanceCriticalThreshold);
+			if (!validate.isNumberInRange(lowThreshold, 0)) {
+				uni.showToast({ title: '低余额阈值需为不小于0的数字', icon: 'none' });
+				return;
+			}
+			if (!validate.isNumberInRange(criticalThreshold, 0)) {
+				uni.showToast({ title: '危险余额阈值需为不小于0的数字', icon: 'none' });
+				return;
+			}
+			if (criticalThreshold > lowThreshold) {
+				uni.showToast({ title: '危险阈值不能高于低余额阈值', icon: 'none' });
+				return;
+			}
 
 			const pushTypes = [];
 			if (dorm.pushWechat) pushTypes.push('wechat');

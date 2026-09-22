@@ -5,6 +5,7 @@
  */
 const api = require('../../utils/api.js');
 const markdownToHtml = require('../../utils/markdown.js');
+const validate = require('../../utils/validate.js');
 
 const STEP_LABELS = ['阅读协议', '风险告知', '身份核验', '确认提交'];
 const TOTAL_STEPS = 4;
@@ -113,7 +114,8 @@ Page({
     if (d.currentStep === 2) return d.agreeRisk;
     if (d.currentStep === 3) {
       if (d.needPassword && !String(d.password).trim()) return false;
-      if (d.needEmail && !String(d.emailCode).trim()) return false;
+      // 邮箱验证码为 6 位数字（与后端生成规则一致），避免无效核验请求
+      if (d.needEmail && !validate.isDigits(d.emailCode, 6)) return false;
       return true;
     }
     return true;
@@ -201,11 +203,19 @@ Page({
     this.refresh();
   },
 
-  //发送邮箱验证码
+  //发送邮箱验证码（发送前须先通过图片验证码校验）
   handleSendCode() {
     if (this.data.sending || this.data.countdown > 0) return;
+
+    const captchaComp = this.selectComponent('#captchaImg');
+    const captchaCheck = captchaComp ? captchaComp.check() : { ok: true };
+    if (!captchaCheck.ok) {
+      wx.showToast({ title: captchaCheck.msg || '请输入图片验证码', icon: 'none' });
+      return;
+    }
+
     this.setData({ sending: true });
-    api.sendCancelCode()
+    api.sendCancelCode({ captcha: captchaComp ? captchaComp.getCode() : '' })
       .then(res => {
         this.setData({ sending: false });
         wx.showToast({ title: res.msg || '验证码已发送', icon: 'none' });
@@ -289,12 +299,22 @@ Page({
   //身份核验（第三步「下一步」触发）
   verifyIdentity() {
     if (this.data.verifying) return;
+
+    // 图片验证码校验（本地先拦，避免无效核验请求）
+    const captchaComp = this.selectComponent('#captchaImg');
+    const captchaCheck = captchaComp ? captchaComp.check() : { ok: true };
+    if (!captchaCheck.ok) {
+      wx.showToast({ title: captchaCheck.msg || '请输入图片验证码', icon: 'none' });
+      return;
+    }
+
     this.setData({ verifying: true });
     wx.showLoading({ title: '核验中...' });
 
     api.verifyCancelIdentity({
       password: this.data.password,
-      email_code: this.data.emailCode
+      email_code: this.data.emailCode,
+      captcha: captchaComp ? captchaComp.getCode() : ''
     })
       .then(res => {
         wx.hideLoading();

@@ -83,39 +83,42 @@ const login = (username, password) => {
  * @param {string} password - 密码
  * @param {string} email - 邮箱
  * @param {string} confirmPassword - 确认密码
+ * @param {Object} [extra] - 额外参数（图片验证码：captcha）
  * @returns {Promise}
  */
-const register = (username, password, email, confirmPassword) => {
+const register = (username, password, email, confirmPassword, extra) => {
   return request({
     act: 'register',
     method: 'POST',
-    data: { username, password, email, confirm_password: confirmPassword }
+    data: Object.assign({ username, password, email, confirm_password: confirmPassword }, extra || {})
   });
 };
 
 /**
  * 忘记密码 - 发送重置邮件
  * @param {string} email - 邮箱地址
+ * @param {Object} [extra] - 额外参数（图片验证码：captcha）
  * @returns {Promise}
  */
-const forgotPassword = (email) => {
+const forgotPassword = (email, extra) => {
   return request({
     act: 'forgot_password',
     method: 'POST',
-    data: { email }
+    data: Object.assign({ email }, extra || {})
   });
 };
 
 /**
  * 发送验证邮件
  * @param {string} email - 邮箱地址
+ * @param {Object} [extra] - 额外参数（图片验证码：captcha）
  * @returns {Promise}
  */
-const sendVerifyEmail = (email) => {
+const sendVerifyEmail = (email, extra) => {
   return request({
     act: 'send_verify_email',
     method: 'POST',
-    data: { email }
+    data: Object.assign({ email }, extra || {})
   });
 };
 
@@ -867,12 +870,14 @@ const getCancelConfig = () => {
 
 /**
  * 发送注销邮箱验证码
+ * @param {Object} data - { captcha } 图片验证码（小程序端，发送前须先通过校验）
  * @returns {Promise}
  */
-const sendCancelCode = () => {
+const sendCancelCode = (data) => {
   return request({
     act: 'send_cancel_code',
-    method: 'POST'
+    method: 'POST',
+    data: data || {}
   });
 };
 

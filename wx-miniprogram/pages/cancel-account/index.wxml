@@ -56,7 +56,7 @@
             </block>
             <block wx:else>
               <view class="alert alert-warning">
-                <text>《用户注销服务协议》当前未发布，无需阅读确认，可直接进入下一步。</text>
+                <text>确定要注销账号吗？您的所有数据与珍贵回忆都将被清除，无法找回。我们很不舍与您告别，如果只是遇到问题，欢迎联系我们帮您解决。若仍要注销，请点击下一步继续，注销操作不可逆。</text>
               </view>
             </block>
           </block>
@@ -119,6 +119,9 @@
               </view>
               <text class="form-tip">验证码将发送至您的注册邮箱</text>
             </view>
+
+            <!-- 安全验证：图片验证码（服务端出图，点击图片可刷新） -->
+            <captcha-image id="captchaImg" variant="form" />
           </block>
 
           <!-- 步骤4：确认提交 -->

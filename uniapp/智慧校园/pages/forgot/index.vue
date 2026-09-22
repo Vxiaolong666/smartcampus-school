@@ -35,6 +35,9 @@
 					</view>
 				</view>
 
+				<!-- 人机验证：仅 H5 / App 端启用（小程序端由组件内条件编译自动隐藏） -->
+				<captcha-verify ref="captcha" />
+
 				<button class="submit-btn" @click="onSubmit" :loading="loading">
 					<text>发送重置链接</text>
 				</button>
@@ -54,6 +57,7 @@
  * 处理密码重置流程
  */
 import api from '../../utils/api.js';
+import validate from '../../utils/validate.js';
 
 export default {
 	data() {
@@ -78,10 +82,32 @@ export default {
 				return;
 			}
 
+			// 邮箱格式（避免把必然失败的请求发到后端）
+			if (!validate.isEmail(email)) {
+				uni.showToast({ title: '邮箱格式不正确', icon: 'none' });
+				return;
+			}
+
+			// 人机验证参数（仅在 H5 / App 端存在验证码组件）
+			let captchaData = {};
+
+			// #ifdef H5 || APP-PLUS
+			// 与官网一致的验证方式：需先通过腾讯云滑块验证（异常时可用图片验证码兜底）
+			const cap = this.$refs.captcha;
+			if (cap) {
+				const capCheck = cap.check();
+				if (!capCheck.ok) {
+					uni.showToast({ title: capCheck.msg || '请先完成人机验证', icon: 'none' });
+					return;
+				}
+				captchaData = capCheck.data || {};
+			}
+			// #endif
+
 			this.loading = true;
 			uni.showLoading({ title: '发送中...' });
 
-			api.forgotPassword(email)
+			api.forgotPassword(email, captchaData)
 				.then(res => {
 					uni.hideLoading();
 					this.loading = false;

@@ -25,10 +25,7 @@
         <view class="ag-update" wx:if="{{updatedAt}}">最后更新日期：{{updatedAt}}</view>
         <!-- 正文拆成「文本块 + 图片块」：文本交 rich-text，图片用原生 image（各端稳定显示、可点击放大） -->
         <block wx:if="{{blocks.length}}">
-          <block wx:for="{{blocks}}" wx:key="key">
-            <rich-text wx:if="{{item.type === 'html'}}" class="ag-rich" nodes="{{item.html}}"></rich-text>
-            <image wx:else class="ag-rich-img" src="{{item.src}}" mode="widthFix" data-src="{{item.src}}" bind:tap="previewImage"></image>
-          </block>
+          <md-blocks blocks="{{blocks}}" bind:preview="previewImage" />
         </block>
         <view wx:else class="ag-loading">加载中…</view>
       </view>

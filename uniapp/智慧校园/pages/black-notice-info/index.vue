@@ -46,10 +46,7 @@
 					<view v-if="summaryHtml" class="ai-summary-divider"></view>
 
 					<view v-if="contentBlocks.length" class="notice-content">
-						<block v-for="(block, idx) in contentBlocks" :key="idx">
-							<rich-text v-if="block.type === 'html'" :nodes="block.html"></rich-text>
-							<image v-else class="notice-content-img" :src="block.src" mode="widthFix" @click="onPreviewContentImage(block.src)"></image>
-						</block>
+						<md-blocks :blocks="contentBlocks" @preview="onPreviewContentImage" />
 					</view>
 					<image v-if="notice.image" class="notice-image" :src="notice.image" mode="widthFix" @click="onPreviewImage"></image>
 				</view>

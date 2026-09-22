@@ -1,0 +1,59 @@
+/* 图片验证码：输入框样式与各表单页的 .input-wrapper 保持一致 */
+.cap-wrap {
+  padding: 0 30rpx;
+  margin-top: 30rpx;
+}
+
+.cap-row {
+  display: flex;
+  align-items: center;
+}
+
+.cap-input {
+  flex: 1;
+  height: 96rpx;
+  padding: 0 20rpx;
+  margin-right: 20rpx;
+  background: #f7f8fc;
+  border-radius: 16rpx;
+  font-size: 28rpx;
+  color: #48416f;
+  box-sizing: border-box;
+}
+
+.cap-img {
+  width: 220rpx;
+  border-radius: 10rpx;
+  background: #f2f3f7;
+}
+
+.cap-tip {
+  margin-top: 12rpx;
+  text-align: right;
+  font-size: 22rpx;
+  color: #948eb3;
+}
+
+/* variant="form"：适配「注销流程」等使用 .form-item / .form-input 风格的页面
+   （这类页面的 .form-item 无左右内边距、.form-input 为带边框的 88rpx 输入框） */
+.cap-wrap-form {
+  padding: 0;
+  margin-top: 0;
+}
+
+.cap-input-form {
+  height: 88rpx;
+  padding: 0 30rpx;
+  border: 2rpx solid #e5e5e5;
+  border-radius: 20rpx;
+}
+
+/* 服务端出图为 100×40，宽度 220rpx 时高度正好 88rpx，与输入框齐平 */
+.cap-img-form {
+  width: 220rpx;
+  border-radius: 20rpx;
+}
+
+.cap-tip-form {
+  text-align: left;
+}

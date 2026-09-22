@@ -1,0 +1,53 @@
+/* 正文块渲染（公告 / 协议通用）：与 rich-text 内的内联样式风格保持一致 */
+.md-blocks {
+  width: 100%;
+}
+
+.md-rich {
+  display: block;
+  width: 100%;
+}
+
+.md-img {
+  display: block;
+  width: 100%;
+  margin: 16rpx 0;
+  border-radius: 12rpx;
+}
+
+/* 折叠块：rich-text 不支持 <details>，这里用原生 view 实现展开/折叠 */
+.md-details {
+  margin: 16rpx 0;
+  border: 2rpx solid #e9ecf4;
+  border-radius: 16rpx;
+  overflow: hidden;
+}
+
+.md-details-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22rpx 26rpx;
+  background: #f7f8fc;
+}
+
+.md-details-head-hover {
+  opacity: 0.85;
+}
+
+.md-details-title {
+  flex: 1;
+  font-size: 28rpx;
+  font-weight: bold;
+  color: #48416f;
+}
+
+.md-details-caret {
+  margin-left: 16rpx;
+  font-size: 26rpx;
+  color: #948eb3;
+}
+
+.md-details-body {
+  padding: 12rpx 26rpx 20rpx;
+}

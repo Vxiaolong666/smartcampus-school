@@ -48,6 +48,9 @@
 					</view>
 				</view>
 
+				<!-- 人机验证：仅 H5 / App 端启用（小程序端由组件内条件编译自动隐藏） -->
+				<captcha-verify ref="captcha" />
+
 				<view class="forgot-link" @click="onForgot">忘记密码？</view>
 				<view class="verify-link" @click="onSendVerify">未验证邮箱？</view>
 
@@ -356,10 +359,26 @@ export default {
 				return;
 			}
 
+			// 人机验证参数（仅在 H5 / App 端存在验证码组件）
+			let captchaData = {};
+
+			// #ifdef H5 || APP-PLUS
+			// 与官网登录一致：需先通过腾讯云滑块验证（异常时可用图片验证码兜底）
+			const cap = this.$refs.captcha;
+			if (cap) {
+				const capCheck = cap.check();
+				if (!capCheck.ok) {
+					uni.showToast({ title: capCheck.msg || '请先完成人机验证', icon: 'none' });
+					return;
+				}
+				captchaData = capCheck.data || {};
+			}
+			// #endif
+
 			this.loading = true;
 			uni.showLoading({ title: '登录中...' });
 
-			api.login(username, password)
+			api.login(username, password, captchaData)
 				.then(res => {
 					uni.hideLoading();
 					this.loading = false;
@@ -369,6 +388,7 @@ export default {
 					uni.hideLoading();
 					this.loading = false;
 					uni.showToast({ title: err.msg || '登录失败', icon: 'none' });
+					// 登录失败不清空人机验证：已通过即保持通过，避免密码输错后还要重新验证
 				});
 		},
 

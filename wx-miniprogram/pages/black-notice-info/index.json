@@ -1,4 +1,6 @@
 {
   "navigationBarTextStyle": "black",
-  "usingComponents": {}
+  "usingComponents": {
+    "md-blocks": "/components/md-blocks/index"
+  }
 }

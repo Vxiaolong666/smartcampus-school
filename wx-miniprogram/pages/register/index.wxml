@@ -73,7 +73,10 @@
         </view>
       </view>
 
-      <button class="register-btn" bindtap="onRegister" loading="{{loading}}" style="height: 95rpx; display: flex; box-sizing: border-box; left: -1rpx; top: 4rpx; width: 351rpx; position: relative">
+      <!-- 图片验证码（服务端出图，点击图片可刷新） -->
+      <captcha-image id="captchaImg" />
+
+      <button class="register-btn" bindtap="onRegister" loading="{{loading}}">
         <text>注 册</text>
       </button>
 

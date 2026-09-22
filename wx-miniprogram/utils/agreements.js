@@ -200,9 +200,9 @@ function agreementPageConfig(key, defaultTitle) {
       var api = require('./api.js');
       return markdownToHtml.markdownToBlocks(md || '', { resolveUrl: api.getFileUrl });
     },
-    // 正文图片点击放大
+    // 正文图片点击放大（md-blocks 组件事件 / 原生 image 均可）
     previewImage: function (e) {
-      var src = e.currentTarget.dataset.src;
+      var src = (e && e.detail && e.detail.src) || (e && e.currentTarget && e.currentTarget.dataset.src);
       if (src) wx.previewImage({ current: src, urls: [src] });
     },
     // 关于我们

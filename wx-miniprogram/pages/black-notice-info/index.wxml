@@ -45,10 +45,7 @@
         <view wx:if="{{summaryHtml}}" class="ai-summary-divider"></view>
 
         <view wx:if="{{contentBlocks.length}}" class="notice-content">
-          <block wx:for="{{contentBlocks}}" wx:key="key">
-            <rich-text wx:if="{{item.type === 'html'}}" nodes="{{item.html}}"></rich-text>
-            <image wx:else class="notice-content-img" src="{{item.src}}" mode="widthFix" data-src="{{item.src}}" bind:tap="onPreviewContentImage"></image>
-          </block>
+          <md-blocks blocks="{{contentBlocks}}" bind:preview="onPreviewContentImage" />
         </view>
         <image wx:if="{{notice.image}}" class="notice-image" src="{{notice.image}}" mode="widthFix" bind:tap="onPreviewImage" />
       </view>

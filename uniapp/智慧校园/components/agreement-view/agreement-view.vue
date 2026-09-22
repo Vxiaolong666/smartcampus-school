@@ -26,10 +26,7 @@
 					<view v-if="updatedAt" class="ag-update">最后更新日期：{{ updatedAt }}</view>
 					<!-- 正文拆成「文本块 + 图片块」：文本交 rich-text，图片用原生 image（各端稳定显示、可点击放大） -->
 					<block v-if="blocks.length">
-						<block v-for="(block, idx) in blocks" :key="idx">
-							<rich-text v-if="block.type === 'html'" class="ag-rich" :nodes="block.html"></rich-text>
-							<image v-else class="ag-rich-img" :src="block.src" mode="widthFix" @click="previewImage(block.src)"></image>
-						</block>
+						<md-blocks :blocks="blocks" @preview="previewImage" />
 					</block>
 					<view v-else class="ag-loading">加载中…</view>
 				</view>

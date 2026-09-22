@@ -124,6 +124,7 @@
  */
 import api from '../../utils/api.js';
 import feature from '../../utils/feature.js';
+import validate from '../../utils/validate.js';
 
 // 入口场景 → 页面标题 / 卡片副标题
 // 「我的」页的「课程推送设置」与「成绩推送设置」共用本页，按入口动态展示标题与说明
@@ -294,6 +295,12 @@ export default {
 			const pushTypes = [];
 			if (this.pushWechat) pushTypes.push('wechat');
 			if (this.pushEmail) pushTypes.push('email');
+
+			// 表单校验：开启推送时必须至少选择一种推送方式，否则本次请求没有意义
+			if (!disableOnly && this.isEnabled && pushTypes.length === 0) {
+				uni.showToast({ title: '请至少选择一种推送方式', icon: 'none' });
+				return;
+			}
 
 			this.saving = true;
 

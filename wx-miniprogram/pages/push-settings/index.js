@@ -5,6 +5,7 @@
 const app = getApp()
 const api = require('../../utils/api.js')
 const feature = require('../../utils/feature.js')
+const validate = require('../../utils/validate.js')
 
 Page({
     data: {
@@ -191,6 +192,22 @@ Page({
     saveSettings: function(index, disableOnly = false) {
         // 获取对应宿舍的设置数据
         const dorm = this.data.dormitories[index]
+
+        // 表单校验：阈值必须是不小于 0 的数字，且危险阈值不能高于低余额阈值
+        const lowThreshold = parseFloat(dorm.balanceLowThreshold)
+        const criticalThreshold = parseFloat(dorm.balanceCriticalThreshold)
+        if (!validate.isNumberInRange(lowThreshold, 0)) {
+            wx.showToast({ title: '低余额阈值需为不小于0的数字', icon: 'none' })
+            return
+        }
+        if (!validate.isNumberInRange(criticalThreshold, 0)) {
+            wx.showToast({ title: '危险余额阈值需为不小于0的数字', icon: 'none' })
+            return
+        }
+        if (criticalThreshold > lowThreshold) {
+            wx.showToast({ title: '危险阈值不能高于低余额阈值', icon: 'none' })
+            return
+        }
         
         // 根据开关状态构建推送类型数组
         const pushTypes = []

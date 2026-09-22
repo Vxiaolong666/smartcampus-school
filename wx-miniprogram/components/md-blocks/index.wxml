@@ -1,0 +1,42 @@
+<view class="md-blocks">
+  <block wx:for="{{blocks}}" wx:key="key">
+    <!-- 折叠块：rich-text 不支持 <details>，用原生 view + 状态实现展开/折叠 -->
+    <view wx:if="{{item.type === 'details'}}" class="md-details">
+      <view
+        class="md-details-head"
+        hover-class="md-details-head-hover"
+        bind:tap="toggle"
+        data-key="{{item.key}}"
+      >
+        <rich-text class="md-details-title" nodes="{{item.titleHtml || item.title}}"></rich-text>
+        <text class="md-details-caret">{{openMap[item.key] ? '▾' : '▸'}}</text>
+      </view>
+      <view wx:if="{{openMap[item.key]}}" class="md-details-body">
+        <block wx:for="{{item.blocks}}" wx:for-item="sub" wx:key="key">
+          <rich-text wx:if="{{sub.type === 'html'}}" class="md-rich" nodes="{{sub.html}}"></rich-text>
+          <image
+            wx:else
+            class="md-img"
+            src="{{sub.src}}"
+            mode="widthFix"
+            data-src="{{sub.src}}"
+            bind:tap="onPreview"
+          ></image>
+        </block>
+      </view>
+    </view>
+
+    <!-- 文本块 -->
+    <rich-text wx:elif="{{item.type === 'html'}}" class="md-rich" nodes="{{item.html}}"></rich-text>
+
+    <!-- 图片块 -->
+    <image
+      wx:else
+      class="md-img"
+      src="{{item.src}}"
+      mode="widthFix"
+      data-src="{{item.src}}"
+      bind:tap="onPreview"
+    ></image>
+  </block>
+</view>

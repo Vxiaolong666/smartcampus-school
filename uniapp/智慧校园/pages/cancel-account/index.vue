@@ -56,7 +56,7 @@
 								</view>
 							</block>
 							<view v-else class="alert alert-warning">
-								<text>《用户注销服务协议》当前未发布，无需阅读确认，可直接进入下一步。</text>
+								<text>确定要注销账号吗？您的所有数据与珍贵回忆都将被清除，无法找回。我们很不舍与您告别，如果只是遇到问题，欢迎联系我们帮您解决。若仍要注销，请点击下一步继续，注销操作不可逆。</text>
 							</view>
 						</block>
 
@@ -103,6 +103,9 @@
 								</view>
 								<text class="form-tip">验证码将发送至您的注册邮箱</text>
 							</view>
+
+							<!-- 安全验证：H5 / App 端为腾讯云滑块（异常可改用图片验证码），小程序端不渲染 -->
+							<captcha-verify ref="captcha" variant="form" />
 						</block>
 
 						<!-- 步骤4：确认提交 -->
@@ -141,6 +144,7 @@
  */
 import api from '../../utils/api.js';
 import markdownToHtml from '../../utils/markdown.js';
+import validate from '../../utils/validate.js';
 
 export default {
 	data() {
@@ -201,7 +205,8 @@ export default {
 			if (this.currentStep === 2) return this.agreeRisk;
 			if (this.currentStep === 3) {
 				if (this.needPassword && !this.password.trim()) return false;
-				if (this.needEmail && !this.emailCode.trim()) return false;
+				// 邮箱验证码为 6 位数字（与后端生成规则一致），避免无效核验请求
+				if (this.needEmail && !validate.isDigits(this.emailCode, 6)) return false;
 				return true;
 			}
 			return true;
@@ -318,7 +323,22 @@ export default {
 					uni.showToast({ title: '请先完成当前步骤', icon: 'none' });
 					return;
 				}
-				this.verifyIdentity();
+
+				// 安全验证（仅 H5 / App 端存在验证码组件）：与官网注销流程一致，核验前先完成
+				let captchaData = {};
+				// #ifdef H5 || APP-PLUS
+				const cap = this.$refs.captcha;
+				if (cap) {
+					const capCheck = cap.check();
+					if (!capCheck.ok) {
+						uni.showToast({ title: capCheck.msg || '请先完成安全验证', icon: 'none' });
+						return;
+					}
+					captchaData = capCheck.data || {};
+				}
+				// #endif
+
+				this.verifyIdentity(captchaData);
 				return;
 			}
 			if (!this.nextEnabled) {
@@ -330,14 +350,15 @@ export default {
 			}
 		},
 
-		verifyIdentity() {
+		// captchaData：安全验证参数（仅 H5 / App 端由验证码组件提供，其它端为空对象）
+		verifyIdentity(captchaData) {
 			if (this.verifying) return;
 			this.verifying = true;
 			uni.showLoading({ title: '核验中...' });
-			api.verifyCancelIdentity({
+			api.verifyCancelIdentity(Object.assign({
 				password: this.password,
 				email_code: this.emailCode
-			})
+			}, captchaData || {}))
 				.then(res => {
 					uni.hideLoading();
 					this.verifying = false;
@@ -361,8 +382,23 @@ export default {
 
 		handleSendCode() {
 			if (this.sending || this.countdown > 0) return;
+
+			// 发送前先通过安全验证（仅 H5 / App 端存在验证码组件）
+			let captchaData = {};
+			// #ifdef H5 || APP-PLUS
+			const cap = this.$refs.captcha;
+			if (cap) {
+				const capCheck = cap.check();
+				if (!capCheck.ok) {
+					uni.showToast({ title: capCheck.msg || '请先完成安全验证', icon: 'none' });
+					return;
+				}
+				captchaData = capCheck.data || {};
+			}
+			// #endif
+
 			this.sending = true;
-			api.sendCancelCode()
+			api.sendCancelCode(captchaData)
 				.then(res => {
 					this.sending = false;
 					uni.showToast({ title: res.msg || '验证码已发送', icon: 'none' });
@@ -709,10 +745,13 @@ page {
 
 .code-input {
 	flex: 1;
+	width: auto;      /* 覆盖 .form-input 的 width:100%，避免与 flex 布局冲突 */
+	min-width: 0;
+	margin-right: 32rpx;
 }
 
 .code-btn {
-	margin-left: 16rpx;
+	margin-left: 0;   /* 间距统一由 .code-input 的 margin-right 控制（button 自带 margin:auto 会吃掉间距） */
 	height: 88rpx;
 	line-height: 88rpx;
 	padding: 0 26rpx;
