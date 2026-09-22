@@ -3512,6 +3512,7 @@ switch($act) {
             'next_course' => null,
             'all_courses_ended' => false,
             'course_load_error' => false,
+            'current_week' => 0,        // 当前教学周（首页「当前第*周」展示，取不到为 0）
             'power_info' => null,
             'no_dormitory' => false
         ];
@@ -3540,6 +3541,11 @@ switch($act) {
                         $currentMinutes = intval(date('H')) * 60 + intval(date('i'));
                         
                         $todayCourses = [];
+                        // 当前教学周：教务返回的周次（供首页「当前第*周」展示，未返回时保持 0，前端隐藏）
+                        if (!empty($scheduleData[0]['week'])) {
+                            $glanceData['current_week'] = intval($scheduleData[0]['week']);
+                        }
+
                         if (!empty($scheduleData) && isset($scheduleData[0]['courses'])) {
                             $currentWeek = $scheduleData[0]['week'] ?? 1;
                             

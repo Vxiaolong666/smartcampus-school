@@ -12,6 +12,11 @@
 			<view class="background-subject">
 				<view class="background-subject-title">欢迎回来，{{ apiUserInfo.username || '用户' }}</view>
 				<view class="background-subject-poem">{{ randomPoem }}</view>
+				<!-- 今日日期 + 当前教学周（教务未返回周次时只显示日期） -->
+				<view v-if="todayText" class="background-subject-meta">
+					<text class="background-subject-date">{{ todayText }}</text>
+					<view v-if="currentWeek > 0" class="background-subject-week">当前第{{ currentWeek }}周</view>
+				</view>
 			</view>
 		</view>
 
@@ -296,9 +301,11 @@ export default {
 			nextCourse: null,
 			allCoursesEnded: false,
 			courseLoadError: false,
+			currentWeek: 0,          // 当前教学周（0=未取到，不展示）
 			powerInfo: null,
 			noDormitory: false,
 			randomPoem: '',
+			todayText: '',           // 今日日期（M月D日）
 			swiperAutoplay: true,
 			_dataLoaded: false,
 			featureSettings: {},
@@ -316,6 +323,7 @@ export default {
 	onLoad(options) {
 		this.checkLoginStatus();
 		this.loadRandomPoem();
+		this.todayText = this.getTodayText();
 		this.loadFeatureSettings();
 		this.loadBanners();
 		// 开屏广告（后台可配置，免登录）
@@ -334,6 +342,8 @@ export default {
 	onShow() {
 		this.swiperAutoplay = true;
 		this.checkLoginStatus();
+		// 刷新今日日期（跨天后回到页面也能更新）
+		this.todayText = this.getTodayText();
 
 		if (!this._dataLoaded) {
 			this._dataLoaded = true;
@@ -384,6 +394,13 @@ export default {
 			this.randomPoem = POEMS[Math.floor(Math.random() * POEMS.length)];
 		},
 
+		//今日日期文案（M月D日 周X），与教学周一起展示在古诗词下方
+		getTodayText() {
+			const d = new Date();
+			const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+			return `${d.getMonth() + 1}月${d.getDate()}日 ${weekdays[d.getDay()]}`;
+		},
+
 		//加载后台「轮播图配置」，失败或为空时保留内置默认轮播图
 		async loadBanners() {
 			try {
@@ -410,6 +427,7 @@ export default {
 				this.nextCourse = data.next_course || null;
 				this.allCoursesEnded = data.all_courses_ended || false;
 				this.courseLoadError = data.course_load_error || false;
+				this.currentWeek = parseInt(data.current_week, 10) || 0;
 				this.powerInfo = data.power_info || null;
 				this.noDormitory = data.no_dormitory || false;
 			} catch (err) {
@@ -417,6 +435,7 @@ export default {
 				this.nextCourse = null;
 				this.allCoursesEnded = false;
 				this.courseLoadError = true;
+				this.currentWeek = 0;
 				this.powerInfo = null;
 				this.noDormitory = false;
 			}
@@ -763,6 +782,33 @@ page {
 	opacity: 0.8;
 	margin-top: 12rpx;
 	letter-spacing: 2rpx;
+}
+
+/* 今日日期 + 当前教学周（古诗词下方） */
+.background-subject-meta {
+	display: flex;
+	align-items: center;
+	margin-top: 22rpx;
+}
+
+/* 今日日期：纯文字（M月D日 周X） */
+.background-subject-date {
+	font-size: 24rpx;
+	opacity: 0.85;
+	letter-spacing: 1rpx;
+}
+
+/* 当前教学周：胶囊标签，与日期分开 */
+.background-subject-week {
+	margin-left: 14rpx;
+	padding: 4rpx 18rpx;
+	border-radius: 100rpx;
+	font-size: 22rpx;
+	line-height: 1.7;
+	color: #fff;
+	background: rgba(255, 255, 255, 0.18);
+	border: 1rpx solid rgba(255, 255, 255, 0.35);
+	letter-spacing: 1rpx;
 }
 
 .content-wrapper {

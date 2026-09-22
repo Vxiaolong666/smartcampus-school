@@ -5,6 +5,7 @@
 const api = require('../../utils/api.js');
 const feature = require('../../utils/feature.js');
 const { getCourseColor, timeSlots, weekDays } = require('../../utils/common.js');
+const { loadScheduleTimes } = require('../../utils/schedule-time.js');
 const markdownToHtml = require('../../utils/markdown.js');
 
 const FULL_DAY_NAMES = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
@@ -42,9 +43,9 @@ Page({
         weekDates: [],              // 本周日期列表
         allCourses: [],             // 所有课程（全周）
         dayCourses: [],             // 当天课程
-        morningCourses: [],         // 上午课程（第1-4节）
-        afternoonCourses: [],       // 下午课程（第5-7节）
-        eveningCourses: [],         // 晚上课程（第8-11节）
+        morningCourses: [],         // 上午课程（按后台作息时间归类）
+        afternoonCourses: [],       // 下午课程（按后台作息时间归类）
+        eveningCourses: [],         // 晚上课程（按后台作息时间归类）
         currentTime: '',            // 当前时间（HH:mm格式）
         currentSection: null,       // 当前所在节次（1-11，null表示不在上课时间）
         currentCourse: null,        // 当前正在上的课程
@@ -93,11 +94,16 @@ Page({
                 weekDates
             });
 
-            // 加载课程表数据
-            this.loadSchedule();
-            // 首次更新时间和节次
+            // 先用内置作息即时渲染，再拉后台「课程时间配置」，最后按后台作息查询并归类课程。
+            // 节次归属哪个时段由作息时间决定：后台「下午」可能不止 5~7 节，
+            // 不加载后台作息会把「下午最后一节」按内置默认时间误判成「晚上第一节」。
             this.updateTime();
-            
+
+            loadScheduleTimes().then(() => {
+                this.loadSchedule();
+                this.updateTime();
+            });
+
             // 每秒更新时间，实时追踪上课状态
             this.timeInterval = setInterval(() => this.updateTime(), 1000);
         });
@@ -158,11 +164,17 @@ Page({
         const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
         let currentSection = null;
 
-        // 遍历11个节次，判断当前时间落在哪个节次范围内
-        for (let i = 1; i <= 11; i++) {
-            const [start, end] = timeSlots[i].time.split('-');
+        // 节次按后台作息动态取（数量可能不是 11 节），避免漏判或取值报错
+        const sectionKeys = Object.keys(timeSlots)
+            .map(key => parseInt(key, 10))
+            .filter(n => n > 0)
+            .sort((a, b) => a - b);
+        for (const i of sectionKeys) {
+            const slot = timeSlots[i];
+            if (!slot || !slot.time) continue;
+            const [start, end] = slot.time.split('-');
             // 当前时间在某个节次的开始和结束时间之间
-            if (currentTime >= start && currentTime <= end) {
+            if (start && end && currentTime >= start && currentTime <= end) {
                 currentSection = i;
                 break;
             }
@@ -342,6 +354,16 @@ Page({
         this.setData({ currentWeek, allCourses }, () => this.filterDayCourses());
     },
 
+    //节次上限：至少 12 节，后台作息配置更多时按配置（与 uniapp 端保持一致）
+    maxSection() {
+        let max = 0;
+        Object.keys(timeSlots).forEach(key => {
+            const n = parseInt(key, 10);
+            if (n > max) max = n;
+        });
+        return Math.max(12, max || 11);
+    },
+
     //解析上课时间字符串（如"10506"表示周一第5、6节）
     parseClassTime(classTime) {
         // 空字符串或长度不足则返回默认值
@@ -352,18 +374,20 @@ Page({
         // 剩余字符为节次信息
         const timeStr = classTime.substring(1);
         const sections = [];
+        // 节次上限按后台作息（至少 12 节），第 12 节及以后的课程不再被丢弃
+        const maxSection = this.maxSection();
 
         // 优先按两位数格式解析节次（如"05"表示第5节）
         for (let i = 0; i < timeStr.length; i += 2) {
             const section = parseInt(timeStr.substr(i, 2));
-            if (section >= 1 && section <= 11) sections.push(section);
+            if (section >= 1 && section <= maxSection) sections.push(section);
         }
 
         // 两位数解析失败时，尝试一位数格式（如"5"表示第5节）
         if (sections.length === 0) {
             for (let i = 0; i < timeStr.length; i++) {
                 const section = parseInt(timeStr.charAt(i));
-                if (section >= 1 && section <= 11) sections.push(section);
+                if (section >= 1 && section <= maxSection) sections.push(section);
             }
         }
 

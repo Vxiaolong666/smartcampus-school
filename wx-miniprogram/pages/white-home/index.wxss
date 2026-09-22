@@ -78,6 +78,33 @@ page {
     letter-spacing: 2rpx;
 }
 
+/* 今日日期 + 当前教学周（古诗词下方） */
+.background-subject-meta {
+    display: flex;
+    align-items: center;
+    margin-top: 22rpx;
+}
+
+/* 今日日期：纯文字（M月D日 周X） */
+.background-subject-date {
+    font-size: 24rpx;
+    opacity: 0.85;
+    letter-spacing: 1rpx;
+}
+
+/* 当前教学周：胶囊标签，与日期分开 */
+.background-subject-week {
+    margin-left: 14rpx;
+    padding: 4rpx 18rpx;
+    border-radius: 100rpx;
+    font-size: 22rpx;
+    line-height: 1.7;
+    color: #fff;
+    background: rgba(255, 255, 255, 0.18);
+    border: 1rpx solid rgba(255, 255, 255, 0.35);
+    letter-spacing: 1rpx;
+}
+
 .content-wrapper {
     position: relative;
     z-index: 1;

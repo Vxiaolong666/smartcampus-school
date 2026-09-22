@@ -283,24 +283,21 @@ if (!function_exists('cancelPager')) {
                     </div>
 
                     <div class="mb-4">
-                        <label class="form-label"><b>《用户注销服务协议》</b></label>
-                        <div class="alert alert-info py-2 px-3 mb-2 fs-sm">
-                            本协议已迁移至「协议管理」统一维护（数据表 <code>nteam_agreements</code>，标识 <code>cancel</code>）。
-                            协议「启用」时，用户须阅读并同意后方可进入注销流程；若在「协议管理」中将其「停用」，
-                            注销流程将不再展示该协议、也无需勾选确认（视为未发布）。修改后用户端自动同步。
-                        </div>
+                        <label class="form-label"><b>《用户注销服务协议》设置</b></label>
+                        
+
                         <div class="mb-2">
                             <?php if ($agreementState === 1): ?>
-                                <span class="badge bg-success">已发布（用户端展示并需确认）</span>
+                                <span class="badge bg-success">已发布</span>
                             <?php elseif ($agreementState === 2): ?>
                                 <span class="badge bg-warning">已停用（用户端不展示、无需确认）</span>
                             <?php else: ?>
                                 <span class="badge bg-secondary">未配置（将使用内置默认模板）</span>
                             <?php endif; ?>
+                            <a class="btn btn-sm btn-alt-primary" href="agreement_manage.php">
+                            <i class="fa fa-file-signature me-1"></i>编辑
+                            </a>
                         </div>
-                        <a class="btn btn-sm btn-alt-primary" href="agreement_manage.php">
-                            <i class="fa fa-file-signature me-1"></i>前往「协议管理」编辑
-                        </a>
                     </div>
 
                     <div class="mb-4">

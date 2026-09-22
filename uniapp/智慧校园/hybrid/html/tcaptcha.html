@@ -59,11 +59,21 @@
 	<script>
 		(function () {
 			/*
-			 * App 端本地验证页：加载腾讯云验证码（TCaptcha 依赖浏览器 DOM，无法直接在 App 页面内运行），
-			 * 验证完成后把 ticket / randstr 回传给 uni-app 页面：
-			 *   优先 plus.webview.currentWebview().opener().evalJS(...)（App 端即时可靠，页面内定义 window.__tcResult）
-			 *   兜底 uni.postMessage（若引入了 uni.webview.js）
+			 * App 端本地验证页（uni-app <web-view> 加载）。
+			 *
+			 * 结果回传（三条通道同时尝试，宿主取到任意一条即生效）：
+			 *   ① window.__tcPayload = JSON 字符串
+			 *      —— 宿主用 this.$scope.$getAppWebview().children()[N].evalJS('window.__tcPayload || ""') 轮询读取，
+			 *         这是 App 端最可靠的通道：不依赖 opener、不依赖 uni.webview.js；
+			 *      （官方 @message 事件在 App 端只保证「后退/销毁」等特定时机触发，不能作为实时回调）
+			 *   ② plus.webview.currentWebview().opener().evalJS(...) —— opener 可用时即时回传；
+			 *   ③ uni.postMessage —— 页面若引入了 uni.webview.js 则可用。
+			 *
+			 * 交互说明：腾讯 SDK 的浮层在某些机型/时机（如无用户手势）不会弹出，
+			 *   因此「重新唤起验证」按钮每次都重建实例，保证永远可点；并用看门狗复位状态。
 			 */
+			var RESULT_KEY = '__tcPayload';
+
 			function getQuery(name) {
 				var m = new RegExp('[?&]' + name + '=([^&#]*)').exec(location.search || '');
 				return m ? decodeURIComponent(m[1]) : '';
@@ -71,61 +81,164 @@
 
 			var appid = getQuery('appid');
 			var tipEl = document.getElementById('tip');
+			var startBtn = document.getElementById('startBtn');
+			var cancelBtn = document.getElementById('cancelBtn');
+			var instance = null;   // 当前 TCaptcha 实例
+			var showing = false;   // 是否已展示过验证浮层
+			var settled = false;   // 是否已产生结果
+			var wdTimer = null;    // 看门狗
 
-			function sendToApp(data) {
-				var payload = encodeURIComponent(JSON.stringify(data));
-				var sent = false;
+			function setTip(text) {
+				if (tipEl) tipEl.innerText = text;
+			}
+
+			function clearWatchdog() {
+				if (wdTimer) {
+					clearTimeout(wdTimer);
+					wdTimer = null;
+				}
+			}
+
+			// 结果持久化：三条存储/全局通道同时写，宿主读到任意一条即可
+			function persist(json) {
+				window[RESULT_KEY] = json;
+				// ① localStorage（与 uni-app 页面同为 App 沙箱域，通常相互可见）
+				try { window.localStorage.setItem(RESULT_KEY, json); } catch (e) {}
+				// ② plus.storage（App 级 KV，跨 webview 共享，最可靠）
+				try {
+					if (window.plus && plus.storage) plus.storage.setItem(RESULT_KEY, json);
+				} catch (e) {}
+			}
+
+			// 结果产生后的一小段时间内反复刷新，避免宿主某次读取落空（宿主取到后会清理该键）
+			var keepTimer = null;
+			function keepWriting(json) {
+				if (keepTimer) clearInterval(keepTimer);
+				var n = 0;
+				keepTimer = setInterval(function () {
+					n++;
+					if (n > 15) {
+						clearInterval(keepTimer);
+						keepTimer = null;
+						return;
+					}
+					persist(json);
+				}, 800);
+			}
+
+			// 结束：持久化结果 + 快速通道即时回传
+			function finish(data) {
+				if (settled) return;
+				settled = true;
+				showing = false;
+				clearWatchdog();
+
+				var json = JSON.stringify(data);
+				persist(json);
+				keepWriting(json);
+
+				// 快速通道 ①：5+ 宿主/父窗口 evalJS（opener 与 parent 都试，可能为空，失败无妨）
 				try {
 					if (window.plus && plus.webview && plus.webview.currentWebview) {
 						var wv = plus.webview.currentWebview();
-						var opener = wv && wv.opener ? wv.opener() : null;
-						if (opener && opener.evalJS) {
-							opener.evalJS('window.__tcResult && window.__tcResult(JSON.parse(decodeURIComponent("' + payload + '")))');
-							sent = true;
+						var hosts = [];
+						if (wv && typeof wv.opener === 'function') {
+							var op = wv.opener();
+							if (op) hosts.push(op);
+						}
+						if (wv && typeof wv.parent === 'function') {
+							var pa = wv.parent();
+							if (pa) hosts.push(pa);
+						}
+						for (var i = 0; i < hosts.length; i++) {
+							try {
+								// JSON.stringify 再包一层 → 合法的 JS 字符串字面量，避免引号转义问题
+								hosts[i].evalJS('window.__tcResult && window.__tcResult(' + JSON.stringify(json) + ')');
+							} catch (e) {}
 						}
 					}
 				} catch (e) {}
+
+				// 快速通道 ②：uni.webview 桥（仅当页面引入了 SDK 时可用）
 				try {
-					if (!sent && window.uni && typeof uni.postMessage === 'function') {
-						uni.postMessage({ data: data });
+					if (window.uni && typeof window.uni.postMessage === 'function') {
+						window.uni.postMessage({ data: data });
 					}
 				} catch (e) {}
+
+				setTip(data.type === 'success' ? '验证已通过，正在返回…' : '已取消验证，正在返回…');
 			}
 
-			var opened = false;
-
+			// 唤起验证浮层
 			function start() {
-				if (opened) return;
+				if (settled) return;
 				if (!appid) {
-					tipEl.innerText = '缺少验证参数，请返回重试。';
+					setTip('缺少验证参数，请返回重试。');
 					return;
 				}
 				if (typeof TencentCaptcha !== 'function') {
-					tipEl.innerText = '验证组件加载失败，请检查网络后点击下方按钮重试。';
+					setTip('验证组件加载失败，请检查网络后重试。');
+					// 组件不可用时直接回传失败，宿主端可切换到图片验证码兜底
+					finish({ type: 'fail', ret: -2 });
 					return;
 				}
+				if (showing) return;
+				showing = true;
+				setTip('请完成下方滑块验证');
 				try {
-					var captcha = new TencentCaptcha(appid, function (res) {
-						opened = false;
+					instance = new TencentCaptcha(appid, function (res) {
 						if (res && res.ret === 0) {
-							sendToApp({ type: 'success', ticket: res.ticket || '', randstr: res.randstr || '' });
+							finish({ type: 'success', ticket: res.ticket || '', randstr: res.randstr || '' });
 						} else {
-							sendToApp({ type: 'fail', ret: (res && res.ret) || -1 });
+							finish({ type: 'fail', ret: (res && res.ret) || -1 });
 						}
 					}, {});
-					captcha.show();
-					opened = true;
-					tipEl.innerText = '请完成下方滑块验证';
+					instance.show();
 				} catch (e) {
-					tipEl.innerText = '验证组件初始化失败，请点击下方按钮重试。';
+					showing = false;
+					setTip('验证组件初始化失败，请点击下方按钮重试。');
+					return;
 				}
+				// 看门狗：1.5s 内没有出现验证浮层，说明被拦截（如缺少用户手势），复位状态提示重试
+				clearWatchdog();
+				wdTimer = setTimeout(function () {
+					wdTimer = null;
+					if (settled) return;
+					var html = document.documentElement ? document.documentElement.innerHTML : '';
+					if (!/tcaptcha|captcha\.qq\.com/i.test(html)) {
+						showing = false;
+						startBtn.innerText = '开始验证';
+						setTip('未弹出验证，请点击下方按钮重试。');
+					}
+				}, 1500);
 			}
 
-			document.getElementById('startBtn').addEventListener('click', start);
-			document.getElementById('cancelBtn').addEventListener('click', function () {
-				sendToApp({ type: 'fail', ret: -1 });
+			// 用户主动点击：先销毁旧实例并复位，保证按钮永远有效
+			startBtn.addEventListener('click', function () {
+				if (settled) return;
+				showing = false;
+				clearWatchdog();
+				try {
+					if (instance && typeof instance.destroy === 'function') instance.destroy();
+				} catch (e) {}
+				instance = null;
+				start();
 			});
 
+			// 取消：回传失败结果（宿主收到后会关闭本页）
+			cancelBtn.addEventListener('click', function () {
+				finish({ type: 'fail', ret: -1 });
+			});
+
+			// SDK 加载失败（离线 / CDN 被拦）：直接回传失败，让宿主端走图片验证码兜底
+			window.addEventListener('error', function (e) {
+				var t = e && e.target;
+				if (t && t.tagName === 'SCRIPT' && /captcha\.qq\.com/i.test(t.src || '')) {
+					finish({ type: 'fail', ret: -2 });
+				}
+			}, true);
+
+			// 进入页面先尝试自动唤起（有用户手势的机型可直接弹出）
 			if (document.readyState === 'complete' || document.readyState === 'interactive') {
 				start();
 			} else {

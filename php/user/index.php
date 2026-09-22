@@ -38,6 +38,10 @@ $sceneTypeNames = [
     'power_report' => '电费报告',
     'subscription_alert' => '额度提醒'
 ];
+
+// 今日日期（M月D日 周X）：与小程序/uniapp 首页展示口径一致
+$weekdayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+$todayText = date('n月j日') . ' ' . $weekdayNames[intval(date('w'))];
 ?>
 
 <div id="pjax-container">
@@ -50,6 +54,14 @@ $sceneTypeNames = [
                 <h2 class="h6 fw-medium fw-medium text-muted mb-0">
                     欢迎 <a class="fw-semibold" href="javascript:void(0)"><?php echo htmlspecialchars($userData['username']); ?></a>，祝您使用愉快。
                 </h2>
+                <!-- 今日日期 + 当前教学周（与小程序/uniapp 首页一致；周次异步获取，取不到时只显示日期） -->
+                <div class="d-flex align-items-center justify-content-center justify-content-md-start mt-2">
+                    <span class="fs-sm text-muted text-nowrap">
+                        <i class="fa fa-calendar-alt me-1 opacity-50"></i><?php echo $todayText; ?>
+                    </span>
+                    <!-- text-bg-primary：主题未定义 -lt 系列背景类，而 .badge 默认白字，用该组合保证底色+文字对比正常 -->
+                    <span class="badge text-bg-primary fw-semibold text-nowrap flex-shrink-0 ms-2" id="userWeekBadge" style="display:none;"></span>
+                </div>
             </div>
         </div>
     </div>
@@ -651,6 +663,34 @@ $(function(){ layer.alert('您的注销申请已自动撤销，账号已恢复�
     // pjax 局部刷新后重新初始化
     if (window.jQuery) {
         jQuery(document).on('pjax:end pjax:complete', initUserBanner);
+    }
+})();
+</script>
+
+<script>
+// 今日日期旁的「当前第*周」：复用首页速览接口（教务未返回周次时保持隐藏）
+(function () {
+    function initUserWeekBadge() {
+        var badge = document.getElementById('userWeekBadge');
+        if (!badge || badge.getAttribute('data-init') === '1') return;
+        badge.setAttribute('data-init', '1');
+
+        jQuery.get('../api.php?act=get_glance_data', function (res) {
+            var week = (res && res.code === 0 && res.data) ? parseInt(res.data.current_week, 10) : 0;
+            if (!week || week <= 0) return;
+            badge.textContent = '当前第' + week + '周';
+            badge.style.display = '';
+        }, 'json');
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initUserWeekBadge);
+    } else {
+        initUserWeekBadge();
+    }
+    // pjax 局部刷新后重新初始化
+    if (window.jQuery) {
+        jQuery(document).on('pjax:end pjax:complete', initUserWeekBadge);
     }
 })();
 </script>

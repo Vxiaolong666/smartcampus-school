@@ -36,7 +36,8 @@
 		<!-- #endif -->
 
 		<!-- #ifdef APP-PLUS -->
-		<!-- App 端：TCaptcha 依赖浏览器环境，用本地 H5 页承载，结果经 opener 回传 -->
+		<!-- App 端：TCaptcha 依赖浏览器环境，用本地 H5 页承载；
+		     结果优先由宿主轮询子 webview 的 window.__tcPayload 取回（@message 仅特定时机触发，不可靠） -->
 		<web-view v-if="showWV" :src="wvUrl" @message="onWvMessage"></web-view>
 		<!-- #endif -->
 	</view>
@@ -87,9 +88,19 @@ export default {
 	},
 	mounted() {
 		// #ifdef APP-PLUS
-		// 本地验证页通过 opener.evalJS 回传结果；重复进页面时会覆盖旧引用
-		window.__tcResult = (payload) => { this.handleTcResult(payload); };
+		// 快速通道：本地验证页在 opener 可用时通过 opener.evalJS 回传（入参为 JSON 字符串）
+		window.__tcResult = (payload) => {
+			this.handleTcResult(this.parsePayload(payload));
+		};
 		// #endif
+	},
+
+	// 组件销毁时停止轮询（Vue2 / Vue3 各写一个钩子，另一个会被忽略）
+	beforeDestroy() {
+		this.stopAppPoll();
+	},
+	beforeUnmount() {
+		this.stopAppPoll();
 	},
 	methods: {
 		/* ==================== 对外方法 ==================== */
@@ -122,6 +133,7 @@ export default {
 			this.randstr = '';
 			this.code = '';
 			this.showWV = false;
+			this.stopAppPoll();
 			if (this.useImage) this.refreshImage();
 		},
 
@@ -135,6 +147,7 @@ export default {
 			// #endif
 			// #ifdef APP-PLUS
 			this.showWV = true;
+			this.startAppPoll();   // 轮询子 webview 取回验证结果（App 端最可靠的回传通道）
 			// #endif
 		},
 
@@ -161,9 +174,12 @@ export default {
 			// #endif
 		},
 
-		// 校验结果统一入口（H5 回调 / App 本地页回传共用）
+		// 校验结果统一入口（H5 回调 / App 本地页回传共用；payload 允许为对象或 JSON 字符串）
 		handleTcResult(payload) {
+			payload = this.parsePayload(payload);
 			// #ifdef APP-PLUS
+			this.clearAppResult();   // 清理已读走的结果
+			this.stopAppPoll();
 			this.showWV = false; // 关闭本地验证页
 			// #endif
 			this.loading = false;
@@ -178,13 +194,117 @@ export default {
 			this.failed = !this.passed;
 		},
 
-		// App：<web-view @message>（不同平台触发时机不同，作为 opener 回传的补充）
+		// App：<web-view @message>（官方仅保证「后退/销毁」等特定时机触发，作为补充通道）
 		onWvMessage(e) {
 			if (!this.showWV) return;
 			let d = e && e.detail ? e.detail.data : null;
 			if (Array.isArray(d)) d = d[d.length - 1];
-			if (!d || typeof d !== 'object') return;
+			if (!d) return;
 			this.handleTcResult(d);
+		},
+
+		/* ==================== App 端结果回传（轮询子 webview） ==================== */
+
+		// 解析回传结果：兼容 JSON 字符串与对象
+		parsePayload(payload) {
+			if (typeof payload !== 'string') return payload || null;
+			try {
+				return JSON.parse(payload);
+			} catch (e) {
+				return null;
+			}
+		},
+
+		// 取当前页面的 App webview（组件内 $scope 可能为空，回退到当前页面实例）
+		getAppWebview() {
+			try {
+				if (this.$scope && typeof this.$scope.$getAppWebview === 'function') {
+					return this.$scope.$getAppWebview();
+				}
+			} catch (e) {}
+			try {
+				const pages = typeof getCurrentPages === 'function' ? getCurrentPages() : [];
+				const page = pages && pages.length ? pages[pages.length - 1] : null;
+				if (page && typeof page.$getAppWebview === 'function') return page.$getAppWebview();
+			} catch (e) {}
+			return null;
+		},
+
+		// 读取子页面回传的结果：三通道依次尝试（plus.storage → localStorage → 子 webview 全局变量）
+		readAppResult() {
+			const KEY = '__tcPayload';
+			// ① plus.storage：App 级 KV，跨 webview 共享，最可靠
+			try {
+				if (typeof plus !== 'undefined' && plus.storage) {
+					const v = plus.storage.getItem(KEY);
+					if (v) return v;
+				}
+			} catch (e) {}
+			// ② localStorage：与本地承载页同源时相互可见
+			try {
+				const v = window.localStorage ? window.localStorage.getItem(KEY) : '';
+				if (v) return v;
+			} catch (e) {}
+			// ③ 直接读子 webview 里的全局变量
+			try {
+				const host = this.getAppWebview();
+				const children = host && typeof host.children === 'function' ? host.children() : [];
+				for (let i = 0; i < children.length; i++) {
+					const child = children[i];
+					if (child && typeof child.evalJS === 'function') {
+						const v = child.evalJS('window.__tcPayload || ""');
+						if (v) return v;
+					}
+				}
+			} catch (e) {}
+			return '';
+		},
+
+		// 结果读走即清理，避免重复处理（子页会在短时间内重复写入）
+		clearAppResult() {
+			const KEY = '__tcPayload';
+			try {
+				if (typeof plus !== 'undefined' && plus.storage) plus.storage.removeItem(KEY);
+			} catch (e) {}
+			try {
+				if (window.localStorage) window.localStorage.removeItem(KEY);
+			} catch (e) {}
+			try {
+				const host = this.getAppWebview();
+				const children = host && typeof host.children === 'function' ? host.children() : [];
+				for (let i = 0; i < children.length; i++) {
+					const child = children[i];
+					if (child && typeof child.evalJS === 'function') child.evalJS('window.__tcPayload = ""');
+				}
+			} catch (e) {}
+		},
+
+		// 轮询子页面回传的结果
+		// （@message 只在特定时机触发、opener 在部分机型为空，轮询最可靠）
+		startAppPoll() {
+			this.stopAppPoll();
+			this.clearAppResult();   // 清掉上一次的残留结果
+			this.__pollCount = 0;
+			this.__pollTimer = setInterval(() => {
+				if (!this.showWV) {
+					this.stopAppPoll();
+					return;
+				}
+				this.__pollCount++;
+				if (this.__pollCount > 900) {   // 最多约 6 分钟，避免异常常驻
+					this.stopAppPoll();
+					return;
+				}
+				const raw = this.readAppResult();
+				if (raw) this.handleTcResult(raw);
+			}, 400);
+		},
+
+		stopAppPoll() {
+			if (this.__pollTimer) {
+				clearInterval(this.__pollTimer);
+				this.__pollTimer = null;
+			}
 		},
 
 		/* ==================== 图片验证码兜底 ==================== */

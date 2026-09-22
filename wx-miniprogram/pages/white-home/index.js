@@ -44,9 +44,11 @@ Page({
         nextCourse: null,       // 下一节课信息
         allCoursesEnded: false,  // 今日课程是否已全部结束
         courseLoadError: false,  // 课程数据加载是否失败
+        currentWeek: 0,          // 当前教学周（0=未取到，不展示）
         powerInfo: null,        // 电费信息
         noDormitory: false,     // 是否未绑定宿舍
         randomPoem: '',          // 随机古诗词一言
+        todayText: '',           // 今日日期（M月D日）
         _dataLoaded: false,      // 数据是否已加载（避免重复加载）
         featureSettings: {},     // 功能开关设置
         indexAnnouncement: null, // 首页公告
@@ -86,6 +88,7 @@ Page({
         // 仅做同步的状态检查，不阻塞页面渲染
         this.checkLoginStatus();
         this.loadRandomPoem();
+        this.setData({ todayText: this.getTodayText() });
         this.loadFeatureSettings();
         this.loadBanners();
         // 开屏广告（后台可配置，免登录）
@@ -136,6 +139,13 @@ Page({
         });
     },
 
+    //今日日期文案（M月D日 周X），与教学周一起展示在古诗词下方
+    getTodayText() {
+        const d = new Date();
+        const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+        return `${d.getMonth() + 1}月${d.getDate()}日 ${weekdays[d.getDay()]}`;
+    },
+
     //加载今日速览数据
     async loadGlanceData() {
         if (!api.isLoggedIn()) return;
@@ -146,6 +156,7 @@ Page({
                 nextCourse: data.next_course || null,
                 allCoursesEnded: data.all_courses_ended || false,
                 courseLoadError: data.course_load_error || false,
+                currentWeek: parseInt(data.current_week, 10) || 0,
                 powerInfo: data.power_info || null,
                 noDormitory: data.no_dormitory || false
             });
@@ -155,6 +166,7 @@ Page({
                 nextCourse: null,
                 allCoursesEnded: false,
                 courseLoadError: true,
+                currentWeek: 0,
                 powerInfo: null,
                 noDormitory: false
             });
@@ -216,6 +228,9 @@ Page({
 
         // 检查登录状态
         this.checkLoginStatus();
+
+        // 刷新今日日期（跨天后回到页面也能更新）
+        this.setData({ todayText: this.getTodayText() });
 
         // 仅首次显示时加载数据（避免重复加载）
         if (!this.data._dataLoaded) {

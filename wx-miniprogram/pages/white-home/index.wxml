@@ -13,6 +13,11 @@
     <view class="background-subject">
       <view class="background-subject-title">欢迎回来，{{apiUserInfo.username || '用户'}}</view>
       <view class="background-subject-poem">{{randomPoem}}</view>
+      <!-- 今日日期 + 当前教学周（教务未返回周次时只显示日期） -->
+      <view wx:if="{{todayText}}" class="background-subject-meta">
+        <text class="background-subject-date">{{todayText}}</text>
+        <view wx:if="{{currentWeek > 0}}" class="background-subject-week">当前第{{currentWeek}}周</view>
+      </view>
     </view>
   </view>
 

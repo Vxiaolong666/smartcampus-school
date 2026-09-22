@@ -42,12 +42,17 @@
                     "<uses-feature android:name=\"android.hardware.camera\"/>",
                     "<uses-permission android:name=\"android.permission.WRITE_SETTINGS\"/>"
                 ],
-                "abiFilters" : [ "armeabi-v7a", "arm64-v8a", "x86" ]
+                "abiFilters" : [ "armeabi-v7a", "arm64-v8a", "x86" ],
+                /* Android URL Scheme：供网页 / 其它 App 通过 smartcampus:// 唤起本 App（网页端 返回App 使用） */
+                "schemes" : "smartcampus"
             },
             /* ios打包配置 */
             "ios" : {
                 "idfa" : false,
-                "dSYMs" : false
+                "dSYMs" : false,
+                /* iOS URL Scheme：与 Android 保持一致，供网页通过 smartcampus:// 唤起本 App
+                   （官方写法为逗号分隔字符串，多个 scheme 用英文逗号分隔） */
+                "urltypes" : "smartcampus"
             },
             /* SDK配置 */
             "sdkConfigs" : {},
