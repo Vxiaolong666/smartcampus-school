@@ -17,6 +17,8 @@ if (!$user) {
 }
 
 $cfg = cancelGetConfig();
+// 《用户注销协议》未发布（后台已停用）：不展示协议、也无需勾选确认
+$agreementPublished = intval($cfg['agreement_published']) === 1 && trim((string) $cfg['agreement']) !== '';
 $needPwd   = strpos($cfg['verify_mode'], 'password') !== false;
 $needEmail = strpos($cfg['verify_mode'], 'email') !== false;
 
@@ -157,7 +159,7 @@ include('./head.php');
                 <div class="cancel-steps" id="cancelSteps">
                     <div class="cancel-step">
                         <div class="cancel-step-dot"><span class="num">1</span><i class="fa fa-check chk"></i></div>
-                        <div class="cancel-step-label">阅读协议</div>
+                        <div class="cancel-step-label"><?php echo $agreementPublished ? '阅读协议' : '协议确认'; ?></div>
                     </div>
                     <div class="cancel-step">
                         <div class="cancel-step-dot"><span class="num">2</span><i class="fa fa-check chk"></i></div>
@@ -173,8 +175,9 @@ include('./head.php');
                     </div>
                 </div>
 
-                <!-- 步骤1：阅读并同意协议 -->
+                <!-- 步骤1：阅读并同意协议（协议未发布时不展示，也无需勾选） -->
                 <div class="cancel-panel" id="cancelPanel1">
+                    <?php if ($agreementPublished): ?>
                     <div class="border rounded p-3 mb-3 markdown-body" id="agreementContent"
                          style="max-height:300px;overflow-y:auto;background:#fafafa;font-size:14px;line-height:1.7;">
                         <div class="text-muted">加载中…</div>
@@ -185,6 +188,11 @@ include('./head.php');
                             我已完整阅读并同意《用户注销服务协议》
                         </label>
                     </div>
+                    <?php else: ?>
+                    <div class="alert alert-warning mb-0">
+                        《用户注销服务协议》当前未发布，无需阅读确认，可直接进入下一步。
+                    </div>
+                    <?php endif; ?>
                 </div>
 
                 <!-- 步骤2：风险告知 -->
@@ -308,6 +316,8 @@ var needEmail = <?php echo $needEmail ? 'true' : 'false'; ?>;
 var coolingEnabled = <?php echo $cfg['cooling_enable'] === 1 ? 'true' : 'false'; ?>;
 var CONFIRM_PHRASE = '我已确认注销后用户数据无法找回并确认注销';
 var AGREEMENT_MD = <?php echo json_encode($cfg['agreement'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+// 协议是否已发布：未发布时不展示协议、也无需勾选确认
+var AGREEMENT_REQUIRED = <?php echo $agreementPublished ? 'true' : 'false'; ?>;
 var currentStep = 1;
 var TOTAL_STEPS = 4;
 var sendTimer = null;
@@ -364,7 +374,7 @@ function renderSteps(scrollToTop) {
 }
 
 function goNext() {
-    if (currentStep === 1 && !$('#agreeAgreement').is(':checked')) {
+    if (currentStep === 1 && AGREEMENT_REQUIRED && !$('#agreeAgreement').is(':checked')) {
         layer.alert('请先阅读并同意《用户注销服务协议》', {icon: 2});
         return;
     }
@@ -461,7 +471,7 @@ function isCaptchaDone() {
 function updateNextState() {
     var ok = true;
     if (currentStep === 1) {
-        ok = $('#agreeAgreement').is(':checked');
+        ok = !AGREEMENT_REQUIRED || $('#agreeAgreement').is(':checked');
     } else if (currentStep === 2) {
         ok = $('#agreeRisk').is(':checked');
     } else if (currentStep === 3) {
@@ -475,7 +485,7 @@ function updateNextState() {
 // 控制「提交注销申请」是否可点击（身份已核验通过且确认短语正确）
 function updateSubmitState() {
     var ok = true;
-    if (!$('#agreeAgreement').is(':checked')) { ok = false; }
+    if (AGREEMENT_REQUIRED && !$('#agreeAgreement').is(':checked')) { ok = false; }
     if (!$('#agreeRisk').is(':checked')) { ok = false; }
     if (!identityPassed) { ok = false; }
     if ($.trim($('#confirmText').val()) !== CONFIRM_PHRASE) { ok = false; }
@@ -576,7 +586,7 @@ $('#sendCodeBtn').on('click', function () {
 });
 
 $('#submitBtn').on('click', function () {
-    if (!$('#agreeAgreement').is(':checked')) {
+    if (AGREEMENT_REQUIRED && !$('#agreeAgreement').is(':checked')) {
         layer.alert('请先阅读并同意《用户注销服务协议》', {icon: 2});
         return false;
     }

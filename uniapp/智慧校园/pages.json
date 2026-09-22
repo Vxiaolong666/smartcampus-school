@@ -200,6 +200,18 @@
 			}
 		},
 		{
+			"path": "pages/agreement/index",
+			"style": {
+				"navigationBarTitleText": "协议中心"
+			}
+		},
+		{
+			"path": "pages/agreement/detail/index",
+			"style": {
+				"navigationBarTitleText": "协议详情"
+			}
+		},
+		{
 			"path": "pages/ai-chat/index",
 			"style": {
 				"navigationBarTitleText": "AI 助手"

@@ -3,6 +3,7 @@ $notLogin = true;
 include('Common/Core_brain.php');
 require_once __DIR__ . '/funsion/AccountCancellation.php';
 require_once __DIR__ . '/funsion/ScheduleTime.php';
+require_once __DIR__ . '/funsion/Agreements.php';
 /** @var array $dbconfig */
 /** @var \lib\PdoHelper $DB */
 
@@ -779,6 +780,7 @@ switch($act) {
             'cooling_enable' => $cfg['cooling_enable'],
             'cooling_days'   => $cfg['cooling_days'],
             'agreement'      => $cfg['agreement'],
+            'agreement_published' => $cfg['agreement_published'],
             'is_cancelling'  => $row ? intval($row['is_cancelling']) : 0,
             'cancel_time'    => $row ? $row['cancel_time'] : null,
             'expire_time'    => $row ? $row['cancel_expire_time'] : null,
@@ -3700,6 +3702,50 @@ switch($act) {
         jsonResponse(0, 'success', $glanceData);
     break;
     
+    // ==================== 协议中心（免登录） ====================
+
+    case 'get_agreements':
+        // 协议清单（仅返回启用项），供「协议中心」列表页使用
+        // 协议表未初始化：返回错误，客户端沿用内置清单兜底（避免被误判为「暂无协议」）
+        if (!agreementTableReady($DB)) {
+            jsonResponse(-1, '协议数据未初始化');
+        }
+        $agList = [];
+        foreach (agreementList($DB, true) as $row) {
+            $agList[] = array(
+                'key'        => $row['akey'],
+                'title'      => $row['title'],
+                'updated_at' => $row['updated_at']
+            );
+        }
+        // 表已初始化时如实返回（允许为空数组）：客户端据此展示「暂无协议」
+        jsonResponse(0, 'success', $agList);
+    break;
+
+    case 'get_agreement':
+        // 单份协议内容（Markdown），供各协议独立页面按 key 获取
+        $agKey = isset($_GET['key']) ? trim($_GET['key']) : '';
+        if ($agKey === '') {
+            jsonResponse(-1, '缺少协议标识');
+        }
+        // 协议表未初始化（站点尚未执行更新脚本）：返回普通错误，客户端保留内置内容兜底
+        if (!agreementTableReady($DB)) {
+            jsonResponse(-1, '协议数据未初始化');
+        }
+        $agRow = agreementGet($DB, $agKey);
+        // 未发布（后台未配置或已停用）：带 not_published 标记，
+        // 客户端据此展示「当前协议未发布」兜底，而不是回退内置内容
+        if (!$agRow || intval($agRow['status']) !== 1) {
+            jsonResponse(-1, '当前协议未发布', array('not_published' => true));
+        }
+        jsonResponse(0, 'success', array(
+            'key'        => $agRow['akey'],
+            'title'      => $agRow['title'],
+            'content'    => $agRow['content'],
+            'updated_at' => $agRow['updated_at']
+        ));
+    break;
+
     // ===== App 版本更新：检查更新（免登录） =====
     case 'get_app_version':
         $clientCode = intval($_GET['version_code'] ?? 0);

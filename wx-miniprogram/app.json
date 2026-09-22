@@ -27,6 +27,8 @@
     "pages/academic-push-settings/index",
     "pages/about/index",
     "pages/privacy/index",
+    "pages/agreement/index",
+    "pages/agreement/detail/index",
     "pages/power-fee-batch/index",
     "pages/push-test/index",
     "pages/maintenance/index",

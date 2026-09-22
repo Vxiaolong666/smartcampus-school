@@ -12,7 +12,15 @@ include './head.php';
 
 $cfg = cancelGetConfig();
 $modes = cancelVerifyModes();
-$agreementConfigured = trim($cfg['agreement']) !== '';
+// 《用户注销协议》状态：0=未配置（沿用内置模板）1=已发布 2=已停用（用户端不展示、无需确认）
+$agreementState = 0;
+if (function_exists('agreementGet')) {
+    $agRow = agreementGet($DB, 'cancel');
+    if ($agRow) {
+        $agreementState = (intval($agRow['status']) === 1 && trim((string) $agRow['content']) !== '') ? 1 : 2;
+    }
+}
+$agreementConfigured = ($agreementState === 1);
 
 $pendingCount = (int)$DB->getColumn("SELECT COUNT(*) FROM nteam_account_deletions WHERE status='pending'");
 $totalCount   = (int)$DB->getColumn("SELECT COUNT(*) FROM nteam_account_deletions");
@@ -150,8 +158,10 @@ if (!function_exists('cancelPager')) {
                     </div>
                     <div class="col-6 col-md-4 col-xl-2">
                         <div class="mb-1 text-muted fs-sm">服务协议</div>
-                        <?php if($agreementConfigured): ?>
-                            <span class="badge bg-success">已配置</span>
+                        <?php if ($agreementState === 1): ?>
+                            <span class="badge bg-success">已发布</span>
+                        <?php elseif ($agreementState === 2): ?>
+                            <span class="badge bg-warning">已停用</span>
                         <?php else: ?>
                             <span class="badge bg-secondary">未配置</span>
                         <?php endif; ?>
@@ -274,10 +284,23 @@ if (!function_exists('cancelPager')) {
 
                     <div class="mb-4">
                         <label class="form-label"><b>《用户注销服务协议》</b></label>
-                        <textarea class="form-control" name="agreement" id="agreementText" rows="12" style="font-size:13px;"><?php echo htmlspecialchars($cfg['agreement']); ?></textarea>
-                        <div class="form-text">
-                            使用 Markdown 编写，用户端按 Markdown 渲染；用户须阅读并同意本协议后方可进入注销流程。
+                        <div class="alert alert-info py-2 px-3 mb-2 fs-sm">
+                            本协议已迁移至「协议管理」统一维护（数据表 <code>nteam_agreements</code>，标识 <code>cancel</code>）。
+                            协议「启用」时，用户须阅读并同意后方可进入注销流程；若在「协议管理」中将其「停用」，
+                            注销流程将不再展示该协议、也无需勾选确认（视为未发布）。修改后用户端自动同步。
                         </div>
+                        <div class="mb-2">
+                            <?php if ($agreementState === 1): ?>
+                                <span class="badge bg-success">已发布（用户端展示并需确认）</span>
+                            <?php elseif ($agreementState === 2): ?>
+                                <span class="badge bg-warning">已停用（用户端不展示、无需确认）</span>
+                            <?php else: ?>
+                                <span class="badge bg-secondary">未配置（将使用内置默认模板）</span>
+                            <?php endif; ?>
+                        </div>
+                        <a class="btn btn-sm btn-alt-primary" href="agreement_manage.php">
+                            <i class="fa fa-file-signature me-1"></i>前往「协议管理」编辑
+                        </a>
                     </div>
 
                     <div class="mb-4">
@@ -428,29 +451,7 @@ if (!function_exists('cancelPager')) {
     </div>
 </div>
 <?php include 'foot.php'?>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css">
-<script src="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js"></script>
 <script>
-var agreementMDE = null;
-
-$(function () {
-    if (window.EasyMDE && document.getElementById('agreementText')) {
-        agreementMDE = new EasyMDE({
-            element: document.getElementById('agreementText'),
-            spellChecker: false,
-            status: false,
-            autoDownloadFontAwesome: false,
-            minHeight: '260px',
-            placeholder: '在此使用 Markdown 编写《用户注销服务协议》…',
-            toolbar: ['bold', 'italic', 'heading', '|', 'quote', 'unordered-list', 'ordered-list', '|', 'link', 'code', '|', 'preview', 'side-by-side', 'fullscreen', '|', 'guide']
-        });
-    }
-});
-
-function setAgreementValue(val) {
-    if (agreementMDE) { agreementMDE.value(val); } else { $('#agreementText').val(val); }
-}
-
 // 删除单条注销记录（日志删除会同时删除其来源记录）
 function delCancelRecord(id, isLog) {
     var msg = isLog
@@ -512,8 +513,6 @@ function saveCancelConfig(obj){
         layer.alert('冷静期天数请输入 1–90 之间的整数', {icon: 2});
         return false;
     }
-    // 同步 Markdown 编辑器内容到原始 textarea，确保表单可提交
-    if (agreementMDE) { try { agreementMDE.codemirror.save(); } catch (e) {} }
     var ii = layer.load(2, {shade:[0.1,'#fff']});
     $.ajax({
         type : 'POST',

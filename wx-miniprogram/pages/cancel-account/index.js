@@ -29,6 +29,7 @@ Page({
     coolingDays: 10,
     agreement: '',
     agreementHtml: '',
+    hasAgreement: false, // 是否存在需阅读确认的协议（后台停用后为 false）
     confirmPhrase: CONFIRM_PHRASE_DEFAULT,
     isCancelling: false,
     expireTimeText: '',
@@ -82,6 +83,8 @@ Page({
   buildSteps(currentStep) {
     return STEP_LABELS.map((label, i) => {
       const step = i + 1;
+      // 协议未发布时第一步仅作说明，标签改用「协议确认」
+      if (step === 1 && this.data.hasAgreement === false) label = '协议确认';
       let dotClass = '';
       let labelClass = '';
       let done = false;
@@ -106,7 +109,7 @@ Page({
   // 「下一步」是否可点击
   calcNextEnabled() {
     const d = this.data;
-    if (d.currentStep === 1) return d.agreeAgreement;
+    if (d.currentStep === 1) return d.hasAgreement ? d.agreeAgreement : true;
     if (d.currentStep === 2) return d.agreeRisk;
     if (d.currentStep === 3) {
       if (d.needPassword && !String(d.password).trim()) return false;
@@ -122,7 +125,7 @@ Page({
     this.setData({
       steps: this.buildSteps(d.currentStep),
       nextEnabled: this.calcNextEnabled(),
-      submitEnabled: !!(d.agreeAgreement && d.agreeRisk && d.identityPassed && String(d.confirmText).trim() === d.confirmPhrase)
+      submitEnabled: !!((!d.hasAgreement || d.agreeAgreement) && d.agreeRisk && d.identityPassed && String(d.confirmText).trim() === d.confirmPhrase)
     });
   },
 
@@ -140,6 +143,9 @@ Page({
       .then(res => {
         const d = res.data || {};
         const summary = Object.assign({}, DEFAULT_SUMMARY, d.summary || {});
+        // 协议未发布（后台停用 → agreement_published=0 且内容为空）：不展示协议、无需勾选
+        const agText = String(d.agreement || '').trim();
+        const hasAgreement = agText !== '' && String(d.agreement_published) !== '0';
         this.setData({
           enabled: parseInt(d.enabled, 10) === 1,
           needPassword: !!d.need_password,
@@ -147,7 +153,8 @@ Page({
           coolingEnable: parseInt(d.cooling_enable, 10) === 1,
           coolingDays: parseInt(d.cooling_days, 10) || 10,
           agreement: d.agreement || '',
-          agreementHtml: markdownToHtml(d.agreement || ''),
+          agreementHtml: markdownToHtml(d.agreement || '', { resolveUrl: api.getFileUrl }),
+          hasAgreement: hasAgreement,
           confirmPhrase: d.confirm_phrase ? d.confirm_phrase : CONFIRM_PHRASE_DEFAULT,
           isCancelling: parseInt(d.is_cancelling, 10) === 1,
           expireTimeText: d.expire_time ? String(d.expire_time).substring(0, 10) : '',

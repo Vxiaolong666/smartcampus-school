@@ -1,8 +1,10 @@
 <?php
-$title = '编辑公告';
+// 公告编辑页作为「公告管理」的下级页面：标题、面包屑与列表页保持层级一致
+$editId = isset($_GET['id']) ? intval($_GET['id']) : 0;
+$title = $editId > 0 ? '编辑公告' : '添加公告';
 include('./head.php');
 
-$id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+$id = $editId;
 $announcement = null;
 
 if ($id > 0) {
@@ -35,11 +37,15 @@ function resolveUploadUrl($url) {
                     <h1 class="h3 fw-bold mb-2">
                         <?php echo $title ?>
                     </h1>
+                    <div class="text-muted fs-sm">公告正文支持 Markdown 与图片，保存后用户端公告页自动同步。</div>
                 </div>
                 <nav class="flex-shrink-0 mt-3 mt-sm-0 ms-sm-3" aria-label="breadcrumb">
                     <ol class="breadcrumb breadcrumb-alt">
                         <li class="breadcrumb-item">
                             <a class="link-fx" href="index.php">后台首页</a>
+                        </li>
+                        <li class="breadcrumb-item">
+                            <a class="link-fx" href="announcements.php">公告管理</a>
                         </li>
                         <li class="breadcrumb-item" aria-current="page">
                             <?php echo $title ?>
@@ -53,8 +59,13 @@ function resolveUploadUrl($url) {
         <div class="block block-rounded block-bordered">
             <div class="block-header block-header-default">
                 <h3 class="block-title">
-                    <i class="fa fa-edit me-2"></i><?php echo $id > 0 ? '编辑公告' : '添加公告'; ?>
+                    <i class="fa fa-edit me-2"></i><?php echo $title; ?>
                 </h3>
+                <div class="block-options">
+                    <a class="btn btn-sm btn-alt-secondary" href="announcements.php">
+                        <i class="fa fa-arrow-left me-1"></i>返回列表
+                    </a>
+                </div>
             </div>
             <div class="block-content block-content-full">
                 <form id="announcementForm">

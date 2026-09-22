@@ -41,18 +41,22 @@
 					</view>
 
 					<view class="form-card">
-						<!-- 步骤1：阅读协议 -->
+						<!-- 步骤1：阅读协议（协议未发布时不展示协议、无需勾选） -->
 						<block v-if="currentStep === 1">
-							<view class="card-title">阅读并同意《用户注销服务协议》</view>
-							<scroll-view scroll-y class="agreement-box">
-								<rich-text v-if="agreementHtml" :nodes="agreementHtml" class="agreement-text"></rich-text>
-								<text v-else class="agreement-text">暂无协议内容</text>
-							</scroll-view>
-							<view class="check-row" @click="agreeAgreement = !agreeAgreement">
-								<view class="check-box" :class="{ checked: agreeAgreement }">
-									<text v-if="agreeAgreement" class="check-icon">✓</text>
+							<view class="card-title">{{ hasAgreement ? '阅读并同意《用户注销服务协议》' : '协议确认' }}</view>
+							<block v-if="hasAgreement">
+								<scroll-view scroll-y class="agreement-box">
+									<rich-text :nodes="agreementHtml" class="agreement-text"></rich-text>
+								</scroll-view>
+								<view class="check-row" @click="agreeAgreement = !agreeAgreement">
+									<view class="check-box" :class="{ checked: agreeAgreement }">
+										<text v-if="agreeAgreement" class="check-icon">✓</text>
+									</view>
+									<text class="check-text">我已完整阅读并同意《用户注销服务协议》</text>
 								</view>
-								<text class="check-text">我已完整阅读并同意《用户注销服务协议》</text>
+							</block>
+							<view v-else class="alert alert-warning">
+								<text>《用户注销服务协议》当前未发布，无需阅读确认，可直接进入下一步。</text>
 							</view>
 						</block>
 
@@ -148,6 +152,7 @@ export default {
 			coolingEnable: false,
 			coolingDays: 10,
 			agreement: '',
+			agreementPublished: true, // 协议是否已发布（后台停用后为 false：不展示协议、无需勾选）
 			confirmPhrase: '我已确认注销后用户数据无法找回并确认注销',
 			isCancelling: false,
 			expireTime: '',
@@ -184,10 +189,15 @@ export default {
 			return this.expireTime ? String(this.expireTime).substring(0, 10) : '';
 		},
 		agreementHtml() {
-			return markdownToHtml(this.agreement || '');
+			// 协议正文支持图片：相对路径补全为完整地址
+			return markdownToHtml(this.agreement || '', { resolveUrl: api.getFileUrl });
+		},
+		// 是否存在需要阅读确认的协议（后台未发布时不需要）
+		hasAgreement() {
+			return !!this.agreementPublished && String(this.agreement || '').trim() !== '';
 		},
 		nextEnabled() {
-			if (this.currentStep === 1) return this.agreeAgreement;
+			if (this.currentStep === 1) return this.hasAgreement ? this.agreeAgreement : true;
 			if (this.currentStep === 2) return this.agreeRisk;
 			if (this.currentStep === 3) {
 				if (this.needPassword && !this.password.trim()) return false;
@@ -197,7 +207,7 @@ export default {
 			return true;
 		},
 		submitEnabled() {
-			return this.agreeAgreement && this.agreeRisk && this.identityPassed && this.confirmText.trim() === this.confirmPhrase;
+			return (!this.hasAgreement || this.agreeAgreement) && this.agreeRisk && this.identityPassed && this.confirmText.trim() === this.confirmPhrase;
 		}
 	},
 
@@ -229,6 +239,11 @@ export default {
 					this.coolingEnable = parseInt(d.cooling_enable) === 1;
 					this.coolingDays = parseInt(d.cooling_days) || 10;
 					this.agreement = d.agreement || '';
+					// 协议未发布（后台停用 → agreement_published=0 且内容为空）：不展示协议、无需勾选
+					this.agreementPublished = String(this.agreement).trim() !== '' && String(d.agreement_published) !== '0';
+					this.stepLabels = this.agreementPublished
+						? ['阅读协议', '风险告知', '身份核验', '确认提交']
+						: ['协议确认', '风险告知', '身份核验', '确认提交'];
 					if (d.confirm_phrase) this.confirmPhrase = d.confirm_phrase;
 					this.isCancelling = parseInt(d.is_cancelling) === 1;
 					this.expireTime = d.expire_time || '';

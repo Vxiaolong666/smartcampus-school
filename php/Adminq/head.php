@@ -305,18 +305,27 @@ include('../Common/Core_brain.php');
         /* ===== 侧边栏当前菜单高亮 ===== */
         (function () {
             // 子页面归入其父菜单，避免编辑页等二级页面侧栏无高亮
+            // 支持链式映射（如 uset_add.php → uset.php → ulist.php）
             var ALIAS = {
-                'announcement_edit.php': 'announcements.php',
-                'uset_add.php':          'uset.php',
-                'ulist-table.php':       'ulist.php',
-                'edit_pwd.php':          'index.php'
+                'announcement_edit.php':    'announcements.php',
+                'announcement_preview.php': 'announcements.php',
+                'uset.php':                 'ulist.php',
+                'uset_add.php':             'uset.php',
+                'ulist-table.php':          'ulist.php',
+                'aset.php':                 'alist.php',
+                'edit_pwd.php':             'index.php',
+                'agreement_edit.php':       'agreement_manage.php'
             };
 
             function currentPage() {
                 var path = window.location.pathname || '';
                 var file = path.substring(path.lastIndexOf('/') + 1);
                 if (!file) file = 'index.php';
-                if (ALIAS[file]) file = ALIAS[file];
+                // 链式映射，最多 5 层，避免误配导致死循环
+                var guard = 0;
+                while (ALIAS[file] && guard++ < 5) {
+                    file = ALIAS[file];
+                }
                 return file.split('#')[0].split('?')[0];
             }
 
@@ -584,6 +593,12 @@ include('../Common/Core_brain.php');
                                                 <a class="nav-main-link" href="cancel_config.php">
                                                     <i class="nav-main-link-icon fa fa-user-slash"></i>
                                                     <span class="nav-main-link-name"><b>注销管理</b></span>
+                                                </a>
+                                            </li>
+                                            <li class="nav-main-item">
+                                                <a class="nav-main-link" href="agreement_manage.php">
+                                                    <i class="nav-main-link-icon fa fa-file-signature"></i>
+                                                    <span class="nav-main-link-name"><b>协议管理</b></span>
                                                 </a>
                                             </li>
                                             <li class="nav-main-item">

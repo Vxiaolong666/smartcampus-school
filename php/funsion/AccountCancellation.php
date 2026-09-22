@@ -51,7 +51,7 @@ function cancelConf($key, $default = null)
 /**
  * 读取注销全部配置（含默认值与合法性校验）
  *
- * @return array{enable:int,verify_mode:string,cooling_enable:int,cooling_days:int,mail_submit:int,mail_deleted:int,mail_revoked:int,agreement:string}
+ * @return array{enable:int,verify_mode:string,cooling_enable:int,cooling_days:int,mail_submit:int,mail_deleted:int,mail_revoked:int,agreement:string,agreement_published:int}
  */
 function cancelGetConfig()
 {
@@ -75,8 +75,57 @@ function cancelGetConfig()
         'mail_submit'    => intval(cancelConf('Cancel_Mail_Submit', 1)) === 1 ? 1 : 0,
         'mail_deleted'   => intval(cancelConf('Cancel_Mail_Deleted', 1)) === 1 ? 1 : 0,
         'mail_revoked'   => intval(cancelConf('Cancel_Mail_Revoked', 1)) === 1 ? 1 : 0,
-        'agreement'      => (string) cancelConf('Cancel_Agreement', cancelDefaultAgreement()),
+        'agreement'      => cancelAgreementContent(),
+        // 《用户注销协议》是否已发布（后台停用后为 0）：客户端据此不展示协议、无需勾选
+        'agreement_published' => cancelAgreementPublished() ? 1 : 0,
     ];
+}
+
+/**
+ * 取《用户注销服务协议》正文
+ * 存储位置：协议中心表 nteam_agreements（akey='cancel'，后台「协议管理」维护）
+ * - 后台已「停用」该协议：视为未发布，返回空字符串（注销流程不再展示协议）
+ * - 兼容：协议表未创建或表中无该协议时回退到内置默认模板
+ */
+function cancelAgreementContent()
+{
+    global $DB;
+    if (!function_exists('agreementGet')) {
+        @require_once __DIR__ . '/Agreements.php';
+    }
+    if (function_exists('agreementGet')) {
+        $row = agreementGet($DB, 'cancel');
+        if ($row) {
+            if (intval($row['status']) !== 1) {
+                return '';
+            }
+            if (trim((string) $row['content']) !== '') {
+                return (string) $row['content'];
+            }
+        }
+    }
+    return cancelDefaultAgreement();
+}
+
+/**
+ * 《用户注销协议》是否已发布
+ * 未发布（后台「协议管理」中停用）时，注销流程不展示协议、也无需用户勾选确认。
+ * 协议表未创建 / 未配置该协议时按“已发布”处理（沿用内置默认模板）。
+ */
+function cancelAgreementPublished()
+{
+    global $DB;
+    if (!function_exists('agreementGet')) {
+        @require_once __DIR__ . '/Agreements.php';
+    }
+    if (!function_exists('agreementGet')) {
+        return true;
+    }
+    $row = agreementGet($DB, 'cancel');
+    if (!$row) {
+        return true;
+    }
+    return intval($row['status']) === 1 && trim((string) $row['content']) !== '';
 }
 
 /**

@@ -415,7 +415,8 @@ export default {
 		},
 
 		onPrivacy() {
-			uni.navigateTo({ url: '/pages/privacy/index' });
+			// 统一走接口驱动的协议详情页（内容由后台「协议管理」维护）
+			uni.navigateTo({ url: '/pages/agreement/detail/index?key=privacy' });
 		}
 	}
 };

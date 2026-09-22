@@ -1,0 +1,53 @@
+<view class="ag-page">
+  <top-menu showBack="{{true}}">
+    <view class="nav-title">{{title}}</view>
+  </top-menu>
+
+  <view class="ag-bg-wrapper">
+    <image class="ag-bg" src="/assets/wxmp-banner.jpg" mode="aspectFill" />
+    <view class="ag-bg-mask"></view>
+  </view>
+
+  <view class="ag-content">
+    <view class="ag-card">
+      <view class="ag-header">
+        <image class="ag-logo" src="/assets/wxmp-logo.svg" mode="widthFix"></image>
+        <view class="ag-title">{{title}}</view>
+      </view>
+      <view class="ag-body" wx:if="{{notPublished}}">
+        <view class="ag-empty">
+          <image class="ag-empty-icon" src="/assets/wxmp-empty.svg" mode="widthFix"></image>
+          <view class="ag-empty-title">当前协议未发布</view>
+          <view class="ag-empty-desc">该协议尚未开放或已停用，如有疑问请联系管理员。</view>
+        </view>
+      </view>
+      <view class="ag-body" wx:else>
+        <view class="ag-update" wx:if="{{updatedAt}}">最后更新日期：{{updatedAt}}</view>
+        <!-- 正文拆成「文本块 + 图片块」：文本交 rich-text，图片用原生 image（各端稳定显示、可点击放大） -->
+        <block wx:if="{{blocks.length}}">
+          <block wx:for="{{blocks}}" wx:key="key">
+            <rich-text wx:if="{{item.type === 'html'}}" class="ag-rich" nodes="{{item.html}}"></rich-text>
+            <image wx:else class="ag-rich-img" src="{{item.src}}" mode="widthFix" data-src="{{item.src}}" bind:tap="previewImage"></image>
+          </block>
+        </block>
+        <view wx:else class="ag-loading">加载中…</view>
+      </view>
+      <view class="ag-footer">感谢您信任并使用本服务</view>
+    </view>
+
+    <!-- 底部操作：关于我们 / 联系客服 -->
+    <view class="ag-actions">
+      <view class="ag-action-btn" bind:tap="goAbout">
+        <image class="ag-action-icon" src="/assets/icon_cvoieudado/a-199_zhuye.svg" mode="widthFix"></image>
+        <text class="ag-action-text">关于我们</text>
+      </view>
+      <view class="ag-action-btn" bind:tap="openContactGuide">
+        <image class="ag-action-icon" src="/assets/icon_cvoieudado/a-199_duihua.svg" mode="widthFix"></image>
+        <text class="ag-action-text">联系客服</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 联系客服（在线客服 / 其他联系方式） -->
+  <contact-guide id="contactGuide" />
+</view>

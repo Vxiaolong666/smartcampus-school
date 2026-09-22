@@ -167,10 +167,10 @@ Page({
             });
     },
 
-    //打开隐私协议（使用应用自己的隐私协议页面，不跳转微信隐私契约）
+    //打开协议中心（汇总隐私政策、用户服务协议、用户注销协议、免责声明等）
     handleAgreement() {
         wx.navigateTo({
-            url: '/pages/privacy/index',
+            url: '/pages/agreement/index',
         });
     },
 

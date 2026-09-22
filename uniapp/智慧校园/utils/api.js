@@ -766,6 +766,32 @@ const oauthLoginPoll = (ticket) => {
   });
 };
 
+/* ==================== 协议中心相关接口（免登录） ==================== */
+
+/**
+ * 协议清单
+ * @returns {Promise} data: [{ key, title, updated_at }]
+ */
+const getAgreements = () => {
+  return request({
+    act: 'get_agreements',
+    method: 'GET'
+  });
+};
+
+/**
+ * 单份协议内容（Markdown）
+ * @param {string} key 协议标识
+ * @returns {Promise} data: { key, title, content, updated_at }
+ */
+const getAgreement = (key) => {
+  return request({
+    act: 'get_agreement',
+    method: 'GET',
+    data: { key }
+  });
+};
+
 /* ==================== App 版本更新相关接口 ==================== */
 
 /**
@@ -886,6 +912,8 @@ export default {
   getOauthChannels,
   getOauthLoginUrl,
   oauthLoginPoll,
+  getAgreements,
+  getAgreement,
   getAppVersion,
   getAppVersionLog
 };

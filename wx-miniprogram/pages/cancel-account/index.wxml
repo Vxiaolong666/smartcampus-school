@@ -40,19 +40,25 @@
         </view>
 
         <view class="form-card">
-          <!-- 步骤1：阅读协议 -->
+          <!-- 步骤1：阅读协议（协议未发布时不展示协议、无需勾选） -->
           <block wx:if="{{currentStep === 1}}">
-            <view class="card-title">阅读并同意《用户注销服务协议》</view>
-            <scroll-view scroll-y="{{true}}" class="agreement-box">
-              <rich-text wx:if="{{agreementHtml}}" nodes="{{agreementHtml}}" class="agreement-text"></rich-text>
-              <text wx:else class="agreement-text">暂无协议内容</text>
-            </scroll-view>
-            <view class="check-row" bind:tap="toggleAgreement">
-              <view class="check-box {{agreeAgreement ? 'checked' : ''}}">
-                <text wx:if="{{agreeAgreement}}" class="check-icon">✓</text>
+            <view class="card-title">{{hasAgreement ? '阅读并同意《用户注销服务协议》' : '协议确认'}}</view>
+            <block wx:if="{{hasAgreement}}">
+              <scroll-view scroll-y="{{true}}" class="agreement-box">
+                <rich-text nodes="{{agreementHtml}}" class="agreement-text"></rich-text>
+              </scroll-view>
+              <view class="check-row" bind:tap="toggleAgreement">
+                <view class="check-box {{agreeAgreement ? 'checked' : ''}}">
+                  <text wx:if="{{agreeAgreement}}" class="check-icon">✓</text>
+                </view>
+                <text class="check-text">我已完整阅读并同意《用户注销服务协议》</text>
               </view>
-              <text class="check-text">我已完整阅读并同意《用户注销服务协议》</text>
-            </view>
+            </block>
+            <block wx:else>
+              <view class="alert alert-warning">
+                <text>《用户注销服务协议》当前未发布，无需阅读确认，可直接进入下一步。</text>
+              </view>
+            </block>
           </block>
 
           <!-- 步骤2：风险告知 -->

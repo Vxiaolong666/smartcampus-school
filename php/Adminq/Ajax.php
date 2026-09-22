@@ -9,6 +9,7 @@ $ip = $Gets->ip();
 require_once '../funsion/OAuthHelper.php';
 require_once '../funsion/ScheduleTime.php';
 require_once '../funsion/LanzouHelper.php';
+require_once '../funsion/Agreements.php';
 
 @header('Content-Type: application/json; charset=UTF-8');
 
@@ -520,6 +521,44 @@ switch($act){
         
         if (move_uploaded_file($file['tmp_name'], $filepath)) {
             $url = '/uploads/announcements/' . $filename;
+            $displayUrl = $siteBasePath . $url;
+            exit('{"code":0,"msg":"上传成功","data":{"url":"' . $url . '","displayUrl":"' . $displayUrl . '"}}');
+        } else {
+            exit('{"code":-1,"msg":"上传失败"}');
+        }
+    break;
+
+    // ===== 协议管理：正文图片上传（协议编辑器「插入图片」） =====
+    case 'upload_agreement_image':
+        if(!$isLogin)exit('{"code":-1,"msg":"未登录"}');
+        if($adminData['adminRank']!=1){exit('{"code":-1,"msg":"您的账号没有权限使用此功能！"}');}
+
+        if (!isset($_FILES['file']) || $_FILES['file']['error'] != 0) {
+            exit('{"code":-1,"msg":"请选择要上传的图片"}');
+        }
+
+        $file = $_FILES['file'];
+
+        $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (!in_array($file['type'], $allowedTypes)) {
+            exit('{"code":-1,"msg":"只允许上传图片文件"}');
+        }
+
+        if ($file['size'] > 5 * 1024 * 1024) {
+            exit('{"code":-1,"msg":"图片大小不能超过5MB"}');
+        }
+
+        $uploadDir = '../uploads/agreements/';
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0755, true);
+        }
+
+        $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+        $filename = date('YmdHis') . '_' . uniqid() . '.' . $ext;
+        $filepath = $uploadDir . $filename;
+
+        if (move_uploaded_file($file['tmp_name'], $filepath)) {
+            $url = '/uploads/agreements/' . $filename;
             $displayUrl = $siteBasePath . $url;
             exit('{"code":0,"msg":"上传成功","data":{"url":"' . $url . '","displayUrl":"' . $displayUrl . '"}}');
         } else {
@@ -1157,7 +1196,7 @@ switch($act){
         $mailSubmit = intval($_POST['mail_submit']) === 1 ? 1 : 0;
         $mailDeleted = intval($_POST['mail_deleted']) === 1 ? 1 : 0;
         $mailRevoked = intval($_POST['mail_revoked']) === 1 ? 1 : 0;
-        $agreement = isset($_POST['agreement']) ? $_POST['agreement'] : '';
+        // 说明：《用户注销服务协议》已迁移到「协议管理」（nteam_agreements.akey='cancel'），此处不再保存
 
         saveSetting('Cancel_Enable', $enable);
         saveSetting('Cancel_Verify_Mode', $verifyMode);
@@ -1166,7 +1205,6 @@ switch($act){
         saveSetting('Cancel_Mail_Submit', $mailSubmit);
         saveSetting('Cancel_Mail_Deleted', $mailDeleted);
         saveSetting('Cancel_Mail_Revoked', $mailRevoked);
-        saveSetting('Cancel_Agreement', $agreement);
 
         $DB->query("insert into `nteam_log` (`adminUser`,`type`,`data`,`ip`,`city`) values ('" . $_SESSION['adminUser'] . "','修改了注销管理配置', NOW(), '".$ip."', '')");
         exit('{"code":0,"msg":"保存成功"}');
@@ -1560,6 +1598,54 @@ switch($act){
                 'pwd'        => $split['pwd']
             )
         ), JSON_UNESCAPED_UNICODE));
+    break;
+
+    // ===== 协议管理：新增 / 修改协议 =====
+    case 'agreement_save':
+        if(!$isLogin) exit('{"code":-1,"msg":"未登录"}');
+        if($adminData['adminRank']!=1){exit('{"code":-1,"msg":"您的账号没有权限使用此功能！"}');}
+        $agRes = agreementSave($DB, array(
+            'id'         => intval($_POST['id'] ?? 0),
+            'akey'       => isset($_POST['akey']) ? $_POST['akey'] : '',
+            'title'      => isset($_POST['title']) ? $_POST['title'] : '',
+            'content'    => isset($_POST['content']) ? $_POST['content'] : '',
+            'sort_order' => intval($_POST['sort_order'] ?? 0),
+            'status'     => intval($_POST['status'] ?? 1)
+        ));
+        if ($agRes['code'] !== 0) {
+            exit(json_encode(array('code' => -1, 'msg' => $agRes['msg']), JSON_UNESCAPED_UNICODE));
+        }
+        $actName = intval($_POST['id'] ?? 0) > 0 ? '修改了协议' : '新增了协议';
+        $DB->query("insert into `nteam_log` (`adminUser`,`type`,`data`,`ip`,`city`) values ('" . $_SESSION['adminUser'] . "','{$actName}(ID:" . $agRes['id'] . ")', NOW(), '" . $ip . "', '')");
+        exit(json_encode(array('code' => 0, 'msg' => $agRes['msg'], 'id' => $agRes['id']), JSON_UNESCAPED_UNICODE));
+    break;
+
+    // ===== 协议管理：删除协议 =====
+    case 'agreement_del':
+        if(!$isLogin) exit('{"code":-1,"msg":"未登录"}');
+        if($adminData['adminRank']!=1){exit('{"code":-1,"msg":"您的账号没有权限使用此功能！"}');}
+        $agId = intval($_POST['id'] ?? 0);
+        if ($agId <= 0) exit('{"code":-1,"msg":"参数错误"}');
+        $agRes = agreementDelete($DB, $agId);
+        if ($agRes['code'] !== 0) {
+            exit(json_encode(array('code' => -1, 'msg' => $agRes['msg']), JSON_UNESCAPED_UNICODE));
+        }
+        $DB->query("insert into `nteam_log` (`adminUser`,`type`,`data`,`ip`,`city`) values ('" . $_SESSION['adminUser'] . "','删除了协议(ID:{$agId})', NOW(), '" . $ip . "', '')");
+        exit(json_encode(array('code' => 0, 'msg' => $agRes['msg']), JSON_UNESCAPED_UNICODE));
+    break;
+
+    // ===== 协议管理：启用 / 停用协议 =====
+    case 'agreement_status':
+        if(!$isLogin) exit('{"code":-1,"msg":"未登录"}');
+        if($adminData['adminRank']!=1){exit('{"code":-1,"msg":"您的账号没有权限使用此功能！"}');}
+        $agId = intval($_POST['id'] ?? 0);
+        $agStatus = intval($_POST['status'] ?? 1);
+        if ($agId <= 0) exit('{"code":-1,"msg":"参数错误"}');
+        $agRes = agreementSetStatus($DB, $agId, $agStatus);
+        if ($agRes['code'] !== 0) {
+            exit(json_encode(array('code' => -1, 'msg' => $agRes['msg']), JSON_UNESCAPED_UNICODE));
+        }
+        exit(json_encode(array('code' => 0, 'msg' => $agRes['msg']), JSON_UNESCAPED_UNICODE));
     break;
 
     // ===== 开屏广告：图片上传 =====

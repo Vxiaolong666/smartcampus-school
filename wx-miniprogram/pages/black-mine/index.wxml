@@ -151,7 +151,7 @@
 
           <view class="item-item" bind:tap="handleAgreement">
             <image class="item-logo" src="/assets/icon_cvoieudado/a-199_wenjian.svg" mode="widthFix"></image>
-            <view class="item-text">隐私协议</view>
+            <view class="item-text">协议中心</view>
             <image class="item-right" src="/assets/wxmp-right.svg" mode="widthFix"></image>
           </view>
 
