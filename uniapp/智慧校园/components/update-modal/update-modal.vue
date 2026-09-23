@@ -54,6 +54,9 @@
  */
 import api from '../../utils/api.js';
 
+// 本站蓝奏云中转地址（php/lanzhouyun.php?type=file）：属于可下载直链
+const LANZOU_PROXY_RE = /lanzhouyun\.php\?[^\s]*type=file/i;
+
 export default {
 	name: 'update-modal',
 	props: {
@@ -96,12 +99,16 @@ export default {
 			return this.force === true || parseInt(this.force, 10) === 1;
 		},
 		// 是否可用内置下载器直接下载安装
+		// 本站中转地址（lanzhouyun.php?type=file）本身就是可下载的直链，
+		// 服务端未标注 direct（或旧版接口）时也按直链处理，避免被错判成「用浏览器打开」
 		isDirect() {
-			return this.downloadType === 'direct';
+			return this.downloadType === 'direct' || LANZOU_PROXY_RE.test(this.downloadUrl || '');
 		},
-		// 是否蓝奏云来源（用于让用户选择下载方式）
+		// 是否蓝奏云来源（用于让用户选择下载方式）：来源标记、本站中转地址、蓝奏云链接都算
 		isLanzou() {
-			return this.downloadSource === 'lanzou';
+			return this.downloadSource === 'lanzou'
+				|| LANZOU_PROXY_RE.test(this.downloadUrl || '')
+				|| /(^|\/\/)([a-z0-9-]+\.)*(lanzou[a-z]*|lanzn)\.(com|cn)(\/|$)/i.test(this.downloadUrl || '');
 		},
 		// 更新日志按行拆分为条目，去掉行首的符号标记
 		logLines() {
@@ -162,11 +169,26 @@ export default {
 			plus.runtime.openURL(url);
 			// #endif
 		},
+		// 把弹窗上的「下载密码」注入下载地址：地址里没有 pwd 时补上。
+		// 蓝奏云分享页与其服务端中转地址都必须带 pwd 才能解析/下载，
+		// 只对这两类地址注入，避免污染普通直链。
+		withPwd(url) {
+			if (!url) return url;
+			const pwd = this.downloadPwd ? String(this.downloadPwd).trim() : '';
+			if (!pwd) return url;
+			if (/[?&]pwd=/i.test(url)) return url; // 已带密码，不重复注入
+			const isLanzouRelated = /lanzhouyun\.php/i.test(url)
+				|| /(^|\/\/)([a-z0-9-]+\.)*(lanzou[a-z]*|lanzn)\.(com|cn)(\/|$)/i.test(url);
+			if (!isLanzouRelated) return url;
+			// 已含 ? 或 & 时用 & 追加（与后台「链接末尾追加 &pwd=密码」的写法一致）
+			const sep = /[?&]/.test(url) ? '&' : '?';
+			return url + sep + 'pwd=' + encodeURIComponent(pwd);
+		},
 		onUpdate() {
 			this.$emit('update');
 			if (this.downloading) return;
-			const url = this.downloadUrl;
-			const page = this.downloadPage || url;
+			const url = this.withPwd(this.downloadUrl);
+			const page = this.withPwd(this.downloadPage || this.downloadUrl);
 			if (!url && !page) {
 				uni.showToast({ title: '暂无下载地址', icon: 'none' });
 				return;
@@ -204,8 +226,8 @@ export default {
 		// 蓝奏云：直接下载更新包
 		chooseDirect() {
 			this.askVisible = false;
-			const url = this.downloadUrl;
-			const page = this.downloadPage || url;
+			const url = this.withPwd(this.downloadUrl);
+			const page = this.withPwd(this.downloadPage || this.downloadUrl);
 			// #ifdef APP-PLUS
 			// 应用内：点击时才向服务端取最新下载地址，再交给内置下载器
 			this.startDownloadWithFreshUrl(url, page);
@@ -215,10 +237,10 @@ export default {
 			this.openBrowser(url);
 			// #endif
 		},
-		// 蓝奏云：跳转浏览器下载（打开分享页）
+		// 蓝奏云：跳转浏览器下载（打开分享页，带上密码）
 		chooseBrowser() {
 			this.askVisible = false;
-			const page = this.downloadPage || this.downloadUrl;
+			const page = this.withPwd(this.downloadPage || this.downloadUrl);
 			// #ifdef APP-PLUS
 			this.openExternal(page);
 			// #endif
@@ -270,8 +292,9 @@ export default {
 			}
 			uni.hideLoading();
 
-			const url = (info && info.download_url) ? info.download_url : fallbackUrl;
-			const page = (info && (info.download_page || info.download_url)) || fallbackPage || fallbackUrl;
+			// 兜底：取址结果或回退地址都再注入一次下载密码，避免拿到不带 pwd 的地址
+			const url = this.withPwd((info && info.download_url) ? info.download_url : fallbackUrl);
+			const page = this.withPwd((info && (info.download_page || info.download_url)) || fallbackPage || fallbackUrl);
 			if (!url) {
 				this.downloading = false;
 				uni.showToast({ title: '暂无下载地址', icon: 'none' });
@@ -417,7 +440,7 @@ export default {
 				confirmText: '浏览器下载',
 				cancelText: '取消',
 				success: (r) => {
-					if (r.confirm) this.openExternal(fallbackUrl);
+					if (r.confirm) this.openExternal(this.withPwd(fallbackUrl));
 				}
 			});
 		},
@@ -431,7 +454,7 @@ export default {
 				confirmText: '浏览器下载',
 				cancelText: '取消',
 				success: (r) => {
-					if (r.confirm) this.openExternal(fallbackUrl);
+					if (r.confirm) this.openExternal(this.withPwd(fallbackUrl));
 				}
 			});
 		}
