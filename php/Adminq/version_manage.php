@@ -248,18 +248,18 @@ $platformText = array('all' => '全平台', 'android' => 'Android', 'ios' => 'iO
                         <label class="form-label">强制更新</label>
                         <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" role="switch" name="force_update" id="vForce" value="1">
-                            <label class="form-check-label" for="vForce">开启后，用户必须更新才能继续使用（无取消按钮）</label>
+                            <label class="form-check-label" for="vForce">开启后，用户必须更新才能继续使用</label>
                         </div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">下载地址 <span class="text-danger">*</span></label>
                         <div class="input-group">
                             <input type="text" class="form-control" name="download_url" id="vUrl" placeholder="apk 直链 / 应用商店链接 / 蓝奏云分享链接">
-                            <button type="button" class="btn btn-alt-info" onclick="testLanzou()"><i class="fa fa-cloud-download-alt me-1"></i>测试解析</button>
+                            <!-- 仅识别到蓝奏云链接时才展示（由 refreshUrlTip() 控制显隐） -->
+                            <button type="button" class="btn btn-alt-info d-none" id="vTestBtn" onclick="testLanzou()"><i class="fa fa-cloud-download-alt me-1"></i>测试解析</button>
                         </div>
                         <div class="form-text">
-                            支持 apk 直链、应用商店链接或蓝奏云分享链接。若为蓝奏云且文件设有密码，请在链接末尾追加
-                            <code>&pwd=密码</code>（如 <code>https://www.lanzouq.com/xxxx&pwd=1234</code>），否则客户端无法自动解析。
+                            支持 apk 直链、应用商店链接或蓝奏云分享链接（蓝奏云支持自动解析）。
                         </div>
                         <div id="vLanzouTip" class="alert alert-info py-2 px-3 mt-2 mb-0 fs-sm d-none"></div>
                     </div>
@@ -278,6 +278,54 @@ $platformText = array('all' => '全平台', 'android' => 'Android', 'ios' => 'iO
 </div>
 
 <?php include 'foot.php'?>
+<style>
+    /* ===== 蓝奏云解析结果弹窗（移动端适配）=====
+       窄屏下弹窗宽度由 JS 按视口计算（约 92%），长直链可换行、可滚动、可长按复制 */
+    .lanzou-result {
+        font-size: 13px;
+        line-height: 1.8;
+        word-break: break-word;
+    }
+    .lanzou-result-row {
+        display: flex;
+        align-items: flex-start;
+    }
+    .lanzou-result-label {
+        flex: 0 0 60px;
+        color: #868e96;
+    }
+    .lanzou-result-value {
+        flex: 1;
+        min-width: 0;
+        word-break: break-all;
+    }
+    .lanzou-result-url-title {
+        margin-top: 10px;
+        color: #868e96;
+    }
+    .lanzou-result-url {
+        margin-top: 4px;
+        padding: 8px 10px;
+        max-height: 32vh;
+        overflow: auto;
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 6px;
+        -webkit-overflow-scrolling: touch;
+        font-size: 12px;
+        color: #6c757d;
+        word-break: break-all;
+        white-space: pre-wrap;
+        -webkit-user-select: text;
+        user-select: text;
+    }
+    /* 窄屏：收紧内边距，避免出现横向滚动 */
+    @media (max-width: 575.98px) {
+        .layui-layer.lanzou-result-layer .layui-layer-content {
+            padding: 12px 14px;
+        }
+    }
+</style>
 <script>
 // 版本数据（供编辑弹窗回填）
 var versions = <?php echo json_encode($versions, JSON_UNESCAPED_UNICODE); ?>;
@@ -384,7 +432,10 @@ function getUrlPwd(url) {
 function refreshUrlTip() {
     var url = ($('#vUrl').val() || '').trim();
     var $tip = $('#vLanzouTip');
-    if (!LANZOU_RE.test(url)) {
+    var isLanzou = LANZOU_RE.test(url);
+    // 「测试解析」只对蓝奏云链接有意义：非蓝奏云（apk 直链 / 应用商店）时隐藏按钮
+    $('#vTestBtn').toggleClass('d-none', !isLanzou);
+    if (!isLanzou) {
         $tip.addClass('d-none').empty();
         return;
     }
@@ -393,6 +444,47 @@ function refreshUrlTip() {
         ? '<i class="fa fa-check-circle me-1"></i>已识别蓝奏云链接，下载密码：<b>' + escHtml(pwd) + '</b>。保存后客户端检查更新时会自动解析为直链下载。'
         : '<i class="fa fa-exclamation-circle me-1"></i>已识别蓝奏云链接。若该文件设置了分享密码，请在链接末尾追加 <code>&pwd=密码</code>，否则客户端将解析失败。';
     $tip.removeClass('d-none').html(msg);
+}
+
+// 弹窗尺寸按视口自适应：窄屏用百分比宽度并限制最大高度，避免超出手机屏幕
+function lanzouAlertOpts(extra) {
+    var vw = window.innerWidth || document.documentElement.clientWidth || 0;
+    var vh = window.innerHeight || document.documentElement.clientHeight || 0;
+    var opts = {
+        title: '蓝奏云解析结果',
+        area: [vw < 576 ? '92%' : '520px', 'auto'],
+        maxHeight: Math.max(220, Math.round(vh * 0.8)),
+        skin: 'lanzou-result-layer',
+        shadeClose: true
+    };
+    if (extra) { $.extend(opts, extra); }
+    return opts;
+}
+
+// 复制直链：优先 Clipboard API，非安全上下文回退 execCommand（移动端浏览器兼容）
+function copyLanzouUrl(btn) {
+    var text = ($(btn).closest('.lanzou-result').find('.lanzou-result-url').text() || '').trim();
+    if (!text || text === '-') { layer.msg('暂无可复制的直链', {icon: 0}); return; }
+    var done = function () { layer.msg('已复制直链', {icon: 1}); };
+    var fallback = function () {
+        try {
+            var ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            var ok = document.execCommand('copy');
+            document.body.removeChild(ta);
+            if (ok) { done(); return; }
+        } catch (e) {}
+        layer.msg('复制失败，请长按选中直链复制', {icon: 2});
+    };
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(done, fallback);
+    } else {
+        fallback();
+    }
 }
 
 // 测试解析：调用后端，展示直链/文件名/大小，便于核对链接与密码是否正确
@@ -410,16 +502,17 @@ function testLanzou() {
             layer.close(ii);
             if (res && res.code === 0 && res.data) {
                 var d = res.data;
-                layer.alert(
-                    '<div style="max-width:440px;word-break:break-all;line-height:1.9">'
-                    + '解析成功！<br>文件名：' + escHtml(d.name || '-')
-                    + '<br>大小：' + escHtml(d.filesize || '-')
-                    + (d.pwd ? '<br>下载密码：<b>' + escHtml(d.pwd) + '</b>' : '')
-                    + '<br><br>直链：<br><span style="color:#888">' + escHtml(d.direct_url || '') + '</span></div>',
-                    {title: '蓝奏云解析结果', area: ['480px', 'auto']}
-                );
+                var html = '<div class="lanzou-result">'
+                    + '<div class="lanzou-result-row"><span class="lanzou-result-label">文件名</span><span class="lanzou-result-value">' + escHtml(d.name || '-') + '</span></div>'
+                    + '<div class="lanzou-result-row"><span class="lanzou-result-label">大小</span><span class="lanzou-result-value">' + escHtml(d.filesize || '-') + '</span></div>'
+                    + (d.pwd ? '<div class="lanzou-result-row"><span class="lanzou-result-label">密码</span><span class="lanzou-result-value"><b>' + escHtml(d.pwd) + '</b></span></div>' : '')
+                    + '<div class="lanzou-result-url-title">直链（可长按选中或点下方按钮复制）</div>'
+                    + '<div class="lanzou-result-url">' + escHtml(d.direct_url || '-') + '</div>'
+                    + '<div class="mt-2"><button type="button" class="btn btn-sm btn-alt-primary" onclick="copyLanzouUrl(this)"><i class="fa fa-copy me-1"></i>复制直链</button></div>'
+                    + '</div>';
+                layer.alert(html, lanzouAlertOpts());
             } else {
-                layer.alert((res && res.msg) ? res.msg : '解析失败', {icon: 2});
+                layer.alert((res && res.msg) ? res.msg : '解析失败', lanzouAlertOpts({icon: 2, title: '解析失败'}));
             }
         },
         error: function () {

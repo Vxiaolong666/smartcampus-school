@@ -52,6 +52,8 @@
  * 版本更新弹窗
  * 头部使用 /static/assets/up_up.png，展示版本号与更新日志，支持强制更新（隐藏「稍后再说」且不可点遮罩关闭）。
  */
+import api from '../../utils/api.js';
+
 export default {
 	name: 'update-modal',
 	props: {
@@ -186,9 +188,9 @@ export default {
 				return;
 			}
 			// #ifdef APP-PLUS
-			// 直链（apk / wgt 等）：使用 App 内置下载器，下载完成后拉起安装
+			// 直链（apk / wgt 等）：点击时才向服务端取最新下载地址（链接有时效），再交给内置下载器
 			if (this.isDirect && url) {
-				this.startDownload(url, page);
+				this.startDownloadWithFreshUrl(url, page);
 				return;
 			}
 			// 非直链（应用商店等）：交给系统浏览器打开
@@ -205,8 +207,8 @@ export default {
 			const url = this.downloadUrl;
 			const page = this.downloadPage || url;
 			// #ifdef APP-PLUS
-			// 应用内：内置下载器下载，完成后拉起安装
-			this.startDownload(url, page);
+			// 应用内：点击时才向服务端取最新下载地址，再交给内置下载器
+			this.startDownloadWithFreshUrl(url, page);
 			// #endif
 			// #ifndef APP-PLUS
 			// 浏览器端：直接用浏览器下载直链文件
@@ -233,6 +235,56 @@ export default {
 			} catch (e) {}
 			// #endif
 		},
+		// 向服务端索要「当前最新」的下载地址（下载链接有时效性，必须在用户点击下载时获取）
+		async fetchFreshDownload() {
+			// #ifdef APP-PLUS
+			let platform = 'all';
+			try {
+				const p = uni.getSystemInfoSync().platform;
+				if (p === 'android') platform = 'android';
+				else if (p === 'ios') platform = 'ios';
+			} catch (e) {}
+			const params = { platform: platform };
+			if (this.version) params.version = this.version;
+			const res = await api.getAppDownload(params);
+			const d = (res && res.data) || {};
+			if (!d.download_url) {
+				return null;
+			}
+			return d;
+			// #endif
+			// #ifndef APP-PLUS
+			return null;
+			// #endif
+		},
+		// 点击下载时才取最新地址；取不到或返回的不是直链时，退回检查更新阶段的地址 / 用浏览器打开
+		async startDownloadWithFreshUrl(fallbackUrl, fallbackPage) {
+			if (this.downloading) return;
+			this.downloading = true; // 取址期间也锁定按钮，避免重复点击
+			uni.showLoading({ title: '获取下载地址...', mask: true });
+			let info = null;
+			try {
+				info = await this.fetchFreshDownload();
+			} catch (e) {
+				// 取址失败：用检查更新阶段返回的地址兜底
+			}
+			uni.hideLoading();
+
+			const url = (info && info.download_url) ? info.download_url : fallbackUrl;
+			const page = (info && (info.download_page || info.download_url)) || fallbackPage || fallbackUrl;
+			if (!url) {
+				this.downloading = false;
+				uni.showToast({ title: '暂无下载地址', icon: 'none' });
+				return;
+			}
+			// 服务端返回的不是内置下载器可用的直链：按类型降级为浏览器打开
+			if (info && info.download_type && info.download_type !== 'direct') {
+				this.downloading = false;
+				this.openExternal(page);
+				return;
+			}
+			this.startDownload(url, page);
+		},
 		// 内置下载器下载安装包，完成后调用 plus.runtime.install 拉起安装
 		startDownload(url, fallbackUrl) {
 			this.downloading = true;
@@ -244,7 +296,7 @@ export default {
 						this.installApk(res.tempFilePath, fallbackUrl || url);
 					} else {
 						this.downloading = false;
-						this.downloadFailed(fallbackUrl || url);
+						this.downloadFailed(fallbackUrl || url, 'HTTP ' + res.statusCode);
 					}
 				},
 				fail: () => {
@@ -260,23 +312,108 @@ export default {
 		},
 		installApk(tempPath, fallbackUrl) {
 			// #ifdef APP-PLUS
-			plus.runtime.install(tempPath, { force: true }, () => {
-				this.downloading = false;
-				this.$emit('close');
-			}, () => {
-				this.downloading = false;
-				this.installFailed(fallbackUrl);
+			this.prepareApk(tempPath, (apkPath, reason) => {
+				if (!apkPath) {
+					this.downloading = false;
+					this.downloadFailed(fallbackUrl, reason || '下载到的文件不是有效安装包');
+					return;
+				}
+				plus.runtime.install(apkPath, { force: true }, () => {
+					this.downloading = false;
+					this.$emit('close');
+				}, (err) => {
+					// 系统返回的真实原因（如未授权「安装未知应用」）随弹窗提示一并给出
+					this.downloading = false;
+					this.installFailed(fallbackUrl, err);
+				});
 			});
 			// #endif
 			// #ifndef APP-PLUS
 			this.downloading = false;
 			// #endif
 		},
+		/**
+		 * 校验并把下载到的临时文件落地为 _downloads/xxx.apk，回调可安装的绝对路径。
+		 * 原因：
+		 *  1) 蓝奏云等直链末尾常没有 .apk 扩展名，uni.downloadFile 的临时文件也跟着没扩展名，
+		 *     直接交给系统安装器会报「安装包解析失败」；
+		 *  2) _downloads 为应用私有下载目录，安装器可直接访问（沙箱下 _doc 临时目录不保证可读）。
+		 * 回调 null 表示文件明显不是安装包（多为直链返回了错误页）。
+		 */
+		prepareApk(tempPath, cb) {
+			// #ifdef APP-PLUS
+			const safeVer = String(this.version || 'update').replace(/[^\w.\-]/g, '_');
+			const fileName = 'smartcampus_' + safeVer + '_' + Date.now() + '.apk';
+			// 回退：复制/定位失败时仍用原始临时路径尝试安装（比直接放弃更好）
+			const fallback = () => cb(tempPath);
+			const copy = (entry) => {
+				try {
+					plus.io.resolveLocalFileSystemURL('_downloads/', (dir) => {
+						entry.copyTo(dir, fileName, (file) => {
+							let path = '';
+							try { path = file && file.toLocalURL ? file.toLocalURL() : ''; } catch (e) {}
+							if (!path) path = (file && file.fullPath) || '';
+							// toLocalURL 形如 file:///storage/...，转成绝对路径最稳
+							if (path.indexOf('file://') === 0) path = path.substring(7);
+							cb(path || tempPath);
+						}, () => fallback('写入 _downloads 失败'));
+					}, () => fallback('_downloads 目录不可用'));
+				} catch (e) {
+					fallback('复制异常：' + (e && e.message));
+				}
+			};
+			try {
+				plus.io.resolveLocalFileSystemURL(tempPath, (entry) => {
+					// 体积异常小：多半是直链返回的错误页/HTML，而不是安装包
+					try {
+						entry.getMetadata((meta) => {
+							const size = (meta && meta.size) || 0;
+							if (size && size < 10240) {
+								// 小文件通常是服务端返回的错误信息（JSON）或错误页：读出来便于直接看到原因
+								this.readSmallFileText(entry, (text) => {
+									const m = String(text).match(/"msg"\s*:\s*"([^"]+)"/);
+									cb(null, (m && m[1]) ? m[1] : '下载到的文件不是有效安装包');
+								});
+								return;
+							}
+							copy(entry);
+						}, () => copy(entry));
+					} catch (e) {
+						copy(entry);
+					}
+				}, () => fallback('临时文件不存在或不可读'));
+			} catch (e) {
+				fallback('读取临时文件异常：' + (e && e.message));
+			}
+			// #endif
+			// #ifndef APP-PLUS
+			cb(tempPath);
+			// #endif
+		},
+		// 读取小文件（<10KB）文本内容：用于把服务端返回的 JSON 错误信息展示给用户
+		readSmallFileText(entry, cb) {
+			// #ifdef APP-PLUS
+			try {
+				const reader = new plus.io.FileReader();
+				reader.onloadend = (e) => {
+					const text = (e && e.target && e.target.result) || '';
+					cb(typeof text === 'string' ? text.slice(0, 300) : '');
+				};
+				reader.onerror = () => cb('');
+				entry.file((file) => reader.readAsText(file), () => cb(''));
+			} catch (e) {
+				cb('');
+			}
+			// #endif
+			// #ifndef APP-PLUS
+			cb('');
+			// #endif
+		},
 		// 兜底：下载失败时询问是否改用浏览器打开（优先分享页）
-		downloadFailed(fallbackUrl) {
+		downloadFailed(fallbackUrl, reason) {
 			uni.showModal({
 				title: '下载失败',
-				content: '未能通过 App 内置下载器下载安装包，是否改用浏览器打开下载？',
+				content: (reason ? reason + '。' : '未能通过 App 内置下载器下载安装包。') + '是否改用浏览器打开下载？',
 				confirmText: '浏览器下载',
 				cancelText: '取消',
 				success: (r) => {
@@ -284,11 +421,13 @@ export default {
 				}
 			});
 		},
-		// 兜底：安装失败时询问是否改用浏览器打开
-		installFailed(fallbackUrl) {
+		// 兜底：安装失败时说明原因/引导开启「安装未知应用」，并询问是否改用浏览器打开
+		installFailed(fallbackUrl, err) {
+			const reason = err && err.message ? String(err.message) : '';
+			const tip = '安装包解析或安装失败。若系统提示未允许安装应用，请在「设置 → 应用 → 安装未知应用」中允许本应用后重试。';
 			uni.showModal({
 				title: '安装失败',
-				content: '安装包解析或安装失败，是否改用浏览器打开下载？',
+				content: tip + (reason ? '\n（' + reason + '）' : '') + '\n是否改用浏览器打开下载？',
 				confirmText: '浏览器下载',
 				cancelText: '取消',
 				success: (r) => {

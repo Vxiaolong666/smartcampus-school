@@ -102,6 +102,79 @@ function jsonResponse($code, $msg, $data = null) {
 }
 
 /**
+ * 全局开关：App 版本更新是否开启（后台「版本管理」）
+ */
+function appUpdateEnabled($DB) {
+    try {
+        $cfg = $DB->getRow("SELECT app_update_enabled FROM nteam_config WHERE id=1");
+        if ($cfg !== null && isset($cfg['app_update_enabled']) && intval($cfg['app_update_enabled']) === 1) {
+            return true;
+        }
+    } catch (Exception $e) {}
+    return false;
+}
+
+/**
+ * 取后台「版本管理」里满足平台条件的最新已发布版本记录；
+ * $exactVersion 非空时按版本号精确匹配（供客户端点击下载时取指定版本的地址）。
+ */
+function appVersionLatestRow($DB, $platform, $exactVersion = '') {
+    try {
+        $chk = $DB->query("SHOW TABLES LIKE 'nteam_app_versions'");
+        if (!$chk || !$chk->fetch()) {
+            return null;
+        }
+    } catch (Exception $e) {
+        return null;
+    }
+    $where = "status=1 AND platform IN ('all','$platform')";
+    if ($exactVersion !== '') {
+        $where .= " AND version='" . addslashes($exactVersion) . "'";
+    }
+    $row = $DB->getRow("SELECT * FROM nteam_app_versions WHERE $where ORDER BY version_code DESC LIMIT 1");
+    return $row ? $row : null;
+}
+
+/**
+ * 由「版本管理」里填写的下载地址推导客户端可用的下载信息。
+ *
+ * 蓝奏云分享链接返回的是本站中转地址（php/lanzhouyun.php?type=file）：
+ * 解析出的直链短时效且与解析会话（Cookie/IP）绑定，直接交给客户端只会拿到 HTML 错误页，
+ * 因此改由服务端在下载请求到达时解析并立即拉取文件、流式输出。
+ */
+function appDownloadInfo($rawUrl) {
+    require_once __DIR__ . '/funsion/LanzouHelper.php';
+    $split = lanzouSplitPassword($rawUrl);
+    $cleanUrl = $split['url'];
+
+    $info = array(
+        'download_url'    => $cleanUrl,
+        'download_type'   => 'external', // direct=可用内置下载器；external=用浏览器打开
+        'download_source' => 'external', // lanzou=蓝奏云；direct=直链文件；external=其它
+        'download_pwd'    => $split['pwd'],
+        'download_page'   => ''
+    );
+
+    if (lanzouIsUrl($cleanUrl)) {
+        $info['download_source'] = 'lanzou';
+        // 原始分享页：中转/下载失败时的兜底（密码单独返回，供弹窗展示复制）
+        $info['download_page'] = $cleanUrl;
+        $info['download_url']  = lanzouApiUrl() . '?' . http_build_query(array(
+            'url'  => $cleanUrl,
+            'pwd'  => $split['pwd'],
+            'type' => 'file'
+        ));
+        $info['download_type'] = 'direct';
+    } elseif (preg_match('~\.(apk|ipa|wgt)(\?|#|$)~i', $cleanUrl)) {
+        $info['download_url']    = $cleanUrl;
+        $info['download_type']   = 'direct';
+        $info['download_source'] = 'direct';
+    }
+
+    return $info;
+}
+
+/**
  * 站点文件完整 URL：根据当前请求路径自动推导部署目录（兼容二级目录部署，如 /csgocs），
  * 与域名、部署路径完全解耦，更换域名或迁移子目录均无需改动代码。
  * 已是完整 http(s) 地址或空值时原样返回。
@@ -3761,13 +3834,7 @@ switch($act) {
         }
 
         // 全局开关：默认关闭，需在后台「版本管理」开启
-        $enabled = false;
-        try {
-            $cfg = $DB->getRow("SELECT app_update_enabled FROM nteam_config WHERE id=1");
-            if ($cfg !== null && isset($cfg['app_update_enabled']) && intval($cfg['app_update_enabled']) === 1) {
-                $enabled = true;
-            }
-        } catch (Exception $e) {}
+        $enabled = appUpdateEnabled($DB);
 
         $data = array(
             'has_update'   => false,
@@ -3783,63 +3850,51 @@ switch($act) {
         );
 
         if ($enabled) {
-            $tableReady = false;
-            try {
-                $chk = $DB->query("SHOW TABLES LIKE 'nteam_app_versions'");
-                $tableReady = $chk && $chk->fetch();
-            } catch (Exception $e) {}
-
-            if ($tableReady) {
-                $row = $DB->getRow("SELECT * FROM nteam_app_versions WHERE status=1 AND platform IN ('all','$platform') ORDER BY version_code DESC LIMIT 1");
-                if ($row && intval($row['version_code']) > $clientCode) {
-                    $data = array(
-                        'has_update'   => true,
-                        'force_update' => intval($row['force_update']),
-                        'version'      => $row['version'],
-                        'version_code' => intval($row['version_code']),
-                        'download_url' => $row['download_url'],
-                        'download_type' => 'external',
-                        'download_source' => 'external',
-                        'download_pwd' => '',
-                        'download_page' => '',
-                        'changelog'    => $row['changelog'] ?? ''
-                    );
-                }
+            $row = appVersionLatestRow($DB, $platform);
+            if ($row && intval($row['version_code']) > $clientCode) {
+                $data = array_merge($data, array(
+                    'has_update'   => true,
+                    'force_update' => intval($row['force_update']),
+                    'version'      => $row['version'],
+                    'version_code' => intval($row['version_code']),
+                    'changelog'    => $row['changelog'] ?? ''
+                ), appDownloadInfo(isset($row['download_url']) ? $row['download_url'] : ''));
             }
         }
 
-        // 蓝奏云链接：自动解析为直链并标注类型/密码，便于 uniapp 判断是否使用内置下载器
+        // 检查更新阶段只做「地址归类」（蓝奏云→本站中转 / 直链文件 / 其它），不解析直链：
+        // 直链短时效，客户端应在用户点击下载时再调用 get_app_download 取最新地址。
         if (!empty($data['has_update']) && !empty($data['download_url'])) {
-            require_once __DIR__ . '/funsion/LanzouHelper.php';
-            $split = lanzouSplitPassword($data['download_url']);
-            $cleanUrl = $split['url'];
-            $data['download_pwd'] = $split['pwd'];
-            if (lanzouIsUrl($cleanUrl)) {
-                $data['download_source'] = 'lanzou';
-                // 保留原始分享页，作为直链解析/下载失败时的兜底
-                $data['download_page'] = $cleanUrl;
-                $resolved = lanzouResolve($cleanUrl, $split['pwd']);
-                if ($resolved && !empty($resolved['directUrl'])) {
-                    $data['download_url']  = $resolved['directUrl'];
-                    $data['download_type'] = 'direct';
-                } else {
-                    // 兜底：解析失败仍返回分享页，由客户端用浏览器打开（密码在弹窗提示）
-                    $data['download_url']  = $cleanUrl;
-                    $data['download_type'] = 'external';
-                }
-            } elseif (preg_match('~\.(apk|ipa|wgt)(\?|#|$)~i', $cleanUrl)) {
-                // apk/ipa/wgt 等直链：客户端可用内置下载器
-                $data['download_url']  = $cleanUrl;
-                $data['download_type'] = 'direct';
-                $data['download_source'] = 'direct';
-            } else {
-                $data['download_url']  = $cleanUrl;
-                $data['download_type'] = 'external';
-                $data['download_source'] = 'external';
-            }
+            $data = array_merge($data, appDownloadInfo($data['download_url']));
         }
 
         jsonResponse(0, 'success', $data);
+    break;
+
+    // ===== App 版本更新：按需获取下载地址（免登录） =====
+    // 下载链接具有时效性（蓝奏云直链尤其短时效且与解析会话绑定），
+    // 因此由客户端在用户点击「立即更新 / 直接下载」时再取一次；
+    // 蓝奏云返回的是本站中转地址（lanzhouyun.php?type=file），
+    // 真正的直链在下载请求到达的那一刻由服务端解析并立即拉取、流式输出。
+    case 'get_app_download':
+        $platform = addslashes($_GET['platform'] ?? 'all');
+        if (!in_array($platform, array('all', 'android', 'ios', 'harmony'))) {
+            $platform = 'all';
+        }
+        $exactVersion = isset($_GET['version']) ? trim($_GET['version']) : '';
+
+        if (!appUpdateEnabled($DB)) {
+            jsonResponse(-1, '版本更新未开启');
+        }
+        $versionRow = appVersionLatestRow($DB, $platform, $exactVersion);
+        if (!$versionRow) {
+            jsonResponse(-1, '暂无可下载版本');
+        }
+
+        $download = appDownloadInfo(isset($versionRow['download_url']) ? $versionRow['download_url'] : '');
+        $download['version']      = $versionRow['version'];
+        $download['version_code'] = intval($versionRow['version_code']);
+        jsonResponse(0, 'success', $download);
     break;
 
     // ===== App 版本更新：更新日志列表（免登录） =====

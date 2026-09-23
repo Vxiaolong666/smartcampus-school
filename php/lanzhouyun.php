@@ -41,6 +41,10 @@ if (!isset($parsedUrl['scheme'], $parsedUrl['host'], $parsedUrl['path']) ||
     !in_array(strtolower($parsedUrl['scheme']), array('http', 'https'), true)) {
 	JsonError('URL格式错误');
 }
+//中转下载仅允许蓝奏云分享链接，避免该模式被当作通用文件代理滥用
+if ($type == "file" && !preg_match('~^https?://([a-z0-9-]+\.)*(lanzou[a-z]*|lanzn)\.(com|cn)(/|$)~i', $url)) {
+	JsonError('中转下载仅支持蓝奏云分享链接');
+}
 $origin = 'https://' . $parsedUrl['host'];
 $url = $origin . $parsedUrl['path'];
 if (!empty($parsedUrl['query'])) {
@@ -48,7 +52,8 @@ if (!empty($parsedUrl['query'])) {
 }
 //缓存 key 由解析参数与缓存密钥共同生成，命中时直接返回，不再请求蓝奏云
 $cacheKey = md5($cacheSalt . '|' . $url . '|' . $pwd . '|' . (isset($_GET['n']) ? $_GET['n'] : ''));
-$cached = CacheGet($cacheKey);
+//中转下载（type=file）需要「解析后立即拉取文件」，不能复用缓存里的旧直链
+$cached = ($type == "file") ? false : CacheGet($cacheKey);
 if ($cached !== false) {
 	if ($type == "down") {
 		header("X-Lanzou-Cache: HIT");
@@ -220,8 +225,8 @@ CacheSet($cacheKey, array(
 	'filesize' => isset($softFilesize[1]) ? $softFilesize[1] : "",
 	'downUrl' => $downUrl
 ));
-//判断是否是直接下载
-if ($type != "down") {
+//判断输出方式：JSON（默认）/ 跳转直链（down）/ 服务端中转（file）
+if ($type != "down" && $type != "file") {
 	die(
 	    json_encode(
 	        array(
@@ -234,8 +239,198 @@ if ($type != "down") {
 	        , JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
 	    );
 } else {
+	if ($type == "file") {
+		//服务端中转：带着解析时的会话 Cookie / 来源立即拉取文件并流式输出。
+		//蓝奏云直链短时效且与解析会话（Cookie/IP）绑定，直接把直链交给客户端必然拿到错误页。
+		LanzouStream(array($downUrl, $downUrl1), isset($softName[1]) ? $softName[1] : '', $origin, $UserAgent, "down_ip=1; acw_sc__v2=".$cookie);
+	}
 	header("Location:$downUrl");
 	die;
+}
+/**
+ * 服务端中转下载：把解析到的文件流式输出给客户端，客户端只需下载本站地址。
+ *
+ * @param array  $urls   依次尝试的候选地址（重定向后的直链 / 未重定向的 file 链接）
+ * @param string $name   蓝奏云返回的文件名（可能没有后缀）
+ * @param string $referer 来源页（解析时使用的域名）
+ * @param string $UserAgent
+ * @param string $cookie 解析时使用的会话 Cookie
+ */
+function LanzouStream($urls, $name, $referer, $UserAgent, $cookie)
+{
+	//文件名兜底并修正后缀：客户端据此识别为安装包（APK 是 ZIP，后缀缺失会导致系统安装器「解析包失败」）
+	$fileName = trim((string) $name);
+	if ($fileName === '') {
+		$fileName = 'app-update.apk';
+	} elseif (!preg_match('~\.(apk|ipa|wgt|zip)$~i', $fileName)) {
+		$fileName .= '.apk';
+	}
+	//清理异常字符，避免响应头注入
+	$fileName = preg_replace('~[^\x{4e00}-\x{9fa5}\w.\-]+~u', '_', $fileName);
+
+	@set_time_limit(0);
+	@ini_set('max_execution_time', '0');
+
+	$lastReason = '';
+	$candidates = array_values(array_filter((array) $urls, 'strlen'));
+	foreach ($candidates as $index => $url) {
+		$cookieHeader = $cookie;
+		$info = array();
+		for ($pass = 0; $pass < 2; $pass++) {
+			if (LanzouStreamAttempt($url, $referer, $UserAgent, $cookieHeader, $fileName, $info)) {
+				die; //文件已完整输出
+			}
+			//命中 CDN（阿里云 ESA / EdgeOne）的 acw_sc_v2 脚本校验：按页面里的 arg1 算出校验 Cookie 后重试，
+			//浏览器正是靠执行这段 JS 才被放行，这也是「浏览器能下、服务端直连拿不到文件」的原因。
+			if ($pass === 0 && !empty($info['arg1'])) {
+				$cookieHeader = 'down_ip=1; acw_sc__v2=' . acw_sc_v2_simple($info['arg1'])
+					. (empty($info['setCookie']) ? '' : '; ' . $info['setCookie']);
+				continue;
+			}
+			break;
+		}
+		$lastReason = isset($info['reason']) ? $info['reason'] : '';
+		//失败原因写日志，便于排查（响应仍是 JSON，不能污染输出）
+		@file_put_contents(
+			__DIR__ . '/cache/lanzou_stream_error.log',
+			date('Y-m-d H:i:s') . " 候选#" . $index . " HTTP=" . (isset($info['httpCode']) ? $info['httpCode'] : 0)
+				. " ERR=" . (isset($info['curlErr']) ? $info['curlErr'] : '')
+				. "\n  原因：" . $lastReason
+				. "\n  响应头：" . json_encode(isset($info['headers']) ? $info['headers'] : array(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+				. "\n  挑战arg1：" . (empty($info['arg1']) ? '无' : $info['arg1'])
+				. "\n  片段：" . preg_replace('~[^\x20-\x7e\x{4e00}-\x{9fa5}]~u', '?', mb_substr(isset($info['snippet']) ? $info['snippet'] : '', 0, 1200, 'UTF-8'))
+				. "\n  URL=" . $url . "\n",
+			FILE_APPEND
+		);
+	}
+	JsonError('中转下载失败：' . ($lastReason !== '' ? $lastReason : '直链已失效或被蓝奏云风控拦截，请稍后重试'));
+}
+
+/**
+ * 单次拉取尝试：先嗅探前 1KB，确认是文件才下发下载响应头并流式输出。
+ *
+ * @return bool true=文件已完整输出；false=失败（原因/挑战参数见 $info）
+ */
+function LanzouStreamAttempt($url, $referer, $UserAgent, $cookieHeader, $fileName, &$info)
+{
+	$sniffSize = 1024;
+	$info = array('reason' => '', 'arg1' => '', 'setCookie' => '', 'httpCode' => 0, 'curlErr' => '', 'headers' => array(), 'snippet' => '');
+	$isFile = null;   //null=未判定；true=确认是文件；false=错误页/非文件
+	$sent = false;    //是否已向客户端输出内容
+	$sniff = '';      //嗅探缓冲
+	$respHeaders = array();
+	$arg1 = '';
+	$setCookie = '';
+	$ch = curl_init($url);
+	curl_setopt_array($ch, array(
+		CURLOPT_FOLLOWLOCATION => 1,
+		CURLOPT_MAXREDIRS => 5,
+		CURLOPT_SSL_VERIFYPEER => false,
+		CURLOPT_SSL_VERIFYHOST => false,
+		CURLOPT_CONNECTTIMEOUT => 15,
+		CURLOPT_TIMEOUT => 0, //大文件不限时
+		CURLOPT_USERAGENT => $UserAgent,
+		CURLOPT_REFERER => $referer,
+		CURLOPT_HTTPHEADER => array(
+			'Cookie: ' . $cookieHeader,
+			'Accept: */*',
+			'Accept-Language: zh-CN,zh;q=0.9'
+		),
+		CURLOPT_ENCODING => '', //自动协商并解压（ESA 会对响应做 gzip/br 压缩）
+		CURLOPT_HEADERFUNCTION => function ($ch, $line) use (&$respHeaders, &$setCookie) {
+			$trim = trim($line);
+			if (stripos($trim, 'HTTP/') === 0) {
+				//跟随重定向时可能出现多段响应头，重置后再收集
+				$respHeaders = array();
+				return strlen($line);
+			}
+			$pos = strpos($trim, ':');
+			if ($pos !== false) {
+				$key = strtolower(substr($trim, 0, $pos));
+				$val = trim(substr($trim, $pos + 1));
+				$respHeaders[$key] = $val;
+				if ($key === 'set-cookie' && $setCookie === '') {
+					$setCookie = trim(current(explode(';', $val))); //只取 name=value 部分
+				}
+			}
+			return strlen($line);
+		},
+		CURLOPT_WRITEFUNCTION => function ($ch, $chunk) use (&$isFile, &$sent, &$sniff, &$respHeaders, &$arg1, $sniffSize, $fileName) {
+			if ($isFile === false) {
+				return strlen($chunk); //已判定为错误页，后续内容丢弃
+			}
+			if ($isFile === null) {
+				$sniff .= $chunk;
+				if (strlen($sniff) < $sniffSize) {
+					return strlen($chunk); //数据不足，继续嗅探
+				}
+				$head = ltrim($sniff);
+				$ctype = isset($respHeaders['content-type']) ? strtolower($respHeaders['content-type']) : '';
+				$looksText = ($head !== '' && $head[0] === '<')
+					|| strpos($ctype, 'text/html') !== false
+					|| strpos($ctype, 'application/json') !== false
+					|| strpos($ctype, 'text/plain') !== false;
+				if ($looksText) {
+					$isFile = false;
+					//记录脚本校验页里的 arg1，供上层算出 acw_sc__v2 后重试
+					if (preg_match("~var\s+arg1=['\"]([0-9a-f]{40})['\"]~i", $sniff, $m)) {
+						$arg1 = $m[1];
+					}
+					return strlen($chunk);
+				}
+				//确认是文件：此时才下发下载响应头，并补发嗅探缓冲
+				$isFile = true;
+				$flush = $sniff;
+				$sniff = '';
+				if (!headers_sent()) {
+					header('Content-Type: application/vnd.android.package-archive');
+					header('Content-Disposition: attachment; filename="' . $fileName . '"');
+					header('Cache-Control: no-store');
+					header('X-Lanzou-Stream: 1');
+					//响应被压缩时长度对应压缩后数据，透传会导致客户端认为不完整
+					if (!empty($respHeaders['content-length']) && empty($respHeaders['content-encoding'])) {
+						header('Content-Length: ' . $respHeaders['content-length']);
+					}
+				}
+				echo $flush;
+				@ob_flush();
+				@flush();
+				$sent = true;
+				return strlen($chunk);
+			}
+			echo $chunk;
+			@ob_flush();
+			@flush();
+			$sent = true;
+			return strlen($chunk);
+		},
+	));
+	curl_exec($ch);
+	$info['httpCode'] = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+	$info['curlErr'] = curl_error($ch);
+	curl_close($ch);
+
+	if ($sent) {
+		return true;
+	}
+	if ($isFile === null) {
+		//响应体不足嗅探长度：正常安装包不可能这么小，视为失败
+		$info['reason'] = '返回内容过小（' . strlen($sniff) . ' 字节），不是安装包';
+	} elseif ($arg1 !== '') {
+		$info['reason'] = 'CDN 脚本校验未通过（acw_sc_v2）';
+	} else {
+		$info['reason'] = '返回的是网页/错误页（Content-Type: ' . (isset($respHeaders['content-type']) ? $respHeaders['content-type'] : '空') . '）';
+	}
+	$info['arg1'] = $arg1;
+	$info['setCookie'] = $setCookie;
+	$info['snippet'] = $sniff;
+	$info['headers'] = array(
+		'content-type' => isset($respHeaders['content-type']) ? $respHeaders['content-type'] : '',
+		'content-encoding' => isset($respHeaders['content-encoding']) ? $respHeaders['content-encoding'] : '',
+		'content-length' => isset($respHeaders['content-length']) ? $respHeaders['content-length'] : '',
+		'set-cookie' => $setCookie
+	);
+	return false;
 }
 //获取下载链接函数
 function MloocCurlGetDownUrl($url) {

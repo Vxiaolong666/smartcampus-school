@@ -8,7 +8,7 @@
  * - 网络异常：reject 返回 { code: -1, msg: '网络请求失败' }
  */
 
-let API_BASE_URL = 'http://127.0.0.12/api.php';
+let API_BASE_URL = 'https://mc.xzwmc.com/csgocs/api.php';
 //https://mc.xzwmc.com/csgocs/api.php
 //http://127.0.0.12/api.php
 
@@ -831,6 +831,21 @@ const getAppVersion = (params) => {
 };
 
 /**
+ * 按需获取 App 下载地址（免登录）
+ * 下载链接有时效性（尤其蓝奏云直链短时效 + 会话绑定），应在用户点击下载时调用，
+ * 用返回的 download_url 再开始下载；download_type=direct 表示可交给内置下载器。
+ * @param {Object} params { platform:'all'|'android'|'ios'|'harmony', version?:string }
+ * @returns {Promise} data: { download_url, download_type, download_source, download_pwd, download_page, version, version_code }
+ */
+const getAppDownload = (params) => {
+  return request({
+    act: 'get_app_download',
+    method: 'GET',
+    data: params || {}
+  });
+};
+
+/**
  * 获取 App 更新日志列表（免登录）
  * @returns {Promise} data: [{ version, version_code, changelog, created_at }]
  */
@@ -938,5 +953,6 @@ export default {
   getAgreements,
   getAgreement,
   getAppVersion,
+  getAppDownload,
   getAppVersionLog
 };
