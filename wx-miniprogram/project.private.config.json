@@ -1,5 +1,5 @@
 {
-  "libVersion": "3.17.2",
+  "libVersion": "3.16.3",
   "projectname": "wx-miniprogram",
   "condition": {},
   "setting": {
@@ -8,7 +8,7 @@
     "lazyloadPlaceholderEnable": false,
     "skylineRenderEnable": false,
     "preloadBackgroundData": false,
-    "autoAudits": true,
+    "autoAudits": false,
     "useApiHook": false,
     "showShadowRootInWxmlPanel": true,
     "useStaticServer": true,

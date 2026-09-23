@@ -3621,23 +3621,33 @@ switch($act) {
                     if (isset($scheduleResult['code']) && $scheduleResult['code'] == 1) {
                         $scheduleData = $scheduleResult['data'] ?? [];
                         
-                        // 节次时间由后台「课程时间配置」维护（教务接口只返回节数，不返回具体时间）
+                        // 节次时间由后台「课程时间配置」维护（教务接口只返回节数，不返回具体时间）；
+                        // 配置缺失或节次不足时用内置默认作息兜底，避免取不到开始时间而把当天课程误判为「已结束」
+                        $defaultSlots = scheduleTimePeriodsByCode(scheduleTimeDefaultPeriods(), scheduleTimeMaxPeriods());
                         $timeSlots = [];
-                        foreach (scheduleTimePeriodsByCode(scheduleTimeGetPeriods($DB, ''), 11) as $code => $slot) {
-                            $timeSlots[intval(substr($code, 1))] = $slot['time'] !== '' ? $slot['time'] : '00:00-00:00';
+                        foreach (scheduleTimePeriodsByCode(scheduleTimeGetPeriods($DB, ''), scheduleTimeMaxPeriods()) as $code => $slot) {
+                            $time = $slot['time'] !== '' ? $slot['time'] : ($defaultSlots[$code]['time'] ?? '');
+                            $timeSlots[intval(substr($code, 1))] = $time !== '' ? $time : '00:00-00:00';
                         }
                         
                         $currentDay = intval(date('N'));
                         $currentMinutes = intval(date('H')) * 60 + intval(date('i'));
                         
                         $todayCourses = [];
-                        // 当前教学周：教务返回的周次（供首页「当前第*周」展示，未返回时保持 0，前端隐藏）
+                        // 当前教学周：优先取教务返回的 week，其次取下发日期里的周次（date[0].zc）；
+                        // 两者都取不到时视为「未知」（0），此时不做周次过滤，避免误判为「今日无课」
+                        $currentWeek = 0;
                         if (!empty($scheduleData[0]['week'])) {
-                            $glanceData['current_week'] = intval($scheduleData[0]['week']);
+                            $currentWeek = intval($scheduleData[0]['week']);
+                        } elseif (!empty($scheduleData[0]['date'][0]['zc'])) {
+                            $currentWeek = intval($scheduleData[0]['date'][0]['zc']);
+                        }
+                        // 供首页「当前第*周」展示（周次未知时不展示）
+                        if ($currentWeek > 0) {
+                            $glanceData['current_week'] = $currentWeek;
                         }
 
                         if (!empty($scheduleData) && isset($scheduleData[0]['courses'])) {
-                            $currentWeek = $scheduleData[0]['week'] ?? 1;
                             
                             foreach ($scheduleData[0]['courses'] as $course) {
                                 $classTime = $course['classTime'] ?? '';
@@ -3651,22 +3661,27 @@ switch($act) {
                                 }
                                 if ($weekDay !== $currentDay) continue;
                                 
-                                $classWeek = $course['classWeek'] ?? '';
-                                if (!empty($classWeek)) {
-                                    $weekMatched = false;
-                                    if (preg_match('/^(\d+)-(\d+)$/', $classWeek, $m)) {
-                                        $weekMatched = ($currentWeek >= intval($m[1]) && $currentWeek <= intval($m[2]));
-                                    } else {
-                                        $weekMatched = in_array(strval($currentWeek), explode(',', $classWeek));
+                                // 周次过滤规则与「今日课程」页 / 课程提醒保持一致：
+                                // 优先 classWeekDetails（逗号分隔的周次明细），其次 classWeek 区间/枚举，均取不到时不过滤
+                                if ($currentWeek > 0) {
+                                    $classWeekDetails = $course['classWeekDetails'] ?? '';
+                                    $classWeek = $course['classWeek'] ?? $course['weeks'] ?? '';
+                                    $weekMatched = true;
+                                    if (!empty($classWeekDetails)) {
+                                        $weekMatched = strpos($classWeekDetails, ',' . $currentWeek . ',') !== false;
+                                    } elseif (!empty($classWeek)) {
+                                        if (preg_match('/^(\d+)-(\d+)$/', $classWeek, $m)) {
+                                            $weekMatched = ($currentWeek >= intval($m[1]) && $currentWeek <= intval($m[2]));
+                                        } else {
+                                            $weekMatched = strpos($classWeek, (string) $currentWeek) !== false;
+                                        }
                                     }
                                     if (!$weekMatched) continue;
                                 }
                                 
-                                if (!empty($courseWeekDay)) {
-                                    $timeStr = $classTime;
-                                } else {
-                                    $timeStr = substr($classTime, 1);
-                                }
+                                // classTime 形如 "10506"：首位固定为星期（1=周一…7=周日），其后每两位为一节；
+                                // 与前端 parseClassTime 一致，无论是否另有 weekDay 字段都要去掉首位，否则节次会被多解析出一节
+                                $timeStr = strlen($classTime) > 1 ? substr($classTime, 1) : '';
                                 $sections = [];
                                 for ($i = 0; $i < strlen($timeStr); $i += 2) {
                                     $sec = intval(substr($timeStr, $i, 2));
@@ -3676,6 +3691,19 @@ switch($act) {
                                     for ($i = 0; $i < strlen($timeStr); $i++) {
                                         $sec = intval($timeStr[$i]);
                                         if ($sec >= 1 && $sec <= scheduleTimeMaxPeriods()) $sections[] = $sec;
+                                    }
+                                }
+                                // 兜底：classTime 解析不出节次时，用教务的「节次信息」字段（如 "1节,2节"）
+                                if (empty($sections)) {
+                                    $weekNoteDetail = $course['weekNoteDetail'] ?? '';
+                                    if (!empty($weekNoteDetail)) {
+                                        foreach (explode(',', $weekNoteDetail) as $part) {
+                                            $part = trim($part);
+                                            if (strlen($part) >= 2) {
+                                                $sec = intval(substr($part, -2));
+                                                if ($sec >= 1 && $sec <= scheduleTimeMaxPeriods()) $sections[] = $sec;
+                                            }
+                                        }
                                     }
                                 }
                                 if (empty($sections)) continue;
@@ -3926,13 +3954,19 @@ switch($act) {
         if ($tableReady) {
             $rows = $DB->query("SELECT version, version_code, platform, download_url, changelog, created_at FROM nteam_app_versions WHERE status=1 ORDER BY version_code DESC LIMIT 20")->fetchAll();
             foreach ($rows as $r) {
+                // 与「检查更新」一致地解析下载地址：蓝奏云→本站中转直链（附下载密码与原分享页）、apk/ipa/wgt→直链、其它→外部页
+                $info = appDownloadInfo(isset($r['download_url']) ? $r['download_url'] : '');
                 $list[] = array(
-                    'version'      => $r['version'],
-                    'version_code' => intval($r['version_code']),
-                    'platform'     => $r['platform'] ?? 'all',
-                    'download_url' => $r['download_url'] ?? '',
-                    'changelog'    => $r['changelog'] ?? '',
-                    'created_at'   => $r['created_at']
+                    'version'         => $r['version'],
+                    'version_code'    => intval($r['version_code']),
+                    'platform'        => $r['platform'] ?? 'all',
+                    'download_url'    => $info['download_url'],
+                    'download_type'   => $info['download_type'],
+                    'download_source' => $info['download_source'],
+                    'download_pwd'    => $info['download_pwd'],
+                    'download_page'   => $info['download_page'],
+                    'changelog'       => $r['changelog'] ?? '',
+                    'created_at'      => $r['created_at']
                 );
             }
         }

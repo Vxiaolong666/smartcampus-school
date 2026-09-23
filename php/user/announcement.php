@@ -92,7 +92,8 @@ include('./head.php');
     </div>
 </div>
 
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/github-markdown-css@5.2.0/github-markdown.min.css">
+<!-- Markdown 渲染样式已本地化（原 jsDelivr CDN 在部分服务器环境不可访问）：github-markdown-css 5.2.0 -->
+<link rel="stylesheet" href="./assets/css/plugins/github-markdown/github-markdown.min.css">
 <style>
 /* ===== AI 智能总结卡片（浅色主题渐变，与 uniapp 端 #13c2c2→#1890ff 主题呼应） ===== */
 .ai-summary-card {
@@ -177,7 +178,8 @@ include('./head.php');
 .markdown-body a:hover { text-decoration: underline; }
 .markdown-body hr { height: .25em; padding: 0; margin: 24px 0; background-color: #e1e4e8; border: 0; }
 </style>
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<!-- Markdown 解析库已本地化：marked v4.3.0 -->
+<script src="./assets/js/plugins/marked/marked.min.js"></script>
 <script>
 marked.setOptions({
     breaks: true,

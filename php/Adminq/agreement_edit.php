@@ -148,8 +148,9 @@ $pageName = $isEdit ? ('编辑协议 #' . $data['id']) : '新增协议';
 </div>
 
 <?php include 'foot.php'?>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css">
-<script src="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js"></script>
+<!-- Markdown 编辑器资源已本地化（原 jsDelivr CDN 在部分服务器环境不可访问）：EasyMDE v2.18.0 -->
+<link rel="stylesheet" href="./assets/css/plugins/easymde/easymde.min.css">
+<script src="./assets/js/plugins/easymde/easymde.min.js"></script>
 <script>
 var editorMDE = null;
 var agreementSaving = false; // 保存请求进行中（防止 Ctrl+S 连按重复提交）

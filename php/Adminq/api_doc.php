@@ -1406,12 +1406,17 @@ wx.request({
             "version_code": 1002,
             "platform": "android",
             "download_url": "https://xxx.com/app.apk",
+            "download_type": "direct",
+            "download_source": "direct",
+            "download_pwd": "",
+            "download_page": "",
             "changelog": "1. 新增xxx\n2. 修复xxx",
             "created_at": "2026-09-19 12:00:00"
         }
     ]
 }</code></pre>
                             <p>说明：<code>platform</code> 取值 all（全平台）/ android / ios / harmony（鸿蒙）。</p>
+                            <p>说明：下载地址与「检查更新」接口使用同一套解析规则——蓝奏云分享链接会转成本站中转直链并返回 <code>download_pwd</code>（下载密码）与 <code>download_page</code>（原分享页）；apk/ipa/wgt 直链 <code>download_type</code> 为 direct；其它地址按外部页处理。客户端仅在浏览器中打开，不提供应用内直接下载。</p>
                         </div>
                     </div>
                 </div>

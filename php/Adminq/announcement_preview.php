@@ -117,7 +117,8 @@ if ($displayImage && strpos($displayImage, 'http') !== 0 && strpos($displayImage
     </div>
 </div>
 
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/github-markdown-css@5.2.0/github-markdown.min.css">
+<!-- Markdown 渲染样式已本地化（原 jsDelivr CDN 在部分服务器环境不可访问）：github-markdown-css 5.2.0 -->
+<link rel="stylesheet" href="./assets/css/plugins/github-markdown/github-markdown.min.css">
 <style>
 .markdown-body {
     font-size: 15px;
@@ -150,7 +151,8 @@ if ($displayImage && strpos($displayImage, 'http') !== 0 && strpos($displayImage
 .markdown-body a:hover { text-decoration: underline; }
 .markdown-body hr { height: .25em; padding: 0; margin: 24px 0; background-color: #e1e4e8; border: 0; }
 </style>
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<!-- Markdown 解析库已本地化：marked v4.3.0 -->
+<script src="./assets/js/plugins/marked/marked.min.js"></script>
 <script>
 // 与前台 user/announcement.php 相同的渲染方式：先取纯文本 Markdown，再交给 marked 解析
 marked.setOptions({

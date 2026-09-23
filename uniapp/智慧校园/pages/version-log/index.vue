@@ -41,12 +41,14 @@
 
 			<!-- 更新日志列表 -->
 			<view class="timeline" v-if="logs.length">
-				<view class="log-card" :class="{ 'log-card-latest': idx === 0 }" v-for="(item, idx) in logs" :key="idx" @click="openDetail(item)">
+				<!-- 高亮优先「最新」：同一条既是最新又是当前版本时，只保留最新样式 -->
+				<view class="log-card" :class="{ 'log-card-latest': idx === 0, 'log-card-current': idx !== 0 && isCurrentVersion(item) }" v-for="(item, idx) in logs" :key="idx" @click="openDetail(item)">
 					<view class="log-top">
 						<view class="log-version-wrap">
 							<text class="log-version">v{{ item.version }}</text>
 							<text class="log-plat" :class="'plat-' + (item.platform || 'all')">{{ platformText(item.platform) }}</text>
 							<text v-if="idx === 0" class="log-badge">最新</text>
+							<text v-if="isCurrentVersion(item)" class="log-badge-current">当前版本</text>
 						</view>
 						<text class="log-date">{{ item.created_at }}</text>
 					</view>
@@ -79,6 +81,7 @@
 						<view class="detail-sub">
 							<text class="log-plat" :class="'plat-' + (detailItem.platform || 'all')">{{ platformText(detailItem.platform) }}</text>
 							<text v-if="isLatestDetail" class="log-badge">最新</text>
+							<text v-if="isCurrentVersion(detailItem)" class="log-badge-current">当前版本</text>
 						</view>
 					</view>
 					<view class="detail-close" @click="closeDetail">✕</view>
@@ -87,6 +90,12 @@
 					<view class="detail-date-row">
 						<text class="detail-date-label">更新时间</text>
 						<text class="detail-date-value">{{ detailItem.created_at }}</text>
+					</view>
+					<!-- 下载密码（后台按「链接末尾追加 &pwd=密码」配置时由服务端解析返回，展示与复制同更新弹窗） -->
+					<view v-if="detailPwd" class="detail-pwd">
+						<text class="detail-pwd-label">下载密码</text>
+						<text class="detail-pwd-value">{{ detailPwd }}</text>
+						<text class="detail-pwd-copy" :class="{ 'detail-pwd-copy-done': pwdCopied }" @click="copyPwd">{{ pwdCopied ? '已复制' : '复制' }}</text>
 					</view>
 					<view class="detail-divider"></view>
 					<view class="detail-list-title">更新内容</view>
@@ -100,9 +109,9 @@
 					</scroll-view>
 					<view class="detail-actions">
 						<view class="detail-btn-cancel" @click="closeDetail">关闭</view>
-						<view v-if="detailItem.download_url" class="detail-btn" @click="openUrl(detailItem.download_url)">
+						<view v-if="detailDownloadUrl" class="detail-btn" @click="openDownload">
 							<image class="detail-btn-icon" src="/static/assets/wxmp-download-white.svg" mode="aspectFit"></image>
-							<text class="detail-btn-text">立即下载</text>
+							<text class="detail-btn-text">{{ downloadBtnText }}</text>
 						</view>
 					</view>
 				</view>
@@ -117,6 +126,7 @@
  * 拉取后台「版本管理」中已上架版本的更新日志列表
  */
 import api from '../../utils/api.js';
+import { withPwd, copyText, openDownloadUrl } from '../../utils/download.js';
 
 export default {
 	data() {
@@ -124,7 +134,11 @@ export default {
 			logs: [],
 			loading: true,
 			detailVisible: false,
-			detailItem: {}
+			detailItem: {},
+			pwdCopied: false,
+			// 当前运行版本（由 initVersion() 从 manifest.json 自动读取，用于给对应日志加「当前版本」标识）
+			currentVersion: '',
+			currentVersionCode: 0
 		};
 	},
 
@@ -143,14 +157,77 @@ export default {
 		// 当前详情是否为最新版本
 		isLatestDetail() {
 			return this.logs.length > 0 && this.detailItem && this.detailItem.version_code === this.logs[0].version_code;
+		},
+		// 下载密码（蓝奏云等带密码的分享链接才有，服务端解析返回）
+		detailPwd() {
+			return (this.detailItem && this.detailItem.download_pwd) || '';
+		},
+		// 详情弹窗使用的下载地址：优先直链，兜底原分享页，并注入下载密码
+		detailDownloadUrl() {
+			const item = this.detailItem || {};
+			return withPwd(item.download_url || item.download_page || '', item.download_pwd);
+		},
+		// 按钮文案：小程序端无法唤起外部浏览器，改为复制链接
+		downloadBtnText() {
+			// #ifdef MP
+			return '复制下载链接';
+			// #endif
+			// #ifndef MP
+			return '浏览器打开';
+			// #endif
 		}
 	},
 
 	onLoad() {
+		this.initVersion();
 		this.loadLogs();
 	},
 
 	methods: {
+		/**
+		 * 自动读取当前应用版本（取自 manifest.json 的 versionName / versionCode）
+		 * - uni.getAppBaseInfo()：App / H5 / 微信小程序 均支持（H5 需 HBuilderX 3.4.13+）
+		 * - App 端再以 plus.runtime 的实际打包版本为准
+		 * 与「关于我们」页保持一致，升级版本只需修改 manifest.json
+		 */
+		initVersion() {
+			try {
+				const info = typeof uni.getAppBaseInfo === 'function' ? uni.getAppBaseInfo() : null;
+				if (info) {
+					if (info.appVersion) {
+						this.currentVersion = String(info.appVersion);
+					}
+					if (info.appVersionCode !== undefined && info.appVersionCode !== null) {
+						const code = parseInt(info.appVersionCode, 10);
+						if (!isNaN(code)) this.currentVersionCode = code;
+					}
+				}
+			} catch (e) {}
+
+			// App 端以实际打包版本为准（离线打包 / 热更新后更准确）
+			// #ifdef APP-PLUS
+			try {
+				const vn = plus.runtime.version;
+				const vc = plus.runtime.versionCode;
+				if (vn) this.currentVersion = String(vn);
+				if (vc) {
+					const code = parseInt(vc, 10);
+					if (!isNaN(code)) this.currentVersionCode = code;
+				}
+			} catch (e) {}
+			// #endif
+		},
+
+		// 该条日志是否为「当前版本」：优先比对数字版本号，取不到时回退比对版本号字符串
+		isCurrentVersion(item) {
+			if (!item) return false;
+			const code = parseInt(item.version_code, 10) || 0;
+			if (this.currentVersionCode > 0 && code > 0) {
+				return code === this.currentVersionCode;
+			}
+			return !!this.currentVersion && String(item.version || '') === this.currentVersion;
+		},
+
 		loadLogs() {
 			this.loading = true;
 			api.getAppVersionLog()
@@ -168,6 +245,7 @@ export default {
 		// 打开版本详情弹窗
 		openDetail(item) {
 			this.detailItem = item || {};
+			this.pwdCopied = false;
 			this.detailVisible = true;
 		},
 
@@ -176,17 +254,25 @@ export default {
 			this.detailVisible = false;
 		},
 
-		// 打开下载/更新地址（App 内用浏览器打开，H5 新窗口打开）
-		openUrl(url) {
-			if (!url) return;
-			// #ifdef APP-PLUS
-			plus.runtime.openURL(url);
-			// #endif
-			// #ifndef APP-PLUS
-			try {
-				window.open(url, '_blank');
-			} catch (e) {}
-			// #endif
+		// 复制下载密码（内联反馈 + toast 双保险，与更新弹窗表现一致）
+		copyPwd() {
+			if (!this.detailPwd) return;
+			copyText(this.detailPwd, () => {
+				this.pwdCopied = true;
+				if (this._pwdTimer) clearTimeout(this._pwdTimer);
+				this._pwdTimer = setTimeout(() => { this.pwdCopied = false; }, 1600);
+				uni.showToast({ title: '密码已复制', icon: 'none' });
+			});
+		},
+
+		// 打开下载地址：不在应用内直接下载，统一交给浏览器（小程序端复制链接并提示到浏览器打开）
+		openDownload() {
+			const url = this.detailDownloadUrl;
+			if (!url) {
+				uni.showToast({ title: '暂无下载地址', icon: 'none' });
+				return;
+			}
+			openDownloadUrl(url, { pwd: this.detailPwd });
 		},
 
 		// 平台标识转显示文案
@@ -372,6 +458,12 @@ page {
 	box-shadow: 0 18rpx 48rpx rgba(19, 194, 194, 0.18);
 }
 
+/* 当前运行版本卡片高亮（紫色浅色渐变，效果对齐「最新」卡片） */
+.log-card-current {
+	background: linear-gradient(180deg, #f8f3fe 0%, #ffffff 45%);
+	box-shadow: 0 18rpx 48rpx rgba(114, 46, 209, 0.18);
+}
+
 .log-top {
 	display: flex;
 	justify-content: space-between;
@@ -430,6 +522,17 @@ page {
 	font-size: 20rpx;
 	color: #ffffff;
 	background: linear-gradient(135deg, #13c2c2 0%, #1890ff 100%);
+	border-radius: 20rpx;
+	line-height: 1.6;
+}
+
+/* 当前运行版本标识（紫色） */
+.log-badge-current {
+	margin-left: 16rpx;
+	padding: 4rpx 16rpx;
+	font-size: 20rpx;
+	color: #ffffff;
+	background: linear-gradient(135deg, #9254de 0%, #722ed1 100%);
 	border-radius: 20rpx;
 	line-height: 1.6;
 }
@@ -587,7 +690,8 @@ page {
 
 /* 弹窗内复用列表页标签样式，去掉其默认左间距避免与 gap 叠加 */
 .detail-sub .log-plat,
-.detail-sub .log-badge {
+.detail-sub .log-badge,
+.detail-sub .log-badge-current {
 	margin-left: 0;
 }
 
@@ -633,6 +737,53 @@ page {
 .detail-divider {
 	height: 1rpx;
 	background: #eef0f8;
+}
+
+/* 下载密码行（样式与版本更新弹窗一致） */
+.detail-pwd {
+	display: flex;
+	align-items: center;
+	margin-top: 24rpx;
+	padding: 16rpx 20rpx;
+	background: #eef9fb;
+	border: 1rpx solid #cdeef2;
+	border-radius: 16rpx;
+}
+
+.detail-pwd-label {
+	font-size: 24rpx;
+	color: #6b7280;
+	flex-shrink: 0;
+}
+
+.detail-pwd-value {
+	flex: 1;
+	margin-left: 16rpx;
+	font-size: 28rpx;
+	font-weight: bold;
+	color: #0e8c8c;
+	letter-spacing: 2rpx;
+	word-break: break-all;
+}
+
+.detail-pwd-copy {
+	flex-shrink: 0;
+	margin-left: 16rpx;
+	padding: 6rpx 20rpx;
+	font-size: 22rpx;
+	color: #0e8c8c;
+	background: #ffffff;
+	border-radius: 999rpx;
+}
+
+.detail-pwd-copy:active {
+	opacity: 0.7;
+}
+
+/* 复制成功：按钮变主色，提供明确的内联反馈 */
+.detail-pwd-copy-done {
+	color: #ffffff;
+	background: #13c2c2;
 }
 
 .detail-list-title {

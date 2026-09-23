@@ -157,7 +157,8 @@ function resolveUploadUrl($url) {
     </div>
 </div>
 
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css">
+<!-- Markdown 编辑器资源已本地化（原 jsDelivr CDN 在部分服务器环境不可访问）：EasyMDE v2.18.0 -->
+<link rel="stylesheet" href="./assets/css/plugins/easymde/easymde.min.css">
 <style>
 .editor-toolbar {
     border-color: #e4e7ed;
@@ -174,7 +175,7 @@ function resolveUploadUrl($url) {
     font-size: 14px;
 }
 </style>
-<script src="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js"></script>
+<script src="./assets/js/plugins/easymde/easymde.min.js"></script>
 <script>
 var announcementMDE = null;
 
