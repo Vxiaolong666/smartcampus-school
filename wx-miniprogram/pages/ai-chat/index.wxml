@@ -1,4 +1,16 @@
 <view class="page-container">
+  <!-- 后台「微信小程序端AI功能」开关关闭时的整页遮罩（原生 tabBar 仍可切换其它 tab） -->
+  <view wx:if="{{featureDisabled}}" class="feature-disabled-mask">
+    <!-- 图标动态取自后台公告类型；未配置公告时用内置红叉兜底 -->
+    <view wx:if="{{featureIcon}}" class="feature-disabled-icon feature-disabled-icon-plain">
+      <image class="feature-disabled-icon-image" src="{{featureIcon}}" mode="aspectFit" />
+    </view>
+    <view wx:else class="feature-disabled-icon">
+      <view class="feature-disabled-cross"></view>
+    </view>
+    <view class="feature-disabled-text">{{featureTip}}</view>
+  </view>
+
   <top-menu showBack="{{false}}">
     <view class="nav-title">AI 助手</view>
     <view slot="right" class="nav-action" bindtap="clearChat">

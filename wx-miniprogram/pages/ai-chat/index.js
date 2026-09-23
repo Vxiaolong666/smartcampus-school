@@ -3,6 +3,7 @@
  * 真流式：enableChunked 分块接收 NDJSON 行协议，边收边渲染 Markdown
  */
 const api = require('../../utils/api.js');
+const feature = require('../../utils/feature.js');
 const markdownToHtml = require('../../utils/markdown.js');
 
 const SYSTEM_PROMPT = '你是“智慧校园”AI 助手，帮助学生解答校园生活、学习规划、教务查询（成绩/课表）、宿舍用电等方面的问题。回答简洁友好、条理清晰，可适当使用 Markdown。展示数据时使用友好的中文名称（如宿舍名称、“第X节/上午第1节/下午第2节”等），不要展示系统内部的编码或编号（如宿舍 ID、classTime 等）。';
@@ -34,13 +35,59 @@ Page({
     showModelMenu: false,
     modelMenuBottom: '260rpx',
     deepThink: true,
-    suggestions: SUGGESTIONS
+    suggestions: SUGGESTIONS,
+    // 后台「微信小程序端AI功能」开关：关闭时整页遮罩提示且不发起 AI 请求
+    featureDisabled: false,
+    // 兜底文案：后台未配置公告时展示
+    featureTip: '微信小程序不支持该功能，请前往网页或APP端使用',
+    // 动态图标：后台公告类型对应的图标（见 feature.getAnnouncementIcon）；为空时用内置红叉兜底
+    featureIcon: ''
   },
 
   onLoad() {
-    this.loadModels();
     this._streamAbort = null;
     this._pageAborted = false;
+    this._modelsLoaded = false;
+    this._entered = false;
+    this.checkAiFeature();
+  },
+
+  // 页面每次显示都重新校验开关（后台调整后返回本页即时生效）
+  onShow() {
+    if (this._entered) {
+      this.checkAiFeature();
+    } else {
+      this._entered = true; // 首次显示由 onLoad 负责校验
+    }
+  },
+
+  // 校验后台「微信小程序端AI功能」开关：关闭时展示遮罩
+  checkAiFeature() {
+    feature.checkFeature('wx_ai_chat')
+      .then((res) => {
+        const disabled = !!(res && res.enabled === false);
+        // 文案与图标都动态取自后台公告：
+        //  - 文案：公告内容，未配置时兜底为内置提示
+        //  - 图标：公告类型对应的图标（feature.getAnnouncementIcon），未配置公告时置空 → 用内置红叉兜底
+        const ann = res && res.announcement;
+        const hasAnn = !!(ann && ann.content);
+        this.setData({
+          featureDisabled: disabled,
+          featureTip: hasAnn ? ann.content : '微信小程序不支持该功能，请前往网页或APP端使用',
+          featureIcon: hasAnn ? feature.getAnnouncementIcon(ann.type) : ''
+        });
+        if (!disabled) this.loadModelsOnce();
+      })
+      .catch(() => {
+        // 开关接口异常不阻断功能（与其它功能开关的默认行为一致）
+        this.loadModelsOnce();
+      });
+  },
+
+  loadModelsOnce() {
+    if (this._modelsLoaded) return;
+    this._modelsLoaded = true;
+    this.loadModels();
   },
 
   // ===== 工具 =====
@@ -159,6 +206,8 @@ Page({
 
   // 请求 AI 回复。reuseUid 传入已有 assistant 消息 uid 用于重新生成（保留历史版本）
   requestAi(reuseUid) {
+    // 开关关闭时不发起任何 AI 请求（页面已被遮罩覆盖，此处为兜底）
+    if (this.data.featureDisabled) return;
     let m = reuseUid ? this.findMessage(reuseUid) : null;
     if (m) {
       this.updateMessage(m._uid, {
