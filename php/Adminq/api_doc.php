@@ -626,6 +626,7 @@ wx.request({
                                 <thead><tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr></thead>
                                 <tbody>
                                     <tr><td>room_num</td><td>string</td><td>是</td><td>宿舍编号</td></tr>
+                                    <tr><td>record_sort</td><td>string</td><td>否</td><td>历史电费记录时间排序：desc=最新在前（默认），asc=最早在前</td></tr>
                                 </tbody>
                             </table>
                             <p><strong>返回：</strong></p>

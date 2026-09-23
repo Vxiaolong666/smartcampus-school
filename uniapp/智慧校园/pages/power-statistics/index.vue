@@ -116,6 +116,7 @@
 								<view class="stat-info">
 									<view class="stat-value">{{ stats.latestBalance || '-' }}<text class="stat-unit">元</text></view>
 									<view class="stat-label">当前余额<text v-if="balanceLive" class="stat-live">实时</text></view>
+									<view class="stat-sub" v-if="balanceKwhText">≈{{ balanceKwhText }}度电</view>
 								</view>
 							</view>
 						</view>
@@ -214,10 +215,34 @@
 						<text class="section-title">历史电费记录</text>
 						<text class="section-count">共{{ records.length }}条</text>
 					</view>
-					<view class="record-filter">
-						<view class="record-filter-btn" :class="{ active: recordFilter === 'all' }" @click="setRecordFilter('all')">全部</view>
-						<view class="record-filter-btn" :class="{ active: recordFilter === 'increase' }" @click="setRecordFilter('increase')">电费增加</view>
-						<view class="record-filter-btn" :class="{ active: recordFilter === 'decrease' }" @click="setRecordFilter('decrease')">电费减少</view>
+					<!-- 筛选与时间排序：同一行下拉选择 -->
+					<view class="record-toolbar">
+						<picker
+							class="record-picker-wrap"
+							mode="selector"
+							:range="recordFilterOptions"
+							range-key="label"
+							:value="recordFilterIndex"
+							@change="onRecordFilterChange"
+						>
+							<view class="record-picker" :class="{ active: recordFilter !== 'all' }">
+								<text class="record-picker-text">{{ recordFilterOptions[recordFilterIndex].label }}</text>
+								<text class="record-picker-arrow">▼</text>
+							</view>
+						</picker>
+						<picker
+							class="record-picker-wrap"
+							mode="selector"
+							:range="recordSortOptions"
+							range-key="label"
+							:value="recordSortIndex"
+							@change="onRecordSortChange"
+						>
+							<view class="record-picker" :class="{ active: recordSort !== 'desc' }">
+								<text class="record-picker-text">{{ recordSortOptions[recordSortIndex].label }}</text>
+								<text class="record-picker-arrow">▼</text>
+							</view>
+						</picker>
 					</view>
 					<view v-if="recordsLoading" class="records-loading">
 						<view class="records-loading-spinner"></view>
@@ -327,8 +352,20 @@ export default {
 			timeRange: 'all',
 			customStart: '',
 			customEnd: '',
-			// 历史电费记录筛选：all=全部, increase=电费增加(消费), decrease=电费减少(余额增加/充值)
-			recordFilter: 'all',
+			// 历史电费记录筛选/排序（同一行的下拉选项，切换后由服务端筛选排序）
+			recordFilter: 'all',   // all=全部, increase=电费增加(消费), decrease=电费减少(余额增加/充值)
+			recordSort: 'desc',    // desc=最新在前（默认，每次进入不继承上次选择）, asc=最早在前
+			recordFilterOptions: [
+				{ value: 'all', label: '全部记录' },
+				{ value: 'increase', label: '电费增加' },
+				{ value: 'decrease', label: '电费减少' }
+			],
+			recordSortOptions: [
+				{ value: 'desc', label: '最新在前' },
+				{ value: 'asc', label: '最早在前' }
+			],
+			recordFilterIndex: 0,  // 筛选下拉当前选中项
+			recordSortIndex: 0,    // 排序下拉当前选中项
 			// 当前余额是否已通过实时电费查询接口刷新
 			balanceLive: false,
 			// 切换记录筛选时的局部加载状态
@@ -362,6 +399,13 @@ export default {
 			if (s === 'saving') return '/static/assets/wxmp-heart-green.svg';
 			if (s === 'normal') return '/static/assets/wxmp-heart-yellow.svg';
 			return '/static/assets/wxmp-heart-red.svg';
+		},
+		// 当前余额按电价换算的电量（元 ÷ 元/度），用于余额卡片下方展示
+		balanceKwhText() {
+			const balance = this.stats ? parseFloat(this.stats.latestBalance) : NaN;
+			const price = parseFloat(this.pricePerKwh) || 0;
+			if (isNaN(balance) || price <= 0) return '';
+			return (balance / price).toFixed(2);
 		}
 	},
 
@@ -372,8 +416,8 @@ export default {
 			this.windowHeight = 0;
 		}
 		if (!api.isLoggedIn()) {
-			uni.showToast({ title: '请先登录', icon: 'none' });
-			setTimeout(() => uni.navigateTo({ url: '/pages/login/index' }), 1000);
+			// 先说明登录用途（合规），再跳转登录页
+			api.goLoginWithTip();
 			return;
 		}
 
@@ -442,9 +486,13 @@ export default {
 			this.loadStatistics();
 		},
 
-		setRecordFilter(filter) {
-			if (this.recordFilter === filter) return;
-			this.recordFilter = filter;
+		// 历史电费记录筛选下拉切换（全部记录/电费增加/电费减少）
+		onRecordFilterChange(e) {
+			const index = Number(e.detail.value) || 0;
+			const option = this.recordFilterOptions[index];
+			if (!option || this.recordFilter === option.value) return;
+			this.recordFilter = option.value;
+			this.recordFilterIndex = index;
 			// 切换筛选后重新请求（服务端过滤），不整体刷新页面
 			this.loadRecords();
 		},
@@ -476,6 +524,8 @@ export default {
 			if (this.recordFilter === 'increase' || this.recordFilter === 'decrease') {
 				params.record_filter = this.recordFilter;
 			}
+			// 记录时间排序同样交由服务端处理
+			params.record_sort = this.recordSort;
 			return params;
 		},
 
@@ -538,61 +588,50 @@ export default {
 			}
 		},
 
-		// 统一处理记录：解析展示字段并按时间倒序（记录已由服务端按筛选条件返回）
+		// 统一处理记录：解析展示字段（记录已由服务端按筛选与排序条件返回）
 		processRecords(list) {
-			const parseRecordTime = v => {
-				if (v === null || v === undefined || v === '') return 0;
-				if (typeof v === 'number') {
-					return v < 1e12 ? v * 1000 : v;
+			return (list || []).map(r => {
+				const usageKwh = parseFloat(r.usage_kwh) || 0;
+				const usageCost = parseFloat(r.usage_cost) || 0;
+
+				let usageDisplay = '-';
+				let usageClass = '';
+				if (usageKwh > 0) {
+					usageDisplay = '↓' + usageKwh.toFixed(4);
+					usageClass = 'usage-down';
+				} else if (usageKwh < 0) {
+					usageDisplay = '↑' + Math.abs(usageKwh).toFixed(4);
+					usageClass = 'usage-up';
 				}
-				if (typeof v === 'string') {
-					if (/^\d+$/.test(v)) {
-						const n = parseInt(v, 10);
-						return n < 1e12 ? n * 1000 : n;
-					}
-					return new Date(v.replace(/-/g, '/')).getTime();
+
+				let costDisplay = '-';
+				let costClass = '';
+				if (usageCost > 0) {
+					costDisplay = '↓' + usageCost.toFixed(2);
+					costClass = 'usage-down';
+				} else if (usageCost < 0) {
+					costDisplay = '↑' + Math.abs(usageCost).toFixed(2);
+					costClass = 'usage-up';
 				}
-				return 0;
-			};
 
-			return (list || [])
-				.map(r => {
-					const usageKwh = parseFloat(r.usage_kwh) || 0;
-					const usageCost = parseFloat(r.usage_cost) || 0;
+				return {
+					...r,
+					usageDisplay,
+					usageClass,
+					costDisplay,
+					costClass
+				};
+			});
+		},
 
-					let usageDisplay = '-';
-					let usageClass = '';
-					if (usageKwh > 0) {
-						usageDisplay = '↓' + usageKwh.toFixed(4);
-						usageClass = 'usage-down';
-					} else if (usageKwh < 0) {
-						usageDisplay = '↑' + Math.abs(usageKwh).toFixed(4);
-						usageClass = 'usage-up';
-					}
-
-					let costDisplay = '-';
-					let costClass = '';
-					if (usageCost > 0) {
-						costDisplay = '↓' + usageCost.toFixed(2);
-						costClass = 'usage-down';
-					} else if (usageCost < 0) {
-						costDisplay = '↑' + Math.abs(usageCost).toFixed(2);
-						costClass = 'usage-up';
-					}
-
-					return {
-						...r,
-						usageDisplay,
-						usageClass,
-						costDisplay,
-						costClass
-					};
-				})
-				.sort((a, b) => {
-					const ta = parseRecordTime(a.record_time || a.created_at);
-					const tb = parseRecordTime(b.record_time || b.created_at);
-					return tb - ta;
-				});
+		// 历史电费记录时间排序下拉切换（排序交由服务端处理，仅重新拉取记录列表）
+		onRecordSortChange(e) {
+			const index = Number(e.detail.value) || 0;
+			const option = this.recordSortOptions[index];
+			if (!option || this.recordSort === option.value) return;
+			this.recordSort = option.value;
+			this.recordSortIndex = index;
+			this.loadRecords();
 		},
 
 		// 切换记录筛选时仅重新拉取历史记录（服务端过滤），不整页刷新
@@ -1283,26 +1322,59 @@ page {
 	box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.05);
 }
 
-.record-filter {
+/* 筛选 + 时间排序：同一行两个下拉选择 */
+.record-toolbar {
 	display: flex;
+	align-items: center;
 	gap: 16rpx;
 	margin-bottom: 20rpx;
 }
 
-.record-filter-btn {
+.record-picker-wrap {
 	flex: 1;
-	text-align: center;
-	font-size: 24rpx;
-	color: #48416f;
-	padding: 12rpx 0;
+	min-width: 0;
+}
+
+.record-picker {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 14rpx 20rpx;
 	border-radius: 12rpx;
 	background: #f5f6fa;
 	border: 2rpx solid transparent;
+	box-sizing: border-box;
 }
 
-.record-filter-btn.active {
-	background: #13c2c2;
-	color: #fff;
+.record-picker.active {
+	background: rgba(19, 194, 194, 0.1);
+	border-color: rgba(19, 194, 194, 0.5);
+}
+
+.record-picker-text {
+	flex: 1;
+	min-width: 0;
+	font-size: 24rpx;
+	color: #48416f;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+.record-picker.active .record-picker-text {
+	color: #13c2c2;
+	font-weight: 500;
+}
+
+.record-picker-arrow {
+	flex-shrink: 0;
+	margin-left: 8rpx;
+	font-size: 18rpx;
+	color: #948eb3;
+}
+
+.record-picker.active .record-picker-arrow {
+	color: #13c2c2;
 }
 
 .records-loading {

@@ -28,10 +28,8 @@ Page({
   onLoad() {
     // 检查用户是否已登录
     if (!api.isLoggedIn()) {
-      wx.showToast({ title: '请先登录', icon: 'none' });
-      setTimeout(() => {
-        wx.navigateTo({ url: '/pages/login/index' });
-      }, 1000);
+      // 先说明登录用途（合规），再跳转登录页
+      api.goLoginWithTip();
       return;
     }
     // 获取系统信息和OpenID

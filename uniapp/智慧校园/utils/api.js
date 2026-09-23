@@ -8,7 +8,7 @@
  * - 网络异常：reject 返回 { code: -1, msg: '网络请求失败' }
  */
 
-let API_BASE_URL = 'https://mc.xzwmc.com/csgocs/api.php';
+let API_BASE_URL = 'http://127.0.0.12/api.php';
 //https://mc.xzwmc.com/csgocs/api.php
 //http://127.0.0.12/api.php
 
@@ -883,6 +883,45 @@ const clearAuth = () => {
   uni.removeStorageSync('api_userInfo');
 };
 
+/* ==================== 登录合规提示 ==================== */
+
+// 微信审核要求：不得进入页面即强制授权登录，需先说明登录用途，再由用户自行选择登录
+const LOGIN_TIP_TEXT = '为准确匹配学校信息和给您提供个性化校园服务，请登录/注册并绑定学校再使用。';
+
+/**
+ * 弹窗说明登录用途，确认后跳转登录页、取消则离开当前功能页
+ * 复用全局既有的 showModal 弹窗（与「功能暂未开放」提示一致），文案可完整展示不被截断
+ * @param {Object} [options]
+ * @param {'navigate'|'redirect'|'reLaunch'} [options.mode='navigate'] 跳转方式
+ * @param {boolean} [options.stayOnCancel=false] 取消后是否原地停留（首页等自身可浏览的页面传 true）
+ */
+const goLoginWithTip = (options) => {
+  const opts = options || {};
+  const mode = opts.mode === 'redirect' ? 'redirectTo' : (opts.mode === 'reLaunch' ? 'reLaunch' : 'navigateTo');
+  uni.showModal({
+    title: '需要登录',
+    content: LOGIN_TIP_TEXT,
+    cancelText: '暂不登录',
+    confirmText: '去登录',
+    success: (res) => {
+      if (res.confirm) {
+        uni[mode]({ url: '/pages/login/index' });
+        return;
+      }
+      // 选择「暂不登录」：当前页面本身可浏览时（如首页）原地不动
+      if (opts.stayOnCancel) return;
+      // 其余功能页离开当前页（未登录不请求数据，避免页面停在加载中）；
+      // 页面栈里没有上一页（如标签页）时回到可免登录浏览的首页
+      const pages = typeof getCurrentPages === 'function' ? getCurrentPages() : [];
+      if (pages.length > 1) {
+        uni.navigateBack({ delta: 1 });
+      } else {
+        uni.switchTab({ url: '/pages/white-home/index' });
+      }
+    }
+  });
+};
+
 export default {
   request,
   login,
@@ -931,6 +970,8 @@ export default {
   getUserInfoCache,
   setUserInfoCache,
   clearAuth,
+  LOGIN_TIP_TEXT,
+  goLoginWithTip,
   getPushSettings,
   savePushSettings,
   getPowerConfig,

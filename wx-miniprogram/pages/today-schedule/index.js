@@ -72,9 +72,9 @@ Page({
 
     //页面加载
     onLoad() {
-        // 检查登录状态，未登录则跳转登录页（使用 redirectTo 避免页面栈累积）
+        // 检查登录状态，未登录则先说明登录用途（合规）再跳转登录页（使用 redirectTo 避免页面栈累积）
         if (!api.isLoggedIn()) {
-            wx.redirectTo({ url: '/pages/login/index' });
+            api.goLoginWithTip({ mode: 'redirect' });
             return;
         }
 

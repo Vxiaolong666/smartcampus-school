@@ -544,6 +544,46 @@ page {
     border-radius: 3rpx;
 }
 
+/* ===== 右下角浮动刷新按钮（独立样式：纯白底 + 黑色图标） ===== */
+/* 小程序 tabBar 为原生组件、页面可视区不含标签栏，故 bottom 取值需比 uniapp 端更小，两端视觉高度才一致 */
+.home-refresh-fab {
+    position: fixed;
+    right: 28rpx;
+    bottom: 80rpx;
+    width: 104rpx;
+    height: 104rpx;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 1rpx solid rgba(0, 0, 0, 0.06);
+    box-shadow: 0 10rpx 28rpx rgba(0, 0, 0, 0.14);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 90;
+}
+
+.home-refresh-fab:active {
+    transform: scale(0.92);
+}
+
+.home-refresh-icon {
+    width: 46rpx;
+    height: 46rpx;
+}
+
+.home-refresh-fab-loading .home-refresh-icon {
+    animation: home-refresh-spin 0.8s linear infinite;
+}
+
+@keyframes home-refresh-spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 /* ===== 开屏广告 ===== */
 .splash-mask {
     position: fixed;

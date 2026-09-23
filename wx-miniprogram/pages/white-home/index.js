@@ -47,6 +47,7 @@ Page({
         currentWeek: 0,          // 当前教学周（0=未取到，不展示）
         powerInfo: null,        // 电费信息
         noDormitory: false,     // 是否未绑定宿舍
+        pageRefreshing: false,  // 整个首页是否正在刷新
         randomPoem: '',          // 随机古诗词一言
         todayText: '',           // 今日日期（M月D日）
         _dataLoaded: false,      // 数据是否已加载（避免重复加载）
@@ -94,13 +95,8 @@ Page({
         // 开屏广告（后台可配置，免登录）
         this.loadSplashAd();
 
-        // 未登录则跳转到登录页（使用 redirectTo 避免页面栈累积）
-        if (!api.isLoggedIn()) {
-            wx.redirectTo({
-                url: '/pages/login/index',
-            });
-            return;
-        }
+        // 合规要求：首页免登录即可浏览（轮播、公告、通知等），不再强制跳转登录页
+        // 需要账号的功能在各自页面入口处提示登录，登录入口保留在「我的」页
     },
 
     //加载功能开关设置
@@ -173,11 +169,37 @@ Page({
         }
     },
 
+    //浮动按钮：刷新整个首页数据（公告/功能开关、轮播图、通知公告、速览卡片、订阅提醒）
+    async handlePageRefresh() {
+        if (this.data.pageRefreshing) return;
+        this.setData({ pageRefreshing: true });
+        try {
+            await Promise.all([
+                this.loadFeatureSettings(),
+                this.loadBanners(),
+                this.loadNotices(),
+                this.loadGlanceData(),
+                this.loadLowSubscriptions()
+            ]);
+            wx.showToast({ title: '已刷新', icon: 'none' });
+        } finally {
+            this.setData({ pageRefreshing: false });
+        }
+    },
+
     //检查登录状态
     checkLoginStatus() {
         const isLoggedIn = api.isLoggedIn();
         const apiUserInfo = api.getUserInfoCache();
         this.setData({ isLoggedIn, apiUserInfo });
+    },
+
+    //教务/电费等功能需要登录：未登录时弹出提示并阻止跳转，已登录返回 true
+    ensureLoggedIn() {
+        if (api.isLoggedIn()) return true;
+        // 首页本身可免登录浏览：选择「暂不登录」后原地停留，不做跳转
+        api.goLoginWithTip({ stayOnCancel: true });
+        return false;
     },
 
     //加载通知列表
@@ -469,43 +491,51 @@ Page({
         wx.navigateTo({ url });
     },
 
-    //跳转到今日课表页
+    //跳转到今日课表页（教务功能，需登录）
     handleTodaySchedule() {
+        if (!this.ensureLoggedIn()) return;
         wx.switchTab({ url: '/pages/today-schedule/index' });
     },
 
-    //跳转到课程表页
+    //跳转到课程表页（教务功能，需登录）
     handleSchedule() {
+        if (!this.ensureLoggedIn()) return;
         this.checkFeatureAndNavigate('schedule', '/pages/academic-schedule/index');
     },
 
-    //跳转到成绩查询页
+    //跳转到成绩查询页（教务功能，需登录）
     handleGrade() {
+        if (!this.ensureLoggedIn()) return;
         this.checkFeatureAndNavigate('grade', '/pages/academic-grade/index');
     },
 
-    //跳转到电费查询页
+    //跳转到电费查询页（电费功能，需登录）
     handlePowerFee() {
+        if (!this.ensureLoggedIn()) return;
         this.checkFeatureAndNavigate('power_fee', '/pages/power-fee/index');
     },
 
-    //跳转到用电统计页
+    //跳转到用电统计页（电费功能，需登录）
     handlePowerStatistics() {
+        if (!this.ensureLoggedIn()) return;
         this.checkFeatureAndNavigate('power_statistics', '/pages/power-statistics/index');
     },
 
-    //跳转到宿舍绑定页
+    //跳转到宿舍绑定页（电费功能，需登录）
     handleDormitoryBind() {
+        if (!this.ensureLoggedIn()) return;
         wx.navigateTo({ url: '/pages/dormitory-bind/index' });
     },
 
-    //跳转到学生信息页
+    //跳转到学生信息页（教务功能，需登录）
     handleStudentInfo() {
+        if (!this.ensureLoggedIn()) return;
         wx.navigateTo({ url: '/pages/academic-info/index' });
     },
 
-    //跳转到推送设置页
+    //跳转到推送设置页（电费功能，需登录）
     handlePushSettings() {
+        if (!this.ensureLoggedIn()) return;
         wx.navigateTo({
             url: '/pages/push-settings/index',
         });
@@ -514,6 +544,7 @@ Page({
     // 课程/成绩推送设置共用同一页面，通过 scene 参数让目标页按入口展示标题
     // （首页入口不带 data-scene → 显示「学术推送设置」）
     handleAcademicPushSettings(e) {
+        if (!this.ensureLoggedIn()) return;
         const scene = (e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.scene) || '';
         wx.navigateTo({
             url: '/pages/academic-push-settings/index' + (scene ? '?scene=' + scene : ''),

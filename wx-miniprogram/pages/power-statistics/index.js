@@ -28,17 +28,31 @@ Page({
         aiCache: {},           // 分析结果缓存
         windowHeight: 0,
         sheetHeight: 0,        // 浮层高度（视口 80%）
-        recordFilter: 'all',   // 历史电费记录筛选：all=全部, increase=电费增加, decrease=电费减少
+        // 历史电费记录筛选/排序（同一行的下拉选项，切换后由服务端筛选排序）
+        recordFilter: 'all',   // all=全部, increase=电费增加, decrease=电费减少
+        recordSort: 'desc',    // desc=最新在前（默认，每次进入不继承上次选择）, asc=最早在前
+        recordFilterOptions: [
+            { value: 'all', label: '全部记录' },
+            { value: 'increase', label: '电费增加' },
+            { value: 'decrease', label: '电费减少' }
+        ],
+        recordSortOptions: [
+            { value: 'desc', label: '最新在前' },
+            { value: 'asc', label: '最早在前' }
+        ],
+        recordFilterIndex: 0,  // 筛选下拉当前选中项
+        recordSortIndex: 0,    // 排序下拉当前选中项
         recordsLoading: false, // 切换记录筛选时的局部加载状态
-        balanceLive: false     // 当前余额是否已通过实时电费查询接口刷新
+        balanceLive: false,    // 当前余额是否已通过实时电费查询接口刷新
+        balanceKwhText: ''     // 当前余额按电价换算的电量文本
     },
 
     //页面加载
     onLoad() {
         // 检查登录状态
         if (!api.isLoggedIn()) {
-            wx.showToast({ title: '请先登录', icon: 'none' });
-            setTimeout(() => wx.navigateTo({ url: '/pages/login/index' }), 1000);
+            // 先说明登录用途（合规），再跳转登录页
+            api.goLoginWithTip();
             return;
         }
 
@@ -121,11 +135,12 @@ Page({
         this.loadStatistics();
     },
 
-    //历史电费记录筛选切换
-    setRecordFilter(e) {
-        const filter = e.currentTarget.dataset.filter;
-        if (this.data.recordFilter === filter) return;
-        this.setData({ recordFilter: filter });
+    //历史电费记录筛选下拉切换（全部记录/电费增加/电费减少）
+    onRecordFilterChange(e) {
+        const index = Number(e.detail.value) || 0;
+        const option = this.data.recordFilterOptions[index];
+        if (!option || this.data.recordFilter === option.value) return;
+        this.setData({ recordFilter: option.value, recordFilterIndex: index });
         this.loadRecords();
     },
 
@@ -160,6 +175,8 @@ Page({
         if (rf === 'increase' || rf === 'decrease') {
             params.record_filter = rf;
         }
+        // 记录时间排序同样交由服务端处理
+        params.record_sort = this.data.recordSort;
         return params;
     },
 
@@ -220,7 +237,10 @@ Page({
                 loading: false,                              // 取消加载状态
                 balanceLive: false                           // 先置为离线，待实时查询成功后再标记
             });
-            
+
+            // 按当前余额与电价换算电量并展示在余额卡片下方
+            this.updateBalanceKwh();
+
             // 当前余额改用实时电费查询接口获取（统计接口返回的是最后一条记录的余额，非实时）
             this.loadRealtimeBalance(dorm.room_num);
             
@@ -238,7 +258,7 @@ Page({
         }
     },
 
-    // 统一处理记录：解析展示字段（记录已由服务端按筛选条件返回）
+    // 统一处理记录：解析展示字段（记录已由服务端按筛选与排序条件返回）
     processRecords(list) {
         return (list || []).map(r => {
             const usageKwh = parseFloat(r.usage_kwh) || 0;
@@ -274,6 +294,15 @@ Page({
         });
     },
 
+    // 历史电费记录时间排序下拉切换（排序交由服务端处理，仅重新拉取记录列表）
+    onRecordSortChange(e) {
+        const index = Number(e.detail.value) || 0;
+        const option = this.data.recordSortOptions[index];
+        if (!option || this.data.recordSort === option.value) return;
+        this.setData({ recordSort: option.value, recordSortIndex: index });
+        this.loadRecords();
+    },
+
     // 切换记录筛选时仅重新拉取历史记录（服务端过滤），不整页刷新
     async loadRecords() {
         const { dormitories, selectedIndex } = this.data;
@@ -306,10 +335,23 @@ Page({
                 const stats = Object.assign({}, this.data.stats);
                 stats.latestBalance = data.balance;
                 this.setData({ stats: stats, balanceLive: true });
+                // 余额更新后同步刷新换算电量
+                this.updateBalanceKwh();
             }
         } catch (e) {
             // 实时查询失败时保留统计接口返回的余额，不打断页面
         }
+    },
+
+    // 当前余额按电价换算电量，用于余额卡片下方的展示
+    updateBalanceKwh() {
+        const balance = this.data.stats ? parseFloat(this.data.stats.latestBalance) : NaN;
+        const price = parseFloat(this.data.pricePerKwh) || 0;
+        if (isNaN(balance) || price <= 0) {
+            this.setData({ balanceKwhText: '' });
+            return;
+        }
+        this.setData({ balanceKwhText: (balance / price).toFixed(2) });
     },
 
     //绘制折线图表

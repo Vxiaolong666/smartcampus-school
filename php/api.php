@@ -1556,11 +1556,28 @@ switch($act) {
             }));
         }
 
+        // 历史电费记录按时间排序（服务端处理，仅调整返回的记录列表顺序，不影响统计与趋势）
+        // record_sort: desc=最新在前（默认）, asc=最早在前
+        $recordSort = isset($_REQUEST['record_sort']) ? strtolower(trim($_REQUEST['record_sort'])) : 'desc';
+        if ($recordSort !== 'asc') {
+            $recordSort = 'desc';
+        }
+        usort($filteredRecords, function ($a, $b) use ($recordSort) {
+            $ta = strtotime($a['record_time']) ?: 0;
+            $tb = strtotime($b['record_time']) ?: 0;
+            if ($ta === $tb) {
+                return 0;
+            }
+            $cmp = $ta < $tb ? -1 : 1;
+            return $recordSort === 'asc' ? $cmp : -$cmp;
+        });
+
         jsonResponse(0, 'success', [
             'room_num' => $roomNum,
             'record_count' => $recordCount,
             'filtered_count' => count($filteredRecords),
             'record_filter' => $recordFilter,
+            'record_sort' => $recordSort,
             'total_usage_kwh' => round($totalUsage, 4),
             'total_cost' => round($totalCost, 2),
             'daily_avg_usage' => round($dailyAvgUsage, 4),

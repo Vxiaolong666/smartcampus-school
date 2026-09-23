@@ -104,6 +104,13 @@
 								<view class="glance-card-value">今日课程已结束</view>
 								<view class="glance-card-info">好好休息吧~</view>
 							</block>
+							<block v-else-if="!isLoggedIn">
+								<view class="glance-card-header">
+									<view class="glance-card-label">课程信息</view>
+								</view>
+								<view class="glance-card-value">登录后查看</view>
+								<view class="glance-card-info">点击前往登录</view>
+							</block>
 							<block v-else>
 								<view class="glance-card-header">
 									<view class="glance-card-label">下一节课</view>
@@ -131,6 +138,13 @@
 								</view>
 								<view class="glance-card-value">未绑定宿舍</view>
 								<view class="glance-card-info">请先绑定宿舍</view>
+							</block>
+							<block v-else-if="!isLoggedIn">
+								<view class="glance-card-header">
+									<view class="glance-card-label">电费余额</view>
+								</view>
+								<view class="glance-card-value">登录后查看</view>
+								<view class="glance-card-info">点击前往登录</view>
 							</block>
 							<block v-else>
 								<view class="glance-card-header">
@@ -206,6 +220,11 @@
 			:download-page="updateInfo.downloadPage"
 			@close="updateVisible = false"
 		/>
+
+		<!-- 右下角浮动刷新按钮（独立样式：纯白底 + 黑色图标，刷新整个首页数据） -->
+		<view class="home-refresh-fab" :class="{ 'home-refresh-fab-loading': pageRefreshing }" @click="handlePageRefresh">
+			<image class="home-refresh-icon" src="/static/assets/wxmp-refresh-black.svg" mode="aspectFit"></image>
+		</view>
 
 		<!-- 开屏广告 -->
 		<splash-ad
@@ -304,6 +323,7 @@ export default {
 			currentWeek: 0,          // 当前教学周（0=未取到，不展示）
 			powerInfo: null,
 			noDormitory: false,
+			pageRefreshing: false,   // 整个首页是否正在刷新
 			randomPoem: '',
 			todayText: '',           // 今日日期（M月D日）
 			swiperAutoplay: true,
@@ -331,12 +351,8 @@ export default {
 		// App 启动后首页加载时自动检查版本更新（免登录，与「关于我们-检查更新」逻辑一致）
 		this.checkAppUpdate();
 
-		if (!api.isLoggedIn()) {
-			uni.redirectTo({
-				url: '/pages/login/index'
-			});
-			return;
-		}
+		// 合规要求：首页免登录即可浏览（轮播、公告、通知等），不再强制跳转登录页
+		// 需要账号的功能在各自页面入口处提示登录，登录入口保留在「我的」页
 	},
 
 	onShow() {
@@ -441,9 +457,35 @@ export default {
 			}
 		},
 
+		//浮动按钮：刷新整个首页数据（公告/功能开关、轮播图、通知公告、速览卡片、订阅提醒）
+		async handlePageRefresh() {
+			if (this.pageRefreshing) return;
+			this.pageRefreshing = true;
+			try {
+				await Promise.all([
+					this.loadFeatureSettings(),
+					this.loadBanners(),
+					this.loadNotices(),
+					this.loadGlanceData(),
+					this.loadLowSubscriptions()
+				]);
+				uni.showToast({ title: '已刷新', icon: 'none' });
+			} finally {
+				this.pageRefreshing = false;
+			}
+		},
+
 		checkLoginStatus() {
 			this.isLoggedIn = api.isLoggedIn();
 			this.apiUserInfo = api.getUserInfoCache() || {};
+		},
+
+		//教务/电费等功能需要登录：未登录时弹出提示并阻止跳转，已登录返回 true
+		ensureLoggedIn() {
+			if (api.isLoggedIn()) return true;
+			// 首页本身可免登录浏览：选择「暂不登录」后原地停留，不做跳转
+			api.goLoginWithTip({ stayOnCancel: true });
+			return false;
 		},
 
 		// 开屏广告（后台「开屏广告」配置；免登录）
@@ -656,35 +698,51 @@ export default {
 			uni.navigateTo({ url });
 		},
 
+		//跳转到今日课表页（教务功能，需登录）
 		handleTodaySchedule() {
+			if (!this.ensureLoggedIn()) return;
 			uni.switchTab({ url: '/pages/today-schedule/index' });
 		},
 
+		//跳转到课程表页（教务功能，需登录）
 		handleSchedule() {
+			if (!this.ensureLoggedIn()) return;
 			this.checkFeatureAndNavigate('schedule', '/pages/academic-schedule/index');
 		},
 
+		//跳转到成绩查询页（教务功能，需登录）
 		handleGrade() {
+			if (!this.ensureLoggedIn()) return;
 			this.checkFeatureAndNavigate('grade', '/pages/academic-grade/index');
 		},
 
+		//跳转到电费查询页（电费功能，需登录）
 		handlePowerFee() {
+			if (!this.ensureLoggedIn()) return;
 			this.checkFeatureAndNavigate('power_fee', '/pages/power-fee/index');
 		},
 
+		//跳转到用电统计页（电费功能，需登录）
 		handlePowerStatistics() {
+			if (!this.ensureLoggedIn()) return;
 			this.checkFeatureAndNavigate('power_statistics', '/pages/power-statistics/index');
 		},
 
+		//跳转到宿舍绑定页（电费功能，需登录）
 		handleDormitoryBind() {
+			if (!this.ensureLoggedIn()) return;
 			uni.navigateTo({ url: '/pages/dormitory-bind/index' });
 		},
 
+		//跳转到学生信息页（教务功能，需登录）
 		handleStudentInfo() {
+			if (!this.ensureLoggedIn()) return;
 			uni.navigateTo({ url: '/pages/academic-info/index' });
 		},
 
+		//跳转到推送设置页（电费功能，需登录）
 		handlePushSettings() {
+			if (!this.ensureLoggedIn()) return;
 			uni.navigateTo({
 				url: '/pages/push-settings/index'
 			});
@@ -693,6 +751,7 @@ export default {
 		// 课程/成绩推送设置共用同一页面，通过 scene 参数让目标页按入口展示标题
 		// （首页入口不传 scene → 显示「学术推送设置」）
 		handleAcademicPushSettings(scene) {
+			if (!this.ensureLoggedIn()) return;
 			uni.navigateTo({
 				url: '/pages/academic-push-settings/index' + (scene ? '?scene=' + scene : '')
 			});
@@ -1167,6 +1226,45 @@ page {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+/* 右下角浮动刷新按钮（独立样式：纯白底 + 黑色图标） */
+.home-refresh-fab {
+	position: fixed;
+	right: 28rpx;
+	bottom: 160rpx;
+	width: 104rpx;
+	height: 104rpx;
+	border-radius: 50%;
+	background: #ffffff;
+	border: 1rpx solid rgba(0, 0, 0, 0.06);
+	box-shadow: 0 10rpx 28rpx rgba(0, 0, 0, 0.14);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 90;
+}
+
+.home-refresh-fab:active {
+	transform: scale(0.92);
+}
+
+.home-refresh-icon {
+	width: 46rpx;
+	height: 46rpx;
+}
+
+.home-refresh-fab-loading .home-refresh-icon {
+	animation: home-refresh-spin 0.8s linear infinite;
+}
+
+@keyframes home-refresh-spin {
+	from {
+		transform: rotate(0deg);
+	}
+	to {
+		transform: rotate(360deg);
+	}
 }
 
 .tag-normal {

@@ -75,10 +75,8 @@ export default {
 
 	onLoad() {
 		if (!api.isLoggedIn()) {
-			uni.showToast({ title: '请先登录', icon: 'none' });
-			setTimeout(() => {
-				uni.navigateTo({ url: '/pages/login/index' });
-			}, 1000);
+			// 先说明登录用途（合规），再跳转登录页
+			api.goLoginWithTip();
 		}
 	},
 

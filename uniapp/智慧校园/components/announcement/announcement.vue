@@ -5,6 +5,8 @@
 		<view v-if="closable" class="announcement-close" @click="onClose">
 			<text>×</text>
 		</view>
+		<!-- 联系客服弹窗：复用项目统一的 contact-modal（fixed 定位，不占公告布局） -->
+		<contact-modal :show="contactShow" :lines="contactLines" @close="contactShow = false" />
 	</view>
 </template>
 
@@ -13,6 +15,8 @@
  * 公告提示组件
  * 支持多种类型的提示信息展示，可关闭，点击可查看详情
  */
+import api from '../../utils/api.js';
+
 const TYPE_CLASSES = {
 	info: 'announcement-info',
 	success: 'announcement-success',
@@ -45,7 +49,10 @@ export default {
 	},
 	data() {
 		return {
-			visible: true
+			visible: true,
+			// 联系客服弹窗（复用统一的 contact-modal）
+			contactShow: false,
+			contactLines: []
 		};
 	},
 	computed: {
@@ -69,8 +76,41 @@ export default {
 				content: content,
 				showCancel: true,
 				cancelText: '联系客服',
-				confirmText: '我知道了'
+				confirmText: '我知道了',
+				success: (res) => {
+					// 点击「联系客服」：展示后台「首页配置」维护的联系方式
+					if (res.cancel) this.openContact();
+				}
 			});
+		},
+
+		// 联系客服：拉取后台联系方式后弹出 contact-modal（与协议页 / 维护页 / 我的页一致）
+		async openContact() {
+			uni.showLoading({ title: '加载中...' });
+			let info = null;
+			try {
+				const res = await api.getContactInfo();
+				info = (res && res.data) || null;
+			} catch (e) {
+				info = null;
+			}
+			uni.hideLoading();
+
+			const lines = [];
+			if (info) {
+				if (info.phone) lines.push('联系电话：' + info.phone);
+				if (info.email) lines.push('电子邮箱：' + info.email);
+				if (info.qq) lines.push('QQ：' + info.qq);
+				if (info.worktime) lines.push('工作时间：' + info.worktime);
+				if (info.address) lines.push('联系地址：' + info.address);
+				if (info.desc) lines.push('说明：' + info.desc);
+			}
+			if (!lines.length) {
+				lines.push('暂未配置联系方式，请在「我的」页面通过「联系客服」功能与我们取得联系。');
+			}
+
+			this.contactLines = lines;
+			this.contactShow = true;
 		},
 		show() {
 			this.visible = true;
