@@ -140,7 +140,8 @@ function fbUrl($params = array()) {
  */
 function fbPager($page, $pages) {
     if ($pages <= 1) return '';
-    $html = '<nav class="mt-3"><ul class="pagination justify-content-center flex-wrap">';
+    // mb-4：分页条是列表块内最后一个元素，补上底边留白（.block-content 的下内边距只有 1px）
+    $html = '<nav class="mt-3 mb-4"><ul class="pagination justify-content-center flex-wrap">';
     if ($page > 1) {
         $html .= '<li class="page-item"><a class="page-link" href="' . fbUrl(array('page' => $page - 1)) . '">上一页</a></li>';
     }
