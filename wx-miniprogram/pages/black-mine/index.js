@@ -174,6 +174,13 @@ Page({
         });
     },
 
+    //意见反馈：提交反馈并查看处理进度
+    handleFeedback() {
+        wx.navigateTo({
+            url: '/pages/feedback/index',
+        });
+    },
+
     //跳转到关于页
     handleAbout() {
         wx.navigateTo({

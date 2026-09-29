@@ -48,21 +48,16 @@ if ($tablesReady && isset($_GET['edit_faq'])) {
 $pageSize = 15;
 $dlPage = isset($_GET['dpage']) ? max(1, intval($_GET['dpage'])) : 1;
 $fqPage = isset($_GET['fpage']) ? max(1, intval($_GET['fpage'])) : 1;
-$msPage = isset($_GET['mpage']) ? max(1, intval($_GET['mpage'])) : 1;
 $dlOffset = ($dlPage - 1) * $pageSize;
 $fqOffset = ($fqPage - 1) * $pageSize;
-$msOffset = ($msPage - 1) * $pageSize;
 
 $downloads = []; $downloadTotal = 0;
 $faqs      = []; $faqTotal = 0;
-$msgs      = []; $msgTotal = 0;
 if ($tablesReady) {
     $downloadTotal = (int)$DB->getColumn("SELECT COUNT(*) FROM nteam_home_download");
     $downloads = $DB->getAll("SELECT * FROM nteam_home_download ORDER BY `sort` ASC, `id` ASC LIMIT $dlOffset, $pageSize") ?: [];
     $faqTotal = (int)$DB->getColumn("SELECT COUNT(*) FROM nteam_home_faq");
     $faqs = $DB->getAll("SELECT * FROM nteam_home_faq ORDER BY `sort` ASC, `id` ASC LIMIT $fqOffset, $pageSize") ?: [];
-    $msgTotal = (int)$DB->getColumn("SELECT COUNT(*) FROM nteam_contact_msgs");
-    $msgs = $DB->getAll("SELECT * FROM nteam_contact_msgs ORDER BY `id` DESC LIMIT $msOffset, $pageSize") ?: [];
 }
 
 // 当前 tab（编辑态强制定位到对应 tab）
@@ -193,7 +188,7 @@ if (!function_exists('homePager')) {
                 <a class="nav-link <?php echo $activeTab === 'faq' ? 'active' : ''; ?>" href="?tab=faq">常见问题</a>
             </li>
             <li class="nav-item">
-                <a class="nav-link <?php echo $activeTab === 'message' ? 'active' : ''; ?>" href="?tab=message">联系留言</a>
+                <a class="nav-link" href="user_feedback.php"><i class="fa fa-comments me-1"></i>用户反馈</a>
             </li>
         </ul>
 
@@ -572,90 +567,6 @@ if (!function_exists('homePager')) {
 
         <?php endif; ?>
 
-        <?php if ($activeTab === 'message'): ?>
-        <!-- ============ 联系我们留言 ============ -->
-        <div class="block block-rounded">
-            <div class="block-header block-header-default">
-                <h3 class="block-title"><i class="fa fa-envelope me-2"></i>联系我们留言</h3>
-                <div class="block-options">
-                    <span class="badge bg-primary">共 <?php echo $msgTotal; ?> 条</span>
-                </div>
-                <div class="block-options">
-                    <button type="button" onclick="window.location.reload()" class="btn-block-option" data-toggle="block-option" data-action="state_toggle" data-action-mode="demo">
-                        <i class="si si-refresh"></i>
-                    </button>
-                </div>
-            </div>
-            <div class="block-content">
-                <div class="mobile-cards">
-                    <?php if (empty($msgs)): ?>
-                    <div class="text-center text-muted py-3">暂无留言</div>
-                    <?php else: foreach ($msgs as $m): ?>
-                    <div class="mobile-card">
-                        <div class="mobile-card-header">
-                            <span>#<?php echo intval($m['id']); ?> <?php echo h($m['subject'] !== '' ? $m['subject'] : '（无主题）'); ?></span>
-                            <?php echo intval($m['status']) ? '<span class="badge bg-success">已读</span>' : '<span class="badge bg-warning">未读</span>'; ?>
-                        </div>
-                        <div class="mobile-card-body">
-                            <div class="mobile-card-row">
-                                <span class="mobile-card-label">姓名</span>
-                                <span class="mobile-card-value"><?php echo h($m['name']); ?></span>
-                            </div>
-                            <div class="mobile-card-row">
-                                <span class="mobile-card-label">手机</span>
-                                <span class="mobile-card-value"><?php echo h($m['phone']); ?></span>
-                            </div>
-                            <div class="mobile-card-row">
-                                <span class="mobile-card-label">邮箱</span>
-                                <span class="mobile-card-value"><?php echo h($m['email']); ?></span>
-                            </div>
-                            <div class="mobile-card-row">
-                                <span class="mobile-card-label">内容</span>
-                                <span class="mobile-card-value"><?php echo nl2br(h($m['content'])); ?></span>
-                            </div>
-                            <div class="mobile-card-row">
-                                <span class="mobile-card-label">时间</span>
-                                <span class="mobile-card-value"><?php echo h($m['create_time']); ?></span>
-                            </div>
-                        </div>
-                        <div class="mobile-card-actions">
-                            <button type="button" class="btn btn-sm btn-alt-secondary" onclick="postAct('contact_msg_read', {id: <?php echo intval($m['id']); ?>})">标已读</button>
-                            <button type="button" class="btn btn-sm btn-alt-danger" onclick="delRow('contact_msg_del', <?php echo intval($m['id']); ?>, '确认删除该留言？')">删除</button>
-                        </div>
-                    </div>
-                    <?php endforeach; endif; ?>
-                </div>
-                <div class="table-responsive">
-                    <table class="table table-striped table-vcenter">
-                        <thead><tr><th style="width:60px">ID</th><th style="width:100px">姓名</th><th style="width:160px">联系方式</th><th>主题 / 内容</th><th style="width:90px">状态</th><th style="width:130px">时间</th><th style="width:150px">操作</th></tr></thead>
-                        <tbody>
-                        <?php if (empty($msgs)): ?>
-                            <tr><td colspan="7" class="text-center text-muted">暂无留言</td></tr>
-                        <?php else: foreach ($msgs as $m): ?>
-                            <tr>
-                                <td><?php echo intval($m['id']); ?></td>
-                                <td><?php echo h($m['name']); ?></td>
-                                <td class="fs-sm"><?php echo h($m['phone']); ?><br><?php echo h($m['email']); ?></td>
-                                <td>
-                                    <div class="fw-semibold"><?php echo h($m['subject']); ?></div>
-                                    <div class="fs-sm text-muted"><?php echo nl2br(h($m['content'])); ?></div>
-                                </td>
-                                <td><?php echo intval($m['status']) ? '<span class="badge bg-success">已读</span>' : '<span class="badge bg-warning">未读</span>'; ?></td>
-                                <td class="fs-sm"><?php echo h($m['create_time']); ?></td>
-                                <td>
-                                    <button type="button" class="btn btn-sm btn-alt-secondary" onclick="postAct('contact_msg_read', {id: <?php echo intval($m['id']); ?>})">标已读</button>
-                                    <button type="button" class="btn btn-sm btn-alt-danger" onclick="delRow('contact_msg_del', <?php echo intval($m['id']); ?>, '确认删除该留言？')">删除</button>
-                                </td>
-                            </tr>
-                        <?php endforeach; endif; ?>
-                        </tbody>
-                    </table>
-                </div>
-                <?php echo homePager($msPage, max(1, ceil($msgTotal / $pageSize)), '?tab=message&mpage='); ?>
-            </div>
-        </div>
-
-        <?php endif; ?>
         <?php endif; ?>
     </div>
 </div>
@@ -710,6 +621,7 @@ function delRow(act, id, tip) {
     });
     return false;
 }
+
 </script>
 </body>
 </html>

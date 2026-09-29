@@ -314,4 +314,55 @@ function saveSettings($k, $v) {
 	global $DB;
 	return $DB->exec("UPDATE nteam_config_theme SET $k='{$v}' WHERE `id`=1");
 }
+/**
+ * 把 Markdown 正文转成纯文本（用于列表页的内容预览）
+ * ------------------------------------------------------------------
+ * 列表预览不做排版渲染，也不应出现 #、**、![]() 等 Markdown 语法符号，
+ * 因此这里做「去语法」处理：
+ *   - 图片整段去掉；链接、加粗、删除线、行内代码只保留文字；
+ *   - 标题 / 引用 / 列表 / 表格 / 分隔线只保留内容，去掉符号；
+ *   - 去掉 HTML 标签、还原 HTML 实体，最后折叠空白并按字数截断。
+ *
+ * @param string $content 原始 Markdown 文本
+ * @param int    $length  截断字数（0 = 不截断），超出时补省略号
+ * @return string 纯文本，输出时仍需 htmlspecialchars 转义
+ */
+function markdownToPlainText($content, $length = 0) {
+	$text = (string)$content;
+	if ($text === '') {
+		return '';
+	}
+	$text = str_replace(array("\r\n", "\r"), "\n", $text);
+	// 代码块围栏（``` 行）去掉，内部文字保留
+	$text = preg_replace('/^\s{0,3}`{3,}[^\n]*$/m', '', $text);
+	// 图片整段去掉（预览不展示图片与占位文字）
+	$text = preg_replace('/!\[[^\]]*\]\([^)]*\)/', '', $text);
+	// 链接 [文字](地址) → 文字
+	$text = preg_replace('/\[([^\]]*)\]\([^)]*\)/', '$1', $text);
+	// 标题、引用、无序/有序列表、分隔线的语法符号
+	$text = preg_replace('/^\s{0,3}#{1,6}\s*/m', '', $text);
+	$text = preg_replace('/^\s{0,3}>\s?/m', '', $text);
+	$text = preg_replace('/^\s{0,3}[-*+]\s+/m', '', $text);
+	$text = preg_replace('/^\s{0,3}\d+\.\s+/m', '', $text);
+	$text = preg_replace('/^\s{0,3}(?:[-*_]\s*){3,}$/m', '', $text);
+	// 表格分隔行：|---|---|、| :---: | --- |
+	$text = preg_replace('/^\s*\|?(?:\s*:?-+:?\s*\|)+\s*$/m', '', $text);
+	// 富文本标签与 HTML 实体
+	$text = strip_tags($text);
+	$text = html_entity_decode($text, ENT_QUOTES, 'UTF-8');
+	// 行内强调：**粗体** / __粗体__ / ~~删除~~ / `代码` → 只留文字
+	$text = preg_replace('/\*\*(.+?)\*\*/s', '$1', $text);
+	$text = preg_replace('/__(.+?)__/s', '$1', $text);
+	$text = preg_replace('/~~(.+?)~~/s', '$1', $text);
+	$text = preg_replace('/`([^`]*)`/s', '$1', $text);
+	// 残留的强调符号与表格竖线
+	$text = str_replace(array('*', '`', '|'), array('', '', ' '), $text);
+	// 折叠空白与换行为单个空格，保证预览是连续一行
+	$text = preg_replace('/\s+/u', ' ', $text);
+	$text = trim($text);
+	if ($length > 0 && mb_strlen($text, 'UTF-8') > $length) {
+		$text = mb_substr($text, 0, $length, 'UTF-8') . '...';
+	}
+	return $text;
+}
 ?>

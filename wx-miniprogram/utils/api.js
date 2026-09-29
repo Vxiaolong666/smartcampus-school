@@ -1,5 +1,5 @@
 
-const API_BASE_URL = 'https://mc.xzwmc.com/csgocs/api.php';
+const API_BASE_URL = 'http://127.0.0.12/api.php';
 //https://mc.xzwmc.com/csgocs/api.php
 //http://127.0.0.12/api.php
 /**
@@ -1022,6 +1022,36 @@ const getAgreement = (key) => {
   });
 };
 
+/* ==================== 意见反馈相关接口（需登录） ==================== */
+
+/**
+ * 提交意见反馈
+ * @param {Object} data { content:string, name?:string, email?:string, phone?:string, subject?:string }
+ * @returns {Promise} data: { id:number }
+ */
+const submitFeedback = (data) => {
+  return request({
+    act: 'submit_feedback',
+    method: 'POST',
+    data: data || {}
+  });
+};
+
+/**
+ * 我的反馈记录（含处理状态与处理备注）
+ * @param {Object} [params] { page:number, size:number }
+ * @returns {Promise} data: { list, total, page, size, has_more, form_open }
+ */
+const getMyFeedbacks = (params) => {
+  const p = params || {};
+  const page = p.page || 1;
+  const size = p.size || 10;
+  return request({
+    act: 'get_my_feedbacks&page=' + page + '&size=' + size,
+    method: 'GET'
+  });
+};
+
 /* ==================== 模块导出 ==================== */
 
 module.exports = {
@@ -1041,6 +1071,8 @@ module.exports = {
   queryPowerFee,
   getAgreements,
   getAgreement,
+  submitFeedback,
+  getMyFeedbacks,
   queryGrade,
   querySchedule,
   queryStudentInfo,

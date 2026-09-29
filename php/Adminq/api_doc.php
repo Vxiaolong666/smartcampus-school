@@ -65,6 +65,7 @@ include './head.php';
                             <a class="nav-link" href="#splash-api">开屏广告API</a>
                             <a class="nav-link" href="#cancel-api">账号注销API</a>
                             <a class="nav-link" href="#oauth-bind-api">第三方账号绑定API</a>
+                            <a class="nav-link" href="#feedback-api">意见反馈API</a>
                             <a class="nav-link" href="#error-code">错误码说明</a>
                         </nav>
                     </div>
@@ -1645,6 +1646,93 @@ wx.request({
 
                         <div class="alert alert-warning mt-3 mb-0">
                             <strong>注意：</strong>一个第三方账号只能绑定一个本平台账号；若该第三方账号已被其它有效账号绑定，绑定流程只返回错误提示，<strong>绝不会切换当前登录账号</strong>。第三方登录要求该第三方账号<strong>已绑定</strong>本平台账号（不支持自动注册），未绑定时返回提示并引导用户先用账号密码登录后绑定。小程序端使用 WebView 打开授权页时，需将聚合登录服务域名（<code>u.daib.cn</code>）及各平台授权域名加入小程序<strong>业务域名白名单</strong>。
+                        </div>
+                    </div>
+                </div>
+
+                <div class="block block-rounded block-bordered mb-4" id="feedback-api">
+                    <div class="block-header block-header-default">
+                        <h3 class="block-title">
+                            <i class="fa fa-comments me-2"></i>意见反馈API
+                        </h3>
+                    </div>
+                    <div class="block-content">
+
+                        <div class="alert alert-info">
+                            反馈提交后由管理员在后台「用户反馈」中处理，处理状态：<code>0</code> 待处理、<code>1</code> 处理中、
+                            <code>2</code> 已解决、<code>3</code> 已驳回、<code>4</code> 已忽略；管理员填写的处理备注
+                            （<code>remark</code>）会回传给用户端展示。
+                        </div>
+
+                        <div class="mb-4">
+                            <h5 class="text-primary">
+                                <span class="badge bg-success me-2">POST</span>
+                                提交意见反馈
+                            </h5>
+                            <p><strong>接口：</strong><code>?act=submit_feedback</code></p>
+                            <p><strong>需要认证：</strong>是（登录用户，自动关联 <code>user_id</code>、来源记为 <code>user</code>，无需人机验证）</p>
+                            <p><strong>参数：</strong></p>
+                            <table class="table table-bordered table-sm">
+                                <thead><tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr></thead>
+                                <tbody>
+                                    <tr><td>content</td><td>string</td><td>是</td><td>反馈内容，最多 2000 字</td></tr>
+                                    <tr><td>name</td><td>string</td><td>否</td><td>联系人姓名，留空自动取账号昵称 / 用户名</td></tr>
+                                    <tr><td>email</td><td>string</td><td>否</td><td>联系邮箱，留空自动取账号邮箱；填写时需为合法邮箱</td></tr>
+                                    <tr><td>phone</td><td>string</td><td>否</td><td>联系电话</td></tr>
+                                    <tr><td>subject</td><td>string</td><td>否</td><td>反馈主题（一句话概括，便于后台归类）</td></tr>
+                                </tbody>
+                            </table>
+                            <p><strong>返回：</strong></p>
+                            <pre class="bg-light p-2 rounded"><code>{
+    "code": 0,
+    "msg": "提交成功，我们会尽快处理",
+    "data": { "id": 12 }
+}</code></pre>
+                        </div>
+
+                        <hr>
+
+                        <div class="mb-4">
+                            <h5 class="text-primary">
+                                <span class="badge bg-primary me-2">GET</span>
+                                我的反馈记录
+                            </h5>
+                            <p><strong>接口：</strong><code>?act=get_my_feedbacks&amp;page=1&amp;size=10</code></p>
+                            <p><strong>需要认证：</strong>是</p>
+                            <p><strong>参数：</strong></p>
+                            <table class="table table-bordered table-sm">
+                                <thead><tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr></thead>
+                                <tbody>
+                                    <tr><td>page</td><td>int</td><td>否</td><td>页码，默认 1</td></tr>
+                                    <tr><td>size</td><td>int</td><td>否</td><td>每页条数，默认 10，最大 50</td></tr>
+                                </tbody>
+                            </table>
+                            <p><strong>返回：</strong></p>
+                            <pre class="bg-light p-2 rounded"><code>{
+    "code": 0,
+    "msg": "success",
+    "data": {
+        "list": [
+            {
+                "id": 12,
+                "subject": "电费查询异常",
+                "content": "（用户提交的反馈内容）",
+                "status": 2,
+                "status_text": "已解决",
+                "remark": "已修复，请更新到最新版本后重试",
+                "create_time": "2026-09-29 18:20:00",
+                "update_time": "2026-09-29 19:05:00"
+            }
+        ],
+        "total": 1,
+        "page": 1,
+        "size": 10,
+        "has_more": false,
+        "form_open": 1
+    }
+}</code></pre>
+                            <p><code>form_open=0</code> 表示后台已关闭留言功能（「首页配置」），客户端应隐藏或禁用提交入口；<code>remark</code>
+                                为管理员处理备注（用户端可见，可能为空字符串）；<code>has_more=true</code> 时可继续请求下一页。</p>
                         </div>
                     </div>
                 </div>

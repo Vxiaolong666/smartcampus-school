@@ -150,6 +150,19 @@ $pageName = $isEdit ? ('编辑协议 #' . $data['id']) : '新增协议';
 <?php include 'foot.php'?>
 <!-- Markdown 编辑器资源已本地化（原 jsDelivr CDN 在部分服务器环境不可访问）：EasyMDE v2.18.0 -->
 <link rel="stylesheet" href="./assets/css/plugins/easymde/easymde.min.css">
+<style>
+/* ===== 「插入图片」弹窗：移动端适配（弹窗宽度由 JS 按屏宽自适应） ===== */
+.ins-img-panel { padding: 18px 20px; }
+.ins-img-panel .ins-img-actions .btn { min-width: 150px; }
+.ins-img-panel .ins-img-hr { margin: 20px 0; }
+@media (max-width: 768px) {
+    /* 窄屏：压缩内边距、按钮铺满整行，方便手指点击 */
+    .ins-img-panel { padding: 14px 14px 16px; }
+    .ins-img-panel .ins-img-actions { display: flex; }
+    .ins-img-panel .ins-img-actions .btn { width: 100%; min-width: 0; padding: 0.5rem 1rem; }
+    .ins-img-panel .ins-img-hr { margin: 16px 0; }
+}
+</style>
 <script src="./assets/js/plugins/easymde/easymde.min.js"></script>
 <script>
 var editorMDE = null;
@@ -188,36 +201,45 @@ function openImageDialog(editor) {
     activeEditor = editor;
 
     var html = [
-        '<div style="padding:18px 20px;">',
+        '<div class="ins-img-panel">',
         '  <div class="mb-2 fw-semibold">方式一：图片链接（远程 URL）</div>',
         '  <div class="mb-3">',
-        '    <input type="text" id="insImgUrl" class="form-control" placeholder="https://example.com/a.jpg 或 /uploads/agreements/xxx.jpg">',
+        '    <input type="text" id="insImgUrl" class="form-control" inputmode="url" autocomplete="off" placeholder="https://example.com/a.jpg 或 /uploads/agreements/xxx.jpg">',
         '  </div>',
         '  <div class="mb-2">',
         '    <label class="form-label mb-1">图片描述（可选，作为 alt）</label>',
         '    <input type="text" id="insImgAlt" class="form-control" placeholder="图片说明">',
         '  </div>',
-        '  <button type="button" class="btn btn-alt-primary btn-sm" onclick="insertRemoteImage()">',
-        '    <i class="fa fa-link me-1"></i>插入链接图片',
-        '  </button>',
-        '  <hr class="my-4">',
+        '  <div class="ins-img-actions">',
+        '    <button type="button" class="btn btn-alt-primary btn-sm" onclick="insertRemoteImage()">',
+        '      <i class="fa fa-link me-1"></i>插入链接图片',
+        '    </button>',
+        '  </div>',
+        '  <hr class="ins-img-hr">',
         '  <div class="mb-2 fw-semibold">方式二：上传本地图片</div>',
         '  <div class="mb-3 text-muted fs-sm">图片保存到本协议目录（/uploads/agreements/），插入后为相对路径，用户端会自动补全为完整地址。</div>',
-        '  <button type="button" class="btn btn-alt-secondary btn-sm" onclick="pickLocalImage()">',
-        '    <i class="fa fa-upload me-1"></i>选择本地图片上传',
-        '  </button>',
+        '  <div class="ins-img-actions">',
+        '    <button type="button" class="btn btn-alt-secondary btn-sm" onclick="pickLocalImage()">',
+        '      <i class="fa fa-upload me-1"></i>选择本地图片上传',
+        '    </button>',
+        '  </div>',
         '</div>'
     ].join('');
 
+    // 移动端适配：窄屏按屏宽铺开（两侧留白），宽屏保持 460px
+    var isMobile = window.innerWidth <= 768;
     imageDialogLayer = layer.open({
         type: 1,
         title: '插入图片',
-        area: ['460px', 'auto'],
+        area: isMobile ? ['92%', 'auto'] : ['460px', 'auto'],
         shadeClose: true,
         content: html
     });
 
-    setTimeout(function () { var el = document.getElementById('insImgUrl'); if (el) el.focus(); }, 50);
+    // 移动端不自动聚焦，避免软键盘弹出遮挡弹窗
+    if (!isMobile) {
+        setTimeout(function () { var el = document.getElementById('insImgUrl'); if (el) el.focus(); }, 50);
+    }
 }
 
 function closeImageDialog() {

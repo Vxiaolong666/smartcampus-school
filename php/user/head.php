@@ -406,7 +406,8 @@ function getUserDisplayName($nickname, $username) {
             // 子页面归入其父菜单，避免详情页等二级页面侧栏无高亮
             var ALIAS = {
                 'announcement.php': 'announcements.php',
-                'power_fee_batch.php': 'power_fee.php'
+                'power_fee_batch.php': 'power_fee.php',
+                'agreement_detail.php': 'agreement.php'
             };
 
             function currentPage() {
@@ -673,6 +674,19 @@ function getUserDisplayName($nickname, $username) {
                                             <a class="nav-main-link" href="cancel_account.php">
                                                 <i class="nav-main-link-icon fa fa-user-slash"></i>
                                                 <span class="nav-main-link-name"><b>注销账户</b></span>
+                                            </a>
+                                        </li>
+                                        <li class="nav-main-heading">Support</li>
+                                        <li class="nav-main-item">
+                                            <a class="nav-main-link" href="agreement.php">
+                                                <i class="nav-main-link-icon fa fa-file-contract"></i>
+                                                <span class="nav-main-link-name"><b>协议中心</b></span>
+                                            </a>
+                                        </li>
+                                        <li class="nav-main-item">
+                                            <a class="nav-main-link" href="contact.php">
+                                                <i class="nav-main-link-icon fa fa-headset"></i>
+                                                <span class="nav-main-link-name"><b>联系我们</b></span>
                                             </a>
                                         </li>
                                         <li class="nav-main-heading text-center">- 更多功能敬请期待 -</li>

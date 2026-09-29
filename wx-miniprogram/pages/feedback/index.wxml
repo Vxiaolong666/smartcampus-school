@@ -1,0 +1,133 @@
+<view class="fb-page">
+  <top-menu showBack="{{true}}">
+    <view class="nav-title">意见反馈</view>
+  </top-menu>
+
+  <view class="fb-bg-wrapper">
+    <image class="fb-bg" src="/assets/wxmp-banner.jpg" mode="aspectFill" />
+    <view class="fb-bg-mask"></view>
+  </view>
+
+  <view class="fb-content">
+    <!-- 未登录：反馈需要账号，先引导登录 -->
+    <view class="fb-card" wx:if="{{!isLoggedIn}}">
+      <view class="fb-empty">
+        <image class="fb-empty-icon" src="/assets/wxmp-empty.svg" mode="widthFix"></image>
+        <view class="fb-empty-title">登录后即可提交反馈</view>
+        <view class="fb-empty-desc">登录后可提交意见反馈，并随时查看处理进度与历史记录。</view>
+      </view>
+      <view class="fb-btn primary" bindtap="goLogin">去登录</view>
+    </view>
+
+    <block wx:else>
+      <!-- 提交反馈 -->
+      <view class="fb-card">
+        <view class="fb-card-title">提交反馈</view>
+        <view class="fb-card-desc" wx:if="{{formOpen}}">使用中遇到问题或有建议，都可以在这里反馈；提交后按「待处理 → 处理中 → 已解决 / 已驳回 / 已忽略」流转。</view>
+        <view class="fb-card-desc" wx:else>留言功能暂未开放，可通过「我的 → 联系客服」与我们联系。</view>
+
+        <block wx:if="{{formOpen}}">
+          <view class="fb-field">
+            <view class="fb-label">主题</view>
+            <input
+              class="fb-input"
+              type="text"
+              value="{{subject}}"
+              maxlength="100"
+              placeholder="如：电费查询异常"
+              placeholder-class="fb-ph"
+              bindinput="onSubjectInput"
+            />
+          </view>
+          <view class="fb-field">
+            <view class="fb-label">反馈内容 <text class="fb-required">*</text></view>
+            <textarea
+              class="fb-textarea"
+              value="{{content}}"
+              maxlength="2000"
+              placeholder="请描述你遇到的问题或建议（最多 2000 字）"
+              placeholder-class="fb-ph"
+              bindinput="onContentInput"
+            />
+          </view>
+          <view class="fb-tip">联系方式默认使用账号信息{{contactSummary ? '（' + contactSummary + '）' : ''}}，如需修改请在「个人资料」中更新。</view>
+          <button class="fb-btn primary" loading="{{submitting}}" disabled="{{submitting}}" bindtap="onSubmit">提交反馈</button>
+        </block>
+      </view>
+
+      <!-- 我的反馈记录 -->
+      <view class="fb-card">
+        <view class="fb-card-head">
+          <view class="fb-card-title">我的反馈</view>
+          <view class="fb-count">共 {{total}} 条</view>
+        </view>
+
+        <view class="fb-empty" wx:if="{{list.length === 0 && !loading}}">
+          <image class="fb-empty-icon" src="/assets/wxmp-empty.svg" mode="widthFix"></image>
+          <view class="fb-empty-title">还没有提交过反馈</view>
+          <view class="fb-empty-desc">提交后可在这里查看处理状态与处理备注。</view>
+        </view>
+
+        <view class="fb-item" wx:for="{{list}}" wx:key="id" data-index="{{index}}" bindtap="openDetail">
+          <view class="fb-item-head">
+            <view class="fb-item-title">#{{item.id}} {{item.subject || '（无主题）'}}</view>
+            <view class="fb-badge {{item.statusClass}}">{{item.status_text}}</view>
+          </view>
+          <view class="fb-item-body">{{item.content}}</view>
+          <view class="fb-item-remark" wx:if="{{item.remark}}">
+            <text class="fb-item-remark-label">处理备注</text>
+            <text class="fb-item-remark-text">{{item.remark}}</text>
+          </view>
+          <view class="fb-item-foot">
+            <text>提交于 {{item.create_time}}</text>
+            <text wx:if="{{item.update_time}}">更新于 {{item.update_time}}</text>
+          </view>
+          <view class="fb-item-more">查看详情 ›</view>
+        </view>
+
+        <view class="fb-loading" wx:if="{{loading}}">加载中…</view>
+        <view class="fb-more" wx:elif="{{hasMore}}" bindtap="loadMore">点击加载更多</view>
+        <view class="fb-no-more" wx:elif="{{list.length}}">没有更多了</view>
+      </view>
+    </block>
+  </view>
+
+  <!-- 反馈详情弹窗 -->
+  <view class="fb-modal-mask" wx:if="{{detailShow && detail}}" bindtap="closeDetail">
+    <view class="fb-modal" catchtap="noop">
+      <view class="fb-modal-head">
+        <view class="fb-modal-title">反馈详情</view>
+        <view class="fb-modal-close" bindtap="closeDetail">×</view>
+      </view>
+      <scroll-view scroll-y class="fb-modal-body" style="max-height: 60vh;">
+        <view class="fb-modal-top">
+          <view class="fb-modal-subject">#{{detail.id}} {{detail.subject || '（无主题）'}}</view>
+          <view class="fb-badge {{detail.statusClass}}">{{detail.status_text}}</view>
+        </view>
+        <view class="fb-modal-block">
+          <view class="fb-modal-label">反馈内容</view>
+          <view class="fb-modal-content">{{detail.content}}</view>
+        </view>
+        <view class="fb-modal-block" wx:if="{{detail.remark}}">
+          <view class="fb-modal-label">处理备注</view>
+          <view class="fb-modal-remark">{{detail.remark}}</view>
+        </view>
+        <view class="fb-modal-row">
+          <text class="fb-modal-label">提交时间</text>
+          <text class="fb-modal-value">{{detail.create_time}}</text>
+        </view>
+        <view class="fb-modal-row" wx:if="{{detail.update_time}}">
+          <text class="fb-modal-label">更新时间</text>
+          <text class="fb-modal-value">{{detail.update_time}}</text>
+        </view>
+      </scroll-view>
+      <view class="fb-modal-foot">
+        <view class="fb-modal-btn plain" bindtap="closeDetail">关闭</view>
+        <view class="fb-modal-btn" bindtap="openContactGuide">联系客服</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 联系客服（在线客服 / 其他联系方式） -->
+  <contact-guide id="contactGuide" />
+</view>

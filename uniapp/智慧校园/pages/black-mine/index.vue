@@ -165,6 +165,12 @@
 						</view>
 						<!-- #endif -->
 
+						<view class="item-item" @click="handleFeedback">
+							<image class="item-logo" src="/static/assets/icon_cvoieudado/a-199_bianji-24.svg" mode="widthFix"></image>
+							<view class="item-text">意见反馈</view>
+							<image class="item-right" src="/static/assets/wxmp-right.svg" mode="widthFix"></image>
+						</view>
+
 						<view class="item-item" @click="handleAgreement">
 							<image class="item-logo" src="/static/assets/icon_cvoieudado/a-199_wenjian.svg" mode="widthFix"></image>
 							<view class="item-text">协议中心</view>
@@ -437,6 +443,13 @@ export default {
 			// 统一进入「协议中心」（小程序端不再直接跳微信隐私契约）
 			uni.navigateTo({
 				url: '/pages/agreement/index'
+			});
+		},
+
+		// 意见反馈：提交反馈并查看处理进度
+		handleFeedback() {
+			uni.navigateTo({
+				url: '/pages/feedback/index'
 			});
 		},
 

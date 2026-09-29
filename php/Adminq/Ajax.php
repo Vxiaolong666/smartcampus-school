@@ -10,6 +10,7 @@ require_once '../funsion/OAuthHelper.php';
 require_once '../funsion/ScheduleTime.php';
 require_once '../funsion/LanzouHelper.php';
 require_once '../funsion/Agreements.php';
+require_once '../funsion/ContactMsgs.php';
 
 @header('Content-Type: application/json; charset=UTF-8');
 
@@ -1352,6 +1353,26 @@ switch($act){
             if ($id <= 0) exit('{"code":-1,"msg":"参数错误"}');
             if ($DB->exec("DELETE FROM nteam_contact_msgs WHERE `id`='$id'") !== false) exit('{"code":0,"msg":"删除成功！"}');
             exit('{"code":-1,"msg":"删除失败['.$DB->error().']"}');
+        }
+    break;
+
+    case 'contact_msg_status':
+        // 更新留言 / 反馈的处理状态与处理备注（非「待处理」时自动标记为已读）
+        if(!$isLogin) exit('{"code":-1,"msg":"未登录"}');
+        if($adminData['adminRank']!=1){exit('{"code":-1,"msg":"您的账号没有权限使用此功能！"}');}
+        {
+            $id     = intval(isset($_POST['id']) ? $_POST['id'] : 0);
+            $status = isset($_POST['handle_status']) ? intval($_POST['handle_status']) : -1;
+            $remark = isset($_POST['remark']) ? trim($_POST['remark']) : '';
+            if ($id <= 0) exit('{"code":-1,"msg":"参数错误"}');
+            if (!contactMsgStatusValid($status)) exit('{"code":-1,"msg":"处理状态不合法"}');
+            if (mb_strlen($remark, 'UTF-8') > 500) exit('{"code":-1,"msg":"处理备注过长（最多 500 字）"}');
+            if (!contactMsgTableReady($DB)) exit('{"code":-1,"msg":"留言数据表不存在"}');
+            contactMsgEnsureSchema($DB);
+            if (!contactMsgSetStatus($DB, $id, $status, $remark)) {
+                exit('{"code":-1,"msg":"操作失败['.$DB->error().']"}');
+            }
+            exit('{"code":0,"msg":"已更新为「'.contactMsgStatusLabel($status).'」"}');
         }
     break;
 

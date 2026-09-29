@@ -37,6 +37,8 @@ $announcements = $DB->getAll("SELECT * FROM nteam_announcements WHERE is_publish
                         if ($displayImage && strpos($displayImage, 'http') !== 0 && strpos($displayImage, $siteBasePath) !== 0) {
                             $displayImage = $siteBasePath . $displayImage;
                         }
+                        // 内容预览：先转纯文本再去取前 80 字，避免出现 #、**、![]() 等 Markdown 符号
+                        $contentPreview = markdownToPlainText($ann['content'], 80);
                     ?>
                     <div class="col-md-6 col-lg-4 mb-4">
                         <div class="card h-100 border-0 shadow-sm">
@@ -60,13 +62,13 @@ $announcements = $DB->getAll("SELECT * FROM nteam_announcements WHERE is_publish
                                         <?php echo htmlspecialchars($ann['title']); ?>
                                     </a>
                                 </h5>
+                                <?php if($contentPreview !== ''): ?>
                                 <p class="card-text text-muted small">
-                                    <?php 
-                                    $plainContent = strip_tags($ann['content']);
-                                    echo htmlspecialchars(mb_substr($plainContent, 0, 80, 'UTF-8'));
-                                    if (mb_strlen($plainContent, 'UTF-8') > 80) echo '...';
-                                    ?>
+                                    <?php echo htmlspecialchars($contentPreview); ?>
                                 </p>
+                                <?php else: ?>
+                                <p class="card-text text-muted small">暂无内容摘要</p>
+                                <?php endif; ?>
                             </div>
                             <div class="card-footer bg-white border-0">
                                 <div class="d-flex justify-content-between align-items-center">

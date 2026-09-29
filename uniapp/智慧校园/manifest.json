@@ -2,8 +2,8 @@
     "name" : "智慧校园",
     "appid" : "__UNI__4DF7010",
     "description" : "一站式智慧校园服务平台",
-    "versionName" : "1.9.3",
-    "versionCode" : 1903,
+    "versionName" : "1.9.3.1",
+    "versionCode" : 1931,
     "transformPx" : false,
     /* 5+App特有相关 */
     "app-plus" : {
@@ -43,12 +43,18 @@
                     "<uses-feature android:name=\"android.hardware.camera\"/>",
                     "<uses-permission android:name=\"android.permission.WRITE_SETTINGS\"/>"
                 ],
-                "abiFilters" : [ "armeabi-v7a", "arm64-v8a", "x86" ]
+                "abiFilters" : [ "armeabi-v7a", "arm64-v8a", "x86" ],
+                /* UrlSchemes：供网页/三方 App 以 smartcampus:// 唤起本 App
+                   需与 php/user/oauth_bind_result.php 的 $DEFAULT_APP_SCHEME 保持一致；
+                   修改后必须重新云打包才生效（真机调试需用自定义基座） */
+                "schemes" : "smartcampus"
             },
             /* ios打包配置 */
             "ios" : {
                 "idfa" : false,
-                "dSYMs" : false
+                "dSYMs" : false,
+                /* iOS UrlSchemes：与 Android 使用同一个 scheme */
+                "urltypes" : "smartcampus"
             },
             /* SDK配置 */
             "sdkConfigs" : {},
@@ -110,7 +116,8 @@
         "usingComponents" : true
     },
     "uniStatistics" : {
-        "enable" : false
+        "enable" : false,
+        "debug" : false
     },
     "vueVersion" : "3",
     "locale" : "zh-Hans",

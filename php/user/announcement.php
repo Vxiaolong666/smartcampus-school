@@ -81,9 +81,8 @@ include('./head.php');
                             </div>
                             <?php endif; ?>
 
-                            <div class="content markdown-body" id="announcementContent">
-                                <?php echo htmlspecialchars($announcement['content']); ?>
-                            </div>
+                            <?php /* 正文紧贴标签输出：模板缩进会被 Markdown 当作 4 空格代码块 */ ?>
+                            <div class="content markdown-body" id="announcementContent"><?php echo htmlspecialchars(trim($announcement['content'])); ?></div>
                         </article>
                     </div>
                 </div>
@@ -214,8 +213,22 @@ function aiSummarizeAnnouncement() {
 }
 
 $(document).ready(function() {
-    var content = $('#announcementContent').text();
-    $('#announcementContent').html(marked.parse(content));
+    // 去掉首尾空白：内容前的缩进会被 Markdown 解析成 4 空格代码块
+    var content = $.trim($('#announcementContent').text());
+    var $el = $('#announcementContent');
+    $el.html(marked.parse(content));
+
+    // 正文内相对路径图片补站点子目录前缀（与协议详情页一致，兼容 /csgocs 等二级目录部署）
+    var base = <?php echo json_encode($siteBasePath, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+    if (base) {
+        $el.find('img').each(function () {
+            var src = $(this).attr('src') || '';
+            if (src.charAt(0) === '/' && src.charAt(1) !== '/' && src.indexOf(base + '/') !== 0) {
+                $(this).attr('src', base + src);
+            }
+        });
+    }
+
     aiSummarizeAnnouncement();
 });
 </script>

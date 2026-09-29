@@ -3870,6 +3870,117 @@ switch($act) {
         ));
     break;
 
+    // ==================== 意见反馈（登录用户） ====================
+
+    case 'submit_feedback':
+        // 提交意见反馈：关联当前登录用户（source=user），免人机验证
+        $user = authenticateUser($DB);
+        if (!$user) {
+            jsonResponse(-2, '请先登录');
+        }
+        require_once __DIR__ . '/funsion/ContactMsgs.php';
+        if (!contactMsgTableReady($DB)) {
+            jsonResponse(-1, '反馈功能尚未初始化');
+        }
+        if (!contactMsgEnsureSchema($DB)) {
+            jsonResponse(-1, '反馈功能尚未完成初始化，请联系管理员');
+        }
+
+        $fbName    = isset($_POST['name']) ? trim($_POST['name']) : '';
+        $fbPhone   = isset($_POST['phone']) ? trim($_POST['phone']) : '';
+        $fbEmail   = isset($_POST['email']) ? trim($_POST['email']) : '';
+        $fbSubject = isset($_POST['subject']) ? trim($_POST['subject']) : '';
+        $fbContent = isset($_POST['content']) ? trim($_POST['content']) : '';
+
+        // 联系方式留空时用账号信息补全
+        $fbUserId = intval($user['user_id']);
+        $fbUser = $DB->getRow("SELECT username, nickname, email FROM nteam_users WHERE id='$fbUserId'");
+        if ($fbName === '' && $fbUser) {
+            $fbName = !empty($fbUser['nickname']) ? $fbUser['nickname'] : $fbUser['username'];
+        }
+        if ($fbEmail === '' && $fbUser && !empty($fbUser['email'])) {
+            $fbEmail = $fbUser['email'];
+        }
+
+        if ($fbName === '' || $fbContent === '') {
+            jsonResponse(-1, '请填写姓名与反馈内容');
+        }
+        if (mb_strlen($fbContent, 'UTF-8') > 2000) {
+            jsonResponse(-1, '反馈内容过长（最多 2000 字）');
+        }
+        if ($fbEmail !== '' && !filter_var($fbEmail, FILTER_VALIDATE_EMAIL)) {
+            jsonResponse(-1, '邮箱格式不正确');
+        }
+
+        $newFbId = contactMsgAdd($DB, array(
+            'name'    => $fbName,
+            'phone'   => $fbPhone,
+            'email'   => $fbEmail,
+            'subject' => $fbSubject,
+            'content' => $fbContent,
+            'ip'      => isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '',
+            'ua'      => isset($_SERVER['HTTP_USER_AGENT']) ? substr($_SERVER['HTTP_USER_AGENT'], 0, 250) : '',
+            'user_id' => $fbUserId
+        ));
+        if ($newFbId === false) {
+            jsonResponse(-1, '提交失败，请稍后重试');
+        }
+        jsonResponse(0, '提交成功，我们会尽快处理', array('id' => $newFbId));
+    break;
+
+    case 'get_my_feedbacks':
+        // 我的反馈记录（含处理状态与处理备注），按提交时间倒序分页
+        $user = authenticateUser($DB);
+        if (!$user) {
+            jsonResponse(-2, '请先登录');
+        }
+        require_once __DIR__ . '/funsion/ContactMsgs.php';
+        if (!contactMsgTableReady($DB) || !contactMsgEnsureSchema($DB)) {
+            jsonResponse(-1, '反馈功能尚未初始化');
+        }
+
+        $fbUserId = intval($user['user_id']);
+        $fbPage   = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+        $fbSize   = isset($_GET['size']) ? intval($_GET['size']) : 10;
+        if ($fbSize < 1 || $fbSize > 50) {
+            $fbSize = 10;
+        }
+        $fbOffset = ($fbPage - 1) * $fbSize;
+
+        $fbTotal = intval($DB->getColumn("SELECT COUNT(*) FROM nteam_contact_msgs WHERE `user_id`='$fbUserId'"));
+        $fbRows  = $DB->getAll("SELECT `id`,`subject`,`content`,`handle_status`,`remark`,`create_time`,`update_time`
+            FROM nteam_contact_msgs WHERE `user_id`='$fbUserId' ORDER BY `id` DESC LIMIT $fbOffset, $fbSize");
+
+        $fbList = array();
+        if (is_array($fbRows)) {
+            foreach ($fbRows as $fbRow) {
+                $fbList[] = array(
+                    'id'          => intval($fbRow['id']),
+                    'subject'     => $fbRow['subject'],
+                    'content'     => $fbRow['content'],
+                    'status'      => intval($fbRow['handle_status']),
+                    'status_text' => contactMsgStatusLabel($fbRow['handle_status']),
+                    'remark'      => $fbRow['remark'],
+                    'create_time' => $fbRow['create_time'],
+                    'update_time' => $fbRow['update_time']
+                );
+            }
+        }
+
+        // 表单开关（后台「首页配置」）：客户端据此隐藏 / 禁用提交入口
+        include_once __DIR__ . '/Common/home_config.php';
+        $fbFormOpen = function_exists('homeCfg') ? intval(homeCfg('contact_form_open', 1)) : 1;
+
+        jsonResponse(0, 'success', array(
+            'list'      => $fbList,
+            'total'     => $fbTotal,
+            'page'      => $fbPage,
+            'size'      => $fbSize,
+            'has_more'  => ($fbOffset + count($fbList)) < $fbTotal,
+            'form_open' => $fbFormOpen
+        ));
+    break;
+
     // ===== App 版本更新：检查更新（免登录） =====
     case 'get_app_version':
         $clientCode = intval($_GET['version_code'] ?? 0);

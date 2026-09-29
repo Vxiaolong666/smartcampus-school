@@ -212,6 +212,12 @@
 			}
 		},
 		{
+			"path": "pages/feedback/index",
+			"style": {
+				"navigationBarTitleText": "意见反馈"
+			}
+		},
+		{
 			"path": "pages/ai-chat/index",
 			"style": {
 				"navigationBarTitleText": "AI 助手"
