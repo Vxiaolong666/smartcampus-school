@@ -5,7 +5,7 @@ include('Common/home_config.php');
 $siteName = htmlspecialchars(conf('Name') ?: '智校通', ENT_QUOTES);
 $siteTitle = htmlspecialchars(conf('SiteName') ?: conf('Name') ?: '智校通', ENT_QUOTES);
 
-// 后台「首页配置 → 下载方式」；为空时页面回退到原有静态卡片
+// 后台「官网配置 → 下载方式」；为空时页面回退到原有静态卡片
 $downloads    = homeDownloadList();
 $dlIntro      = homeCfg('download_intro');
 $hasDlConfig  = !empty($downloads);

@@ -102,7 +102,7 @@ switch($act){
             }
         }
         if($result){
-            $DB->query("insert into `nteam_log` (`adminUser`,`type`,`data`,`ip`,`city`) values ('" . $_SESSION['adminUser'] . "','修改了首页配置', NOW(), '".$ip."', '')");
+            $DB->query("insert into `nteam_log` (`adminUser`,`type`,`data`,`ip`,`city`) values ('" . $_SESSION['adminUser'] . "','修改了官网配置', NOW(), '".$ip."', '')");
             exit('{"code":0,"msg":"设置保存成功！"}');
         }else{ exit('{"code":-1,"msg":"修改设置失败['.$DB->error().']"}');}
     break;
@@ -1241,7 +1241,10 @@ switch($act){
         exit('{"code":0,"msg":"清空成功，共删除 '.$deleted.' 条（冷静期内记录已保留）"}');
     break;
 
-    // ===== 首页配置（官网：网站地址 / 联系方式 / 下载方式 / 常见问题 / 联系我们留言） =====
+    // ===== 官网配置（官网：网站地址 / 联系方式 / 下载方式 / 常见问题） =====
+    // 注意：留言 / 反馈的两个开关（contact_form_open、contact_form_captcha）已迁移至
+    //       「用户反馈 → 反馈配置」Tab（user_feedback.php?tab=config），本接口不再写入这两个字段，
+    //       避免在未提交这两个字段时把它们重置为 0。
     case 'home_config_save':
         if(!$isLogin) exit('{"code":-1,"msg":"未登录"}');
         if($adminData['adminRank']!=1){exit('{"code":-1,"msg":"您的账号没有权限使用此功能！"}');}
@@ -1253,14 +1256,37 @@ switch($act){
                 $v = isset($_POST[$f]) ? addslashes(trim($_POST[$f])) : '';
                 $sets[] = "`{$f}`='{$v}'";
             }
-            $sets[] = "`contact_form_open`='"    . (isset($_POST['contact_form_open'])    ? intval($_POST['contact_form_open'])    : 0) . "'";
-            $sets[] = "`contact_form_captcha`='" . (isset($_POST['contact_form_captcha']) ? intval($_POST['contact_form_captcha']) : 0) . "'";
 
             $row = $DB->getRow("SELECT id FROM nteam_home_config WHERE id=1");
             if (!$row) { $DB->exec("INSERT INTO nteam_home_config (`id`) VALUES (1)"); }
 
             if ($DB->exec("UPDATE nteam_home_config SET " . implode(',', $sets) . " WHERE `id`=1") !== false) {
-                exit('{"code":0,"msg":"首页配置保存成功！"}');
+                exit('{"code":0,"msg":"官网配置保存成功！"}');
+            }
+            exit('{"code":-1,"msg":"保存失败['.$DB->error().']"}');
+        }
+    break;
+
+    // ===== 反馈配置（联系我们 / 意见反馈表单的两个开关，独立页面维护） =====
+    case 'feedback_config_save':
+        if(!$isLogin) exit('{"code":-1,"msg":"未登录"}');
+        if($adminData['adminRank']!=1){exit('{"code":-1,"msg":"您的账号没有权限使用此功能！"}');}
+        {
+            // 未提交的开关按「禁用」处理（页面为单选，正常提交都会有值）
+            $formOpen    = isset($_POST['contact_form_open'])    ? intval($_POST['contact_form_open'])    : 0;
+            $formCaptcha = isset($_POST['contact_form_captcha']) ? intval($_POST['contact_form_captcha']) : 0;
+            $formOpen    = $formOpen === 1 ? 1 : 0;
+            $formCaptcha = $formCaptcha === 1 ? 1 : 0;
+
+            $row = $DB->getRow("SELECT id FROM nteam_home_config WHERE id=1");
+            if (!$row) { $DB->exec("INSERT INTO nteam_home_config (`id`) VALUES (1)"); }
+
+            $sql = "UPDATE nteam_home_config SET "
+                 . "`contact_form_open`='{$formOpen}', `contact_form_captcha`='{$formCaptcha}' WHERE `id`=1";
+            if ($DB->exec($sql) !== false) {
+                $msg = '反馈配置保存成功！当前状态：留言提交' . ($formOpen ? '已启用' : '已禁用')
+                     . '，提交前人机验证' . ($formCaptcha ? '已启用' : '已禁用') . '。';
+                exit('{"code":0,"msg":"' . $msg . '"}');
             }
             exit('{"code":-1,"msg":"保存失败['.$DB->error().']"}');
         }

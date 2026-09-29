@@ -51,6 +51,11 @@
 								@input="onContentInput"
 							></textarea>
 						</view>
+						<!-- 人机验证（后台「反馈配置」开启时展示）：H5 / App 端腾讯滑块，异常可改用图片验证码 -->
+						<view class="fb-field" v-if="needFeedbackCaptcha">
+							<view class="fb-label">人机验证 <text class="fb-required">*</text></view>
+							<captcha-verify ref="captcha" />
+						</view>
 						<view class="fb-tip">联系方式默认使用账号信息{{ contactSummary ? '（' + contactSummary + '）' : '' }}，如需修改请在「个人资料」中更新。</view>
 						<button class="fb-btn primary" :disabled="submitting" :loading="submitting" @click="onSubmit">提交反馈</button>
 					</template>
@@ -152,6 +157,8 @@ export default {
 		return {
 			isLoggedIn: false,
 			formOpen: true,
+			// 提交前人机验证开关（后台「反馈配置」，接口返回 form_captcha）
+			formCaptcha: true,
 			subject: '',
 			content: '',
 			contactSummary: '',
@@ -167,6 +174,15 @@ export default {
 			contactShow: false,
 			contactLines: []
 		};
+	},
+	computed: {
+		// 提交前是否需要人机验证：小程序端由小程序项目内部处理（uni 端人机验证组件在 mp 端不渲染）
+		needFeedbackCaptcha() {
+			// #ifdef MP-WEIXIN
+			return false;
+			// #endif
+			return this.formCaptcha;
+		}
 	},
 	onLoad() {
 		this.isLoggedIn = api.isLoggedIn();
@@ -215,7 +231,7 @@ export default {
 		closeDetail() {
 			this.detailShow = false;
 		},
-		// 联系客服：弹窗展示后台「首页配置」中维护的联系方式（与协议中心页一致）
+		// 联系客服：弹窗展示后台「官网配置」中维护的联系方式（与协议中心页一致）
 		async onContact() {
 			uni.showLoading({ title: '加载中...' });
 			let info = null;
@@ -260,6 +276,10 @@ export default {
 					if (data.form_open !== undefined) {
 						this.formOpen = Number(data.form_open) === 1;
 					}
+					// 后台「反馈配置」的「提交前人机验证」开关
+					if (data.form_captcha !== undefined) {
+						this.formCaptcha = Number(data.form_captcha) === 1;
+					}
 					this.loading = false;
 				})
 				.catch((err) => {
@@ -272,6 +292,24 @@ export default {
 			this.page += 1;
 			this.loadList(false);
 		},
+		// 提交前校验人机验证（开关关闭或小程序端时直接通过）
+		checkCaptcha() {
+			if (!this.needFeedbackCaptcha) return { ok: true, msg: '', data: {} };
+			const cap = this.$refs.captcha;
+			if (!cap) return { ok: true, msg: '', data: {} };
+			const res = cap.check();
+			return {
+				ok: !!(res && res.ok),
+				msg: (res && res.msg) || '',
+				data: (res && res.data) || {}
+			};
+		},
+		// 重置人机验证：图片验证码为一次性，滑块票据也不应重复使用
+		resetCaptcha() {
+			if (this.needFeedbackCaptcha && this.$refs.captcha) {
+				this.$refs.captcha.reset();
+			}
+		},
 		onSubmit() {
 			const content = (this.content || '').trim();
 			if (!content) {
@@ -279,20 +317,34 @@ export default {
 				return;
 			}
 			if (this.submitting) return;
+
+			// 人机验证（后台「反馈配置」开启时必填）：与网页端一致，滑块票据或图片验证码二者其一
+			const cap = this.checkCaptcha();
+			if (!cap.ok) {
+				uni.showToast({ title: cap.msg || '请先完成人机验证', icon: 'none' });
+				return;
+			}
+
 			this.submitting = true;
 			uni.showLoading({ title: '提交中...' });
-			api.submitFeedback({ subject: (this.subject || '').trim(), content: content })
+			api.submitFeedback(Object.assign({
+				subject: (this.subject || '').trim(),
+				content: content
+			}, cap.data))
 				.then((res) => {
 					uni.hideLoading();
 					this.submitting = false;
 					this.subject = '';
 					this.content = '';
+					this.resetCaptcha();
 					uni.showToast({ title: (res && res.msg) || '提交成功', icon: 'success' });
 					this.loadList(true);
 				})
 				.catch((err) => {
 					uni.hideLoading();
 					this.submitting = false;
+					// 验证结果已被后端消费，需重新验证后才能再次提交
+					this.resetCaptcha();
 					uni.showToast({ title: (err && err.msg) || '提交失败，请稍后重试', icon: 'none' });
 				});
 		}

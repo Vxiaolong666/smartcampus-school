@@ -34,10 +34,34 @@ Component({
 
   methods: {
     // 刷新验证码（加时间戳，避免图片被缓存复用）
+    // 说明：改用 wx.request 拉取图片并转 base64 展示，而不是 <image> 直连 ——
+    //   captcha.php 通过 Set-Cookie 下发 Session（答案存在 $_SESSION['captcha']），
+    //   wx.request 会保存并在后续请求中带上该 Cookie，接口（如 submit_feedback）
+    //   才能校验图片验证码；<image> 直连不保证参与 Cookie 管理，后端会取不到答案。
     refresh() {
-      this.setData({
-        code: '',
-        imgUrl: api.getFileUrl('/server-submit/captcha.php?t=' + Date.now())
+      this.setData({ code: '', imgUrl: '' });
+      const url = api.getFileUrl('/server-submit/captcha.php?t=' + Date.now());
+      if (typeof wx.arrayBufferToBase64 !== 'function') {
+        this.setData({ imgUrl: url });
+        return;
+      }
+      wx.request({
+        url: url,
+        method: 'GET',
+        responseType: 'arraybuffer',
+        success: (res) => {
+          if (res.statusCode === 200 && res.data) {
+            this.setData({
+              imgUrl: 'data:image/png;base64,' + wx.arrayBufferToBase64(res.data)
+            });
+          } else {
+            // 拉取异常时退化为直连展示，至少保证用户能看到验证码图片
+            this.setData({ imgUrl: url });
+          }
+        },
+        fail: () => {
+          this.setData({ imgUrl: url });
+        }
       });
     },
 

@@ -30,7 +30,7 @@ if ($appScheme === '')  $appScheme  = $DEFAULT_APP_SCHEME;
 $launchFailed = (isset($_GET['launch_failed']) && intval($_GET['launch_failed']) === 1);
 
 // ===== 下载 / 更新入口：跳转官网下载页（地址来自系统动态配置）=====
-// 优先「首页配置 → 网站地址」，留空回退系统「网站域名」配置；都没有时再用版本管理的直链兜底
+// 优先「官网配置 → 网站地址」，留空回退系统「网站域名」配置；都没有时再用版本管理的直链兜底
 $officialUrl = '';
 if (is_file(__DIR__ . '/../Common/home_config.php')) {
     include_once(__DIR__ . '/../Common/home_config.php');
@@ -187,7 +187,7 @@ $siteName  = conf('Name');
 
         <button class="result-btn" id="backBtn" onclick="backToApp()">返回 App</button>
 
-        <!-- 下载 / 更新：跳转官网下载页（地址由系统动态配置，后台「首页配置 → 网站地址」可改） -->
+        <!-- 下载 / 更新：跳转官网下载页（地址由系统动态配置，后台「官网配置 → 网站地址」可改） -->
         <a class="result-btn alt" id="downloadBtn" style="display:none" rel="noopener">前往官网下载 / 更新</a>
 
         <!-- 唤起失败 / 环境不允许时的反馈（含重试入口） -->

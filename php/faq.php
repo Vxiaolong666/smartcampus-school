@@ -5,7 +5,7 @@ include('Common/home_config.php');
 $siteName = htmlspecialchars(conf('Name') ?: '智校通', ENT_QUOTES);
 $siteTitle = htmlspecialchars(conf('SiteName') ?: conf('Name') ?: '智校通', ENT_QUOTES);
 
-// 后台「首页配置 → 常见问题配置」；为空时页面回退到原有静态内容
+// 后台「官网配置 → 常见问题配置」；为空时页面回退到原有静态内容
 $faqGroups    = homeFaqGrouped();
 $faqIntro     = homeCfg('faq_intro');
 $hasFaqConfig = !empty($faqGroups);

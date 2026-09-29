@@ -27,7 +27,7 @@
 | App 名称 / AppID | 智慧校园 / `__UNI__4DF7010` | `uniapp/智慧校园/manifest.json` 顶层 |
 | **Android 包名** | `com.gdnpc.smartcampus.school` | 打包侧：HBuilderX 云打包界面 / manifest；网页侧：`$DEFAULT_APP_PACKAGE` |
 | **URL Scheme** | `smartcampus` | `manifest.json`（Android + iOS）+ `$DEFAULT_APP_SCHEME` |
-| 官网下载页 | `{官网地址}/download.php` | 后台「首页配置 → 网站地址」，回退系统「网站域名」 |
+| 官网下载页 | `{官网地址}/download.php` | 后台「官网配置 → 网站地址」，回退系统「网站域名」 |
 | 版本直链兜底 | `nteam_app_versions.download_url` | 后台「版本管理」 |
 
 ---
@@ -39,8 +39,8 @@
 | `uniapp/智慧校园/manifest.json` | 注册 URL Scheme（Android `schemes` / iOS `urltypes`） |
 | `php/user/oauth_bind_result.php` | 结果页：唤起 App、失败反馈、跳官网下载 |
 | `php/Common/home_config.php` | 读取官网动态配置（`homeCfg('site_url')`） |
-| `php/download.php` | 官网下载页（内容来自后台「首页配置 → 下载方式」） |
-| `php/Adminq/home_config.php` | 后台「首页配置」：网站地址 / 下载方式 |
+| `php/download.php` | 官网下载页（内容来自后台「官网配置 → 下载方式」） |
+| `php/Adminq/home_config.php` | 后台「官网配置」：网站地址 / 下载方式 |
 | `php/Adminq/version_manage.php` | 后台「版本管理」：各平台下载地址（兜底用） |
 
 ---
@@ -108,12 +108,12 @@ user/oauth_bind_result.php?type=login&ok=1&msg=登录成功&pkg=com.new.package&
 
 取址优先级（`oauth_bind_result.php` 顶部）：
 
-1. 后台「首页配置 → **网站地址**」→ `nteam_home_config.site_url`
+1. 后台「官网配置 → **网站地址**」→ `nteam_home_config.site_url`
 2. 回退后台「**网站域名**」→ `nteam_config.Url`
 3. 拼接 `/download.php`（官网下载页），例如 `https://mc.xzwmc.com/csgocs/download.php`
 4. 以上都为空时，才回退「版本管理」里的直链
 
-> 改地址**不需要动代码**：后台「首页配置 → 网站地址」「系统设置 → 网站域名」改完即生效。
+> 改地址**不需要动代码**：后台「官网配置 → 网站地址」「系统设置 → 网站域名」改完即生效。
 > 想直接跳官网首页（而不是下载页），把 `$downloadUrl` 那行的 `'/download.php'` 去掉即可。
 
 ---
@@ -224,7 +224,7 @@ adb shell am start -a android.intent.action.VIEW -d "smartcampus://"
 | 修改 scheme 后无变化 | 必须**重新云打包**；真机调试要用自定义基座 |
 | 唤起后 App 没打开到预期页面 | 目前只做「回到 App」；如需深链跳页，可在 App 的 `App.vue → onShow` 里读取 `plus.runtime.arguments` 自行路由 |
 | 多个 App 抢同一 scheme | 换成更具品牌特征的 scheme（如 `gdnpcsmartcampus`） |
-| 官网下载按钮不显示 | 检查后台「首页配置 → 网站地址」或「系统设置 → 网站域名」是否已填写 |
+| 官网下载按钮不显示 | 检查后台「官网配置 → 网站地址」或「系统设置 → 网站域名」是否已填写 |
 
 ---
 

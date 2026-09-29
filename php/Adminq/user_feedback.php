@@ -1,6 +1,6 @@
 <?php
 /**
- * 用户反馈（留言）管理 —— 独立页面
+ * 用户反馈（留言）管理 —— 独立页面（含「反馈记录」「反馈配置」两个 Tab）
  * ------------------------------------------------------------------
  * 数据表 nteam_contact_msgs，包含两个来源：
  *   - 用户端「联系我们」提交的反馈：source=user，带 user_id，用户可在用户端查看处理进度；
@@ -9,6 +9,13 @@
  * 处理状态 handle_status：0 待处理、1 处理中、2 已解决、3 已驳回、4 已忽略；
  * 原有 status 字段继续表示管理员「已读 / 未读」，处理时若状态不是「待处理」会自动标记已读；
  * 处理备注（remark）用户端可见。
+ *
+ * 两个 Tab（与「官网配置」等页面一致，通过 ?tab= 切换）：
+ *   - 反馈记录（?tab=list，默认）：筛选、处理、标已读、删除；
+ *   - 反馈配置（?tab=config）     ：联系我们 / 意见反馈表单的两个开关
+ *       contact_form_open    = 留言 / 反馈提交开关（关闭后三端都不能提交新反馈）；
+ *       contact_form_captcha = 提交前人机验证开关（启用后三端提交前都需通过滑块 / 图片验证码）。
+ *     这两个开关原先在「官网配置」中维护，已迁移到本页「反馈配置」Tab。
  */
 $mod = 'admin';
 $title = '用户反馈';
@@ -20,8 +27,22 @@ if ($adminData['adminRank'] != 1) {
     exit;
 }
 require_once('../funsion/ContactMsgs.php');
+include('../Common/home_config.php');
 
 function h($v) { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); }
+
+// ===== 当前 Tab：反馈记录（默认）/ 反馈配置 =====
+$activeTab = (isset($_GET['tab']) && $_GET['tab'] === 'config') ? 'config' : 'list';
+
+// ===== 反馈配置 Tab 的开关（未配置时按启用处理，与用户端 homeCfg($k, 1) 口径一致） =====
+if (!function_exists('fbCfgOn')) {
+    function fbCfgOn($k, $d = 1) {
+        $v = homeCfg($k, $d);
+        return intval($v === '' || $v === null ? $d : $v) === 1;
+    }
+}
+$fcFormOpen    = fbCfgOn('contact_form_open', 1);
+$fcFormCaptcha = fbCfgOn('contact_form_captcha', 1);
 
 /**
  * 列表用的紧凑时间格式
@@ -238,6 +259,25 @@ if (!function_exists('contactMsgActions')) {
     border-color: #334155 !important;
 }
 #page-container.dark-mode .mobile-card-label { color: #94a3b8 !important; }
+
+/* ===== 反馈配置 Tab：开关卡片（与后台其它配置页观感一致） ===== */
+.fc-switch-card {
+    border: 1px solid #e9ecf3;
+    border-radius: .5rem;
+    padding: 1rem 1.15rem;
+    height: 100%;
+    background: #fcfdff;
+}
+.fc-switch-title { font-weight: 600; margin-bottom: .25rem; }
+.fc-switch-desc { font-size: .8125rem; color: #8a94a6; line-height: 1.7; }
+.fc-switch-body { margin-top: .75rem; }
+.fc-state { font-size: .8125rem; }
+#page-container.dark-mode .fc-switch-card {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+    color: #cbd5e1;
+}
+#page-container.dark-mode .fc-switch-desc { color: #94a3b8 !important; }
 </style>
 
 <div id="pjax-container">
@@ -246,7 +286,7 @@ if (!function_exists('contactMsgActions')) {
         <?php if (!$tablesReady): ?>
         <div class="alert alert-warning">
             <i class="fa fa-exclamation-triangle me-2"></i>
-            尚未检测到留言数据表 <code>nteam_contact_msgs</code>，请先导入首页配置相关建表 SQL。
+            尚未检测到留言数据表 <code>nteam_contact_msgs</code>，请先导入官网配置相关建表 SQL。
         </div>
         <?php else: ?>
 
@@ -258,6 +298,20 @@ if (!function_exists('contactMsgActions')) {
         </div>
         <?php endif; ?>
 
+        <ul class="nav nav-tabs mt-4" role="tablist">
+            <li class="nav-item">
+                <a class="nav-link <?php echo $activeTab === 'list' ? 'active' : ''; ?>" href="?tab=list">
+                    <i class="fa fa-comments me-1"></i>反馈记录
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link <?php echo $activeTab === 'config' ? 'active' : ''; ?>" href="?tab=config">
+                    <i class="fa fa-sliders-h me-1"></i>反馈配置
+                </a>
+            </li>
+        </ul>
+
+        <?php if ($activeTab === 'list'): ?>
         <div class="block block-rounded">
             <div class="block-header block-header-default">
                 <h3 class="block-title"><i class="fa fa-comments me-2"></i>用户反馈</h3>
@@ -445,6 +499,106 @@ if (!function_exists('contactMsgActions')) {
                 <?php echo fbPager($page, $totalPages); ?>
             </div>
         </div>
+        <?php else: ?>
+        <!-- ============ 反馈配置：联系我们 / 意见反馈表单的两个开关 ============ -->
+        <div class="block block-rounded">
+            <div class="block-header block-header-default">
+                <h3 class="block-title"><i class="fa fa-sliders-h me-2"></i>反馈配置</h3>
+                <div class="block-options">
+                    <button type="button" onclick="window.location.reload()" class="btn-block-option" data-toggle="block-option" data-action="state_toggle" data-action-mode="demo">
+                        <i class="si si-refresh"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="block-content">
+                <p class="text-muted fs-sm mb-4">
+                    这里的开关同时作用于<b>官网留言表单</b>、<b>用户网页端（联系我们 / 意见反馈）</b>、
+                    <b>UNIAPP 安卓端</b>与<b>微信小程序端</b>的反馈提交，保存后立即生效；
+                    反馈记录的处理在<a href="?tab=list">反馈记录</a> Tab 中完成。
+                </p>
+
+                <form onsubmit="return saveFeedbackConfig(this)" method="post" name="feedback-config-form">
+                    <div class="row g-3">
+                        <!-- 留言 / 反馈提交开关 -->
+                        <div class="col-md-6">
+                            <div class="fc-switch-card">
+                                <div class="fc-switch-title">
+                                    <i class="fa fa-comment-dots me-1 text-primary"></i>联系我们表单提交开关
+                                </div>
+                                <div class="fc-switch-desc">
+                                    关闭后三端均不能提交新的反馈 / 留言；
+                                    历史反馈记录与页面展示的联系方式不受影响。
+                                </div>
+                                <div class="fc-switch-body">
+                                    <div class="form-check form-check-inline">
+                                        <label class="form-check-label">
+                                            <input class="form-check-input" type="radio" name="contact_form_open" value="0" <?php echo $fcFormOpen ? '' : 'checked'; ?>>禁用
+                                        </label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <label class="form-check-label">
+                                            <input class="form-check-input" type="radio" name="contact_form_open" value="1" <?php echo $fcFormOpen ? 'checked' : ''; ?>>启用
+                                        </label>
+                                    </div>
+                                    <div class="fc-state text-muted mt-1">
+                                        当前：<?php echo $fcFormOpen
+                                            ? '<span class="text-success">已启用，允许提交反馈</span>'
+                                            : '<span class="text-danger">已禁用，三端均不能提交反馈</span>'; ?>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 提交前人机验证开关 -->
+                        <div class="col-md-6">
+                            <div class="fc-switch-card">
+                                <div class="fc-switch-title">
+                                    <i class="fa fa-shield-alt me-1 text-primary"></i>提交前滑块 / 验证码验证
+                                </div>
+                                <div class="fc-switch-desc">
+                                    启用后，提交反馈前必须先通过人机验证：
+                                    网页端与 App 端优先滑块验证（异常可改用图片验证码），小程序端使用图片验证码；
+                                    关闭后所有端提交均免验证。
+                                </div>
+                                <div class="fc-switch-body">
+                                    <div class="form-check form-check-inline">
+                                        <label class="form-check-label">
+                                            <input class="form-check-input" type="radio" name="contact_form_captcha" value="0" <?php echo $fcFormCaptcha ? '' : 'checked'; ?>>禁用
+                                        </label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <label class="form-check-label">
+                                            <input class="form-check-input" type="radio" name="contact_form_captcha" value="1" <?php echo $fcFormCaptcha ? 'checked' : ''; ?>>启用
+                                        </label>
+                                    </div>
+                                    <div class="fc-state text-muted mt-1">
+                                        当前：<?php echo $fcFormCaptcha
+                                            ? '<span class="text-success">已启用，提交前需完成人机验证</span>'
+                                            : '<span class="text-danger">已禁用，提交前无需验证</span>'; ?>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info mt-4 mb-4 fs-sm">
+                        <i class="fa fa-info-circle me-1"></i>
+                        提示：人机验证开关被关闭时，反馈提交接口不再校验验证码参数；
+                        开启后，未携带有效验证结果的提交会被后端直接拒绝。
+                    </div>
+
+                    <div class="mb-4">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fa fa-check opacity-50 me-1"></i> <b>保存设置</b>
+                        </button>
+                        <a class="btn btn-alt-secondary ms-2" href="?tab=list">
+                            <i class="fa fa-comments me-1"></i>查看反馈记录
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <?php endif; ?>
 
         <?php endif; ?>
     </div>
@@ -483,6 +637,11 @@ function delRow(act, id, tip) {
         postAct(act, {id: id});
     });
     return false;
+}
+
+// ===== 反馈配置 Tab：保存「联系我们表单提交开关」与「提交前人机验证」两个开关 =====
+function saveFeedbackConfig(obj) {
+    return postAct('feedback_config_save', $(obj).serialize());
 }
 
 // ===== 处理弹窗：处理状态 + 处理备注（备注用户端可见） =====

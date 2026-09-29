@@ -459,7 +459,7 @@ export default {
 			});
 		},
 
-		// 联系客服（非小程序端）：弹窗展示后台「首页配置」中维护的联系方式
+		// 联系客服（非小程序端）：弹窗展示后台「官网配置」中维护的联系方式
 		async handleContact() {
 			uni.showLoading({ title: '加载中...' });
 			let info = null;

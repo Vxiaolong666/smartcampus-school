@@ -12,6 +12,8 @@ Page({
   data: {
     isLoggedIn: false,
     formOpen: true,
+    // 提交前人机验证开关（后台「反馈配置」，接口返回 form_captcha）
+    formCaptcha: true,
     subject: '',
     content: '',
     contactSummary: '',
@@ -109,6 +111,8 @@ Page({
           total: Number(data.total) || 0,
           hasMore: !!data.has_more,
           formOpen: data.form_open === undefined ? this.data.formOpen : Number(data.form_open) === 1,
+          // 后台「反馈配置」的「提交前人机验证」开关
+          formCaptcha: data.form_captcha === undefined ? this.data.formCaptcha : Number(data.form_captcha) === 1,
           loading: false
         });
       })
@@ -124,6 +128,22 @@ Page({
     this.loadList(false);
   },
 
+  // 提交前校验图片验证码（后台「反馈配置」开启人机验证时必填）
+  checkCaptcha() {
+    if (!this.data.formCaptcha) return { ok: true, msg: '', code: '' };
+    const cap = this.selectComponent('#captchaImg');
+    if (!cap) return { ok: true, msg: '', code: '' };
+    const res = cap.check();
+    return { ok: !!(res && res.ok), msg: (res && res.msg) || '', code: cap.getCode() };
+  },
+
+  // 重置图片验证码：验证码为一次性，提交后需重新获取
+  resetCaptcha() {
+    if (!this.data.formCaptcha) return;
+    const cap = this.selectComponent('#captchaImg');
+    if (cap) cap.refresh();
+  },
+
   onSubmit() {
     const content = (this.data.content || '').trim();
     if (!content) {
@@ -131,18 +151,33 @@ Page({
       return;
     }
     if (this.data.submitting) return;
+
+    // 人机验证（后台「反馈配置」开启时必填）：与网页端一致，验证不通过不发请求
+    const cap = this.checkCaptcha();
+    if (!cap.ok) {
+      wx.showToast({ title: cap.msg || '请先完成人机验证', icon: 'none' });
+      return;
+    }
+
     this.setData({ submitting: true });
     wx.showLoading({ title: '提交中...' });
-    api.submitFeedback({ subject: (this.data.subject || '').trim(), content: content })
+    api.submitFeedback({
+      subject: (this.data.subject || '').trim(),
+      content: content,
+      captcha: cap.code
+    })
       .then((res) => {
         wx.hideLoading();
         this.setData({ submitting: false, subject: '', content: '' });
+        this.resetCaptcha();
         wx.showToast({ title: (res && res.msg) || '提交成功', icon: 'success' });
         this.loadList(true);
       })
       .catch((err) => {
         wx.hideLoading();
         this.setData({ submitting: false });
+        // 验证码已被后端消费，需重新获取后再提交
+        this.resetCaptcha();
         wx.showToast({ title: (err && err.msg) || '提交失败，请稍后重试', icon: 'none' });
       });
   }

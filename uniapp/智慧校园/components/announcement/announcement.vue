@@ -78,7 +78,7 @@ export default {
 				cancelText: '联系客服',
 				confirmText: '我知道了',
 				success: (res) => {
-					// 点击「联系客服」：展示后台「首页配置」维护的联系方式
+					// 点击「联系客服」：展示后台「官网配置」维护的联系方式
 					if (res.cancel) this.openContact();
 				}
 			});

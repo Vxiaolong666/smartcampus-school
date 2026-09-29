@@ -549,7 +549,7 @@ include('../Common/Core_brain.php');
                                             <li class="nav-main-item">
                                                 <a class="nav-main-link" href="home_config.php">
                                                     <i class="nav-main-link-icon fa fa-house-chimney"></i>
-                                                    <span class="nav-main-link-name"><b>首页配置</b></span>
+                                                    <span class="nav-main-link-name"><b>官网配置</b></span>
                                                 </a>
                                             </li>
                                             <li class="nav-main-item">

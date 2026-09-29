@@ -3562,7 +3562,7 @@ switch($act) {
         jsonResponse(0, 'success', ['start' => $start, 'end' => $end]);
     break;
 
-    // 联系方式（后台「首页配置」维护，免登录，供维护页等展示）
+    // 联系方式（后台「官网配置」维护，免登录，供维护页等展示）
     case 'get_contact_info':
         $info = [
             'email'    => '',
@@ -3892,6 +3892,31 @@ switch($act) {
         $fbSubject = isset($_POST['subject']) ? trim($_POST['subject']) : '';
         $fbContent = isset($_POST['content']) ? trim($_POST['content']) : '';
 
+        // ===== 人机验证（后台「反馈配置」的「提交前滑块 / 验证码验证」开关）=====
+        // 启用时：App 端优先滑块票据（tc_ticket / tc_randstr 非空即视为通过，与网页端口径一致），
+        // 小程序端走图片验证码（答案由 server-submit/captcha.php 写入 Session，一次性使用）。
+        include_once __DIR__ . '/Common/home_config.php';
+        $fbNeedCaptcha = function_exists('homeCfg') ? intval(homeCfg('contact_form_captcha', 1)) : 1;
+        if ($fbNeedCaptcha === 1) {
+            $fbTcTicket  = isset($_POST['tc_ticket']) ? trim($_POST['tc_ticket']) : '';
+            $fbTcRandstr = isset($_POST['tc_randstr']) ? trim($_POST['tc_randstr']) : '';
+            $fbCaptcha   = isset($_POST['captcha']) ? strtoupper(trim($_POST['captcha'])) : '';
+
+            $fbCaptchaValid = false;
+            if ($fbTcTicket !== '' && $fbTcRandstr !== '') {
+                $fbCaptchaValid = true;
+            } elseif ($fbCaptcha !== '') {
+                if (session_status() !== PHP_SESSION_ACTIVE) { @session_start(); }
+                if (isset($_SESSION['captcha']) && strtoupper($_SESSION['captcha']) === $fbCaptcha) {
+                    $fbCaptchaValid = true;
+                    unset($_SESSION['captcha']);
+                }
+            }
+            if (!$fbCaptchaValid) {
+                jsonResponse(-1, '请先完成滑块 / 验证码验证');
+            }
+        }
+
         // 联系方式留空时用账号信息补全
         $fbUserId = intval($user['user_id']);
         $fbUser = $DB->getRow("SELECT username, nickname, email FROM nteam_users WHERE id='$fbUserId'");
@@ -3967,17 +3992,19 @@ switch($act) {
             }
         }
 
-        // 表单开关（后台「首页配置」）：客户端据此隐藏 / 禁用提交入口
+        // 表单开关与人机验证开关（后台「反馈配置」页面）：客户端据此隐藏 / 禁用提交入口、决定是否展示人机验证
         include_once __DIR__ . '/Common/home_config.php';
-        $fbFormOpen = function_exists('homeCfg') ? intval(homeCfg('contact_form_open', 1)) : 1;
+        $fbFormOpen    = function_exists('homeCfg') ? intval(homeCfg('contact_form_open', 1)) : 1;
+        $fbFormCaptcha = function_exists('homeCfg') ? intval(homeCfg('contact_form_captcha', 1)) : 1;
 
         jsonResponse(0, 'success', array(
-            'list'      => $fbList,
-            'total'     => $fbTotal,
-            'page'      => $fbPage,
-            'size'      => $fbSize,
-            'has_more'  => ($fbOffset + count($fbList)) < $fbTotal,
-            'form_open' => $fbFormOpen
+            'list'         => $fbList,
+            'total'        => $fbTotal,
+            'page'         => $fbPage,
+            'size'         => $fbSize,
+            'has_more'     => ($fbOffset + count($fbList)) < $fbTotal,
+            'form_open'    => $fbFormOpen,
+            'form_captcha' => $fbFormCaptcha
         ));
     break;
 

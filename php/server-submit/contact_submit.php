@@ -8,9 +8,10 @@
  * 返回：{"code":0,"msg":"..."} code=0 成功，其它为失败
  *
  * 校验规则：
- *   1) 已登录用户（用户端提交）：免人机验证，自动关联 user_id 并预填姓名 / 邮箱，来源记为 user；
- *   2) 未登录访客（官网提交）：按后台开关校验腾讯滑块或图形验证码，来源记为 site。
- * 是否开启表单提交、是否强制验证，由后台「首页配置」开关控制。
+ *   1) 已登录用户（用户端提交）：自动关联 user_id 并预填姓名 / 邮箱，来源记为 user；
+ *   2) 未登录访客（官网提交）：来源记为 site。
+ * 两条链路是否要求人机验证，统一由后台「反馈配置」页面的「提交前滑块 / 验证码验证」开关决定
+ * （启用时两者都需通过验证）；是否允许提交由同页的「联系我们表单提交开关」控制。
  */
 $notLogin = true;
 include('../Common/Core_brain.php');
@@ -30,14 +31,14 @@ function contactOut($code, $msg) {
 
 // 数据表是否就绪
 if (!contactMsgTableReady($DB)) {
-    contactOut(-2, '系统尚未完成初始化，请先导入首页配置相关数据表');
+    contactOut(-2, '系统尚未完成初始化，请先导入官网配置相关数据表');
 }
 
 // 反馈功能字段（user_id / source / handle_status / remark / update_time）缺失时自动补齐
 contactMsgEnsureSchema($DB);
 
 $cfg = homeConfig();
-// 默认开启（未配置时按开启处理），后台可在「首页配置」中关闭
+// 默认开启（未配置时按开启处理），后台可在「用户反馈 → 反馈配置」（user_feedback.php?tab=config）调整
 $formOpen    = isset($cfg['contact_form_open']) && $cfg['contact_form_open'] !== '' ? intval($cfg['contact_form_open']) : 1;
 $needCaptcha = isset($cfg['contact_form_captcha']) && $cfg['contact_form_captcha'] !== '' ? intval($cfg['contact_form_captcha']) : 1;
 
@@ -80,8 +81,8 @@ if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
     contactOut(-1, '邮箱格式不正确');
 }
 
-// ===== 人机验证：仅访客需要（登录用户已具备账号体系校验） =====
-if ($needCaptcha && $userId === 0) {
+// ===== 人机验证：后台「反馈配置」开启后，登录用户与访客提交前都必须通过验证 =====
+if ($needCaptcha) {
     $tcTicket  = isset($_POST['tc_ticket']) ? trim($_POST['tc_ticket']) : '';
     $tcRandstr = isset($_POST['tc_randstr']) ? trim($_POST['tc_randstr']) : '';
     $captcha   = isset($_POST['captcha']) ? strtoupper(trim($_POST['captcha'])) : '';

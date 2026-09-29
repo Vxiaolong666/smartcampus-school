@@ -207,7 +207,7 @@ export default {
 		goAbout() {
 			uni.navigateTo({ url: '/pages/about/index' });
 		},
-		// 联系客服（非小程序端）：弹窗展示后台「首页配置」中维护的联系方式
+		// 联系客服（非小程序端）：弹窗展示后台「官网配置」中维护的联系方式
 		async onContact() {
 			uni.showLoading({ title: '加载中...' });
 			let info = null;

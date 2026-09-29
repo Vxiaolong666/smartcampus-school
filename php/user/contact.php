@@ -7,7 +7,7 @@
  *   1) 登录用户可直接提交反馈 / 留言，自动关联账号（source=user），免人机验证；
  *   2) 提交后可在本页「我的反馈」查看历史记录与处理状态
  *      （待处理 / 处理中 / 已解决 / 已驳回 / 已忽略）及管理员处理备注；
- *   3) 页面底部的联系方式来自后台「首页配置」，顺序与配色和 App / 小程序端一致。
+ *   3) 页面底部的联系方式来自后台「官网配置」，顺序与配色和 App / 小程序端一致。
  */
 $title = '联系我们';
 include('./head.php');
@@ -43,8 +43,9 @@ if($fbUserId > 0){
 $fbName  = $fbUser ? (!empty($fbUser['nickname']) ? $fbUser['nickname'] : $fbUser['username']) : '';
 $fbEmail = $fbUser && !empty($fbUser['email']) ? $fbUser['email'] : '';
 
-// 留言功能开关（后台「首页配置」）
-$fbFormOpen = intval(homeCfg('contact_form_open', 1)) === 1;
+// 留言功能开关与「提交前人机验证」开关（后台「反馈配置」页面维护）
+$fbFormOpen    = intval(homeCfg('contact_form_open', 1)) === 1;
+$fbNeedCaptcha = intval(homeCfg('contact_form_captcha', 1)) === 1;
 
 // ===== 我的反馈记录（表结构未升级时安全降级为空） =====
 $fbSchemaReady = contactMsgSchemaReady($DB);
@@ -63,7 +64,7 @@ if($fbUserId > 0 && $fbSchemaReady){
 }
 $fbTotalPages = max(1, (int)ceil($fbTotal / $fbPageSize));
 
-// ===== 联系方式（后台「首页配置」，非空项才展示） =====
+// ===== 联系方式（后台「官网配置」，非空项才展示） =====
 $contactFields = array(
     '联系电话' => homeCfg('contact_phone'),
     '电子邮箱' => homeCfg('contact_email'),
@@ -135,6 +136,32 @@ foreach($contactFields as $label => $value){
                                       placeholder="请描述你遇到的问题或建议（最多 2000 字）" required></textarea>
                         </div>
                     </div>
+                    <?php if($fbNeedCaptcha): ?>
+                    <!-- 人机验证（后台「反馈配置」启用时展示）：腾讯滑块，异常时可改用图片验证码 -->
+                    <div class="mt-4" id="fbCaptchaBox">
+                        <label class="form-label">人机验证 <span class="text-danger">*</span></label>
+                        <button type="button" class="btn btn-alt-primary w-100" id="TencentCaptcha" data-appid="2047155482" data-cbfn="onTCaptchaResult">
+                            <i class="fa fa-shield-alt me-1"></i>进行滑块验证
+                        </button>
+                        <div id="tcPassedTip" style="display:none; color:#059669; margin-top:8px;">
+                            <small><i class="fa fa-check-circle me-1"></i>安全验证已通过</small>
+                        </div>
+                        <input type="hidden" name="tc_ticket" id="tc_ticket">
+                        <input type="hidden" name="tc_randstr" id="tc_randstr">
+                        <div class="captcha-wrapper" id="textCaptcha">
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa fa-shield-alt"></i></span>
+                                <input type="text" name="captcha" id="captcha" class="form-control" maxlength="4"
+                                       placeholder="请输入验证码" autocomplete="off">
+                            </div>
+                            <img src="../server-submit/captcha.php" id="captchaImg" alt="验证码"
+                                 title="点击刷新验证码" onclick="refreshCaptcha()">
+                        </div>
+                        <div id="showTextCaptchaLink" style="text-align:right; margin-top:8px; display:none;">
+                            <a href="javascript:void(0)" onclick="showTextCaptcha()">滑块异常？改用图片验证码</a>
+                        </div>
+                    </div>
+                    <?php endif; ?>
                     <div class="d-flex align-items-center justify-content-between mt-4">
                         <small class="text-muted">提交后可在「我的反馈」查看处理状态与处理备注。</small>
                         <button type="submit" class="btn btn-alt-primary" id="feedbackSubmit">
@@ -221,7 +248,7 @@ foreach($contactFields as $label => $value){
             </div>
         </div>
 
-        <!-- ============ 其他联系方式（后台「首页配置」） ============ -->
+        <!-- ============ 其他联系方式（后台「官网配置」） ============ -->
         <div class="block block-rounded block-bordered">
             <div class="block-header block-header-default">
                 <h3 class="block-title">
@@ -233,7 +260,7 @@ foreach($contactFields as $label => $value){
                 <div class="text-center py-4 text-muted">
                     <i class="fa fa-address-book fa-3x mb-3"></i>
                     <h4 class="h5">暂未配置联系方式</h4>
-                    <p class="mb-0">管理员尚未在后台「首页配置」中填写联系方式，你可以先通过本页表单提交反馈。</p>
+                    <p class="mb-0">管理员尚未在后台「官网配置」中填写联系方式，你可以先通过本页表单提交反馈。</p>
                 </div>
                 <?php else: ?>
                 <div class="row justify-content-center">
@@ -345,12 +372,69 @@ foreach($contactFields as $label => $value){
     font-size: 12px;
     color: #94a3b8;
 }
+
+/* ===== 人机验证：滑块 / 图片验证码（与登录页写法一致） ===== */
+.captcha-wrapper {
+    display: none;
+    align-items: center;
+    gap: 12px;
+    margin-top: 10px;
+}
+.captcha-wrapper .input-group { flex: 1 1 auto; min-width: 0; }
+.captcha-wrapper img {
+    flex: 0 0 auto;
+    height: 38px;
+    width: auto;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    cursor: pointer;
+}
 @media (max-width: 768px) {
     .fb-item-head { flex-wrap: wrap; }
 }
 </style>
 
+<!-- 腾讯滑块验证 SDK（与登录页一致；仅在开启「提交前人机验证」时加载） -->
+<?php if($fbNeedCaptcha): ?>
+<script src="https://ssl.captcha.qq.com/TCaptcha.js"></script>
+<?php endif; ?>
 <script>
+// ===== 人机验证：滑块 / 图片验证码（写法与登录页一致） =====
+var FB_NEED_CAPTCHA = <?php echo $fbNeedCaptcha ? 'true' : 'false'; ?>;
+
+function refreshCaptcha() {
+    var img = document.getElementById('captchaImg');
+    if (img) img.src = '../server-submit/captcha.php?' + Date.now();
+}
+
+// 滑块异常时改用图片验证码
+function showTextCaptcha() {
+    document.getElementById('TencentCaptcha').style.display = 'none';
+    document.getElementById('showTextCaptchaLink').style.display = 'none';
+    document.getElementById('tcPassedTip').style.display = 'none';
+    document.getElementById('textCaptcha').style.display = 'flex';
+    document.getElementById('tc_ticket').value = '';
+    document.getElementById('tc_randstr').value = '';
+    refreshCaptcha();
+}
+
+window.onTCaptchaResult = function (res) {
+    if (res && res.ret === 0) {
+        document.getElementById('tc_ticket').value = res.ticket || '';
+        document.getElementById('tc_randstr').value = res.randstr || '';
+        var btn = document.getElementById('TencentCaptcha');
+        btn.innerHTML = '<i class="fa fa-check-circle me-1"></i>验证已通过';
+        btn.style.background = '#ecfdf5';
+        btn.style.color = '#059669';
+        btn.style.border = '1px solid #34d399';
+        btn.style.cursor = 'default';
+        document.getElementById('tcPassedTip').style.display = 'block';
+        document.getElementById('showTextCaptchaLink').style.display = 'none';
+    } else {
+        document.getElementById('showTextCaptchaLink').style.display = 'block';
+    }
+};
+
 $(function () {
     var $form = $('#feedbackForm');
     if (!$form.length) return;
@@ -360,6 +444,17 @@ $(function () {
         var content = $.trim($form.find('[name=content]').val() || '');
         if (!name) { layer.msg('请填写姓名', {icon: 0}); return false; }
         if (!content) { layer.msg('请填写反馈内容', {icon: 0}); return false; }
+
+        // 人机验证（后台「反馈配置」启用时必填）：滑块票据与图片验证码二者其一
+        if (FB_NEED_CAPTCHA) {
+            var tcTicket  = $.trim($form.find('[name=tc_ticket]').val() || '');
+            var tcRandstr = $.trim($form.find('[name=tc_randstr]').val() || '');
+            var captcha   = $.trim($form.find('[name=captcha]').val() || '');
+            if (!((tcTicket && tcRandstr) || captcha)) {
+                layer.msg('请先完成滑块 / 验证码验证', {icon: 0});
+                return false;
+            }
+        }
 
         var $btn = $('#feedbackSubmit').prop('disabled', true);
         $.ajax({
@@ -373,6 +468,8 @@ $(function () {
                         window.location.href = 'contact.php';
                     });
                 } else {
+                    // 失败时刷新图片验证码，滑块票据仍保留（后端只在人机验证不通过时才提示重新验证）
+                    if (FB_NEED_CAPTCHA) refreshCaptcha();
                     layer.msg((res && res.msg) ? res.msg : '提交失败，请稍后重试', {icon: 2});
                 }
             },

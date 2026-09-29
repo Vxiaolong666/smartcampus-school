@@ -50,6 +50,11 @@
               bindinput="onContentInput"
             />
           </view>
+          <!-- 人机验证（后台「反馈配置」开启时展示）：小程序端使用图片验证码 -->
+          <view class="fb-field" wx:if="{{formCaptcha}}">
+            <view class="fb-label">人机验证 <text class="fb-required">*</text></view>
+            <captcha-image id="captchaImg" variant="form" />
+          </view>
           <view class="fb-tip">联系方式默认使用账号信息{{contactSummary ? '（' + contactSummary + '）' : ''}}，如需修改请在「个人资料」中更新。</view>
           <button class="fb-btn primary" loading="{{submitting}}" disabled="{{submitting}}" bindtap="onSubmit">提交反馈</button>
         </block>

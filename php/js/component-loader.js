@@ -80,7 +80,7 @@
 </div>
 <!-- Offcanvas Header End -->`;
 
-    // 站点联系信息：由各页面注入的 window.SITE_CONFIG 提供（后台「首页配置」维护）
+    // 站点联系信息：由各页面注入的 window.SITE_CONFIG 提供（后台「官网配置」维护）
     var SC = window.SITE_CONFIG || {};
     var scEmail   = SC.email || 'service@zhixiaoyun.com';
     var scAddr    = SC.address || '服务全国高校，赋能智慧校园';

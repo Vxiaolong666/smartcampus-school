@@ -375,7 +375,7 @@ export default {
 			uni.showToast({ title: '维护已结束，感谢您的理解', icon: 'none' });
 		},
 
-		//联系客服：弹窗展示后台「首页配置」中维护的联系方式
+		//联系客服：弹窗展示后台「官网配置」中维护的联系方式
 		async onContact() {
 			uni.showLoading({ title: '加载中...' });
 			let info = null;

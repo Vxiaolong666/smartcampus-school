@@ -462,7 +462,7 @@ const getAiModels = () => {
 };
 
 /**
- * 获取联系方式（后台「首页配置」维护，免登录）
+ * 获取联系方式（后台「官网配置」维护，免登录）
  * @returns {Promise} data: {email, phone, qq, address, worktime, desc}
  */
 const getContactInfo = () => {

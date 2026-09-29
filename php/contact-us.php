@@ -6,7 +6,7 @@ $siteConfig = homeSiteConfig();
 $siteName = htmlspecialchars(conf('Name') ?: '智校通', ENT_QUOTES);
 $siteTitle = htmlspecialchars(conf('SiteName') ?: conf('Name') ?: '智校通', ENT_QUOTES);
 
-// 后台「首页配置」中的联系方式与表单开关（未配置时使用下方默认值）
+// 后台「官网配置」中的联系方式与表单开关（未配置时使用下方默认值）
 $hcEmail    = homeCfg('contact_email', 'support@zhixiaoyun.com');
 $hcPhone    = homeCfg('contact_phone', '');
 $hcQq       = homeCfg('contact_qq', '');

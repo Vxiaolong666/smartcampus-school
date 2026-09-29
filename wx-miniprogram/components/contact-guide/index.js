@@ -12,7 +12,7 @@ Component({
     view: 'online',   // online=在线客服按钮  detail=其他联系方式
     loading: false,
     items: [],
-    worktime: ''      // 客服在线时间（取自后台「首页配置」）
+    worktime: ''      // 客服在线时间（取自后台「官网配置」）
   },
 
   methods: {

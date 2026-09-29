@@ -2,6 +2,7 @@
   "navigationStyle": "custom",
   "usingComponents": {
     "top-menu": "/components/cb-nav-bar/index",
-    "contact-guide": "/components/contact-guide/index"
+    "contact-guide": "/components/contact-guide/index",
+    "captcha-image": "/components/captcha-image/index"
   }
 }

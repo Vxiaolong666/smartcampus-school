@@ -1731,7 +1731,7 @@ wx.request({
         "form_open": 1
     }
 }</code></pre>
-                            <p><code>form_open=0</code> 表示后台已关闭留言功能（「首页配置」），客户端应隐藏或禁用提交入口；<code>remark</code>
+                            <p><code>form_open=0</code> 表示后台已关闭留言功能（「官网配置」），客户端应隐藏或禁用提交入口；<code>remark</code>
                                 为管理员处理备注（用户端可见，可能为空字符串）；<code>has_more=true</code> 时可继续请求下一页。</p>
                         </div>
                     </div>

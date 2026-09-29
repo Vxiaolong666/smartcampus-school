@@ -1,6 +1,6 @@
 <?php
 $mod = 'admin';
-$title = '首页配置';
+$title = '官网配置';
 include('./head.php');
 
 if ($adminData['adminRank'] != 1) {
@@ -12,7 +12,7 @@ include('../Common/home_config.php');
 
 function h($v) { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); }
 
-// 检测首页配置相关数据表是否已导入
+// 检测官网配置相关数据表是否已导入
 $tablesReady = false;
 try {
     $chk = @$DB->query("SELECT 1 FROM nteam_home_config LIMIT 1");
@@ -171,7 +171,7 @@ if (!function_exists('homePager')) {
         <?php if (!$tablesReady): ?>
         <div class="alert alert-warning">
             <i class="fa fa-exclamation-triangle me-2"></i>
-            尚未检测到首页配置相关数据表，请先导入建表 SQL（<code>nteam_home_config / nteam_home_download / nteam_home_faq / nteam_contact_msgs</code>）后再配置。
+            尚未检测到官网配置相关数据表，请先导入建表 SQL（<code>nteam_home_config / nteam_home_download / nteam_home_faq / nteam_contact_msgs</code>）后再配置。
         </div>
         <?php endif; ?>
 
@@ -186,9 +186,6 @@ if (!function_exists('homePager')) {
             </li>
             <li class="nav-item">
                 <a class="nav-link <?php echo $activeTab === 'faq' ? 'active' : ''; ?>" href="?tab=faq">常见问题</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="user_feedback.php"><i class="fa fa-comments me-1"></i>用户反馈</a>
             </li>
         </ul>
 
@@ -265,42 +262,6 @@ if (!function_exists('homePager')) {
                             <div class="mb-4">
                                 <label class="form-label" for="faq_intro"><b>常见问题页说明</b></label>
                                 <input type="text" class="form-control form-control-lg" id="faq_intro" name="faq_intro" value="<?php echo h(cfgVal($cfg,'faq_intro')); ?>" placeholder="请输入常见问题页说明">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-4">
-                                <label class="form-label"><b>联系我们表单提交开关</b></label>
-                                <div class="space-x-2">
-                                    <div class="form-check form-check-inline">
-                                        <label class="form-check-label">
-                                            <input class="form-check-input" type="radio" name="contact_form_open" value="0" <?php echo isOn($cfg,'contact_form_open') ? '' : 'checked'; ?>>禁用
-                                        </label>
-                                    </div>
-                                    <div class="form-check form-check-inline">
-                                        <label class="form-check-label">
-                                            <input class="form-check-input" type="radio" name="contact_form_open" value="1" <?php echo isOn($cfg,'contact_form_open') ? 'checked' : ''; ?>>启用
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-4">
-                                <label class="form-label"><b>提交前滑块 / 验证码验证</b></label>
-                                <div class="space-x-2">
-                                    <div class="form-check form-check-inline">
-                                        <label class="form-check-label">
-                                            <input class="form-check-input" type="radio" name="contact_form_captcha" value="0" <?php echo isOn($cfg,'contact_form_captcha') ? '' : 'checked'; ?>>禁用
-                                        </label>
-                                    </div>
-                                    <div class="form-check form-check-inline">
-                                        <label class="form-check-label">
-                                            <input class="form-check-input" type="radio" name="contact_form_captcha" value="1" <?php echo isOn($cfg,'contact_form_captcha') ? 'checked' : ''; ?>>启用
-                                        </label>
-                                    </div>
-                                </div>
                             </div>
                         </div>
                     </div>
