@@ -514,37 +514,6 @@ include('../Common/Core_brain.php');
                                                     <span class="nav-main-link-name"><b>宿舍绑定管理</b></span>
                                                 </a>
                                             </li>
-                                            <li class="nav-main-heading">Push</li>
-                                            <li class="nav-main-item">
-                                                <a class="nav-main-link" href="subscription_manage.php">
-                                                    <i class="nav-main-link-icon fa fa-bell"></i>
-                                                    <span class="nav-main-link-name"><b>订阅与消息模板</b></span>
-                                                </a>
-                                            </li>
-                                            <li class="nav-main-item">
-                                                <a class="nav-main-link" href="power_config.php">
-                                                    <i class="nav-main-link-icon fa fa-bolt"></i>
-                                                    <span class="nav-main-link-name"><b>电费推送配置</b></span>
-                                                </a>
-                                            </li>
-                                            <li class="nav-main-item">
-                                                <a class="nav-main-link" href="academic_push_config.php">
-                                                    <i class="nav-main-link-icon fa fa-graduation-cap"></i>
-                                                    <span class="nav-main-link-name"><b>学术推送配置</b></span>
-                                                </a>
-                                            </li>
-                                            <li class="nav-main-item">
-                                                <a class="nav-main-link" href="schedule_time.php">
-                                                    <i class="nav-main-link-icon fa fa-table-list"></i>
-                                                    <span class="nav-main-link-name"><b>课程时间配置</b></span>
-                                                </a>
-                                            </li>
-                                            <li class="nav-main-item">
-                                                <a class="nav-main-link" href="oauth_config.php">
-                                                    <i class="nav-main-link-icon fa fa-link"></i>
-                                                    <span class="nav-main-link-name"><b>聚合登录配置</b></span>
-                                                </a>
-                                            </li>
                                             <li class="nav-main-heading">Content</li>
                                             <li class="nav-main-item">
                                                 <a class="nav-main-link" href="set.php">
@@ -580,6 +549,37 @@ include('../Common/Core_brain.php');
                                                 <a class="nav-main-link" href="smtp.php">
                                                     <i class="nav-main-link-icon fa fa-envelope-open"></i>
                                                     <span class="nav-main-link-name"><b>邮箱配置</b></span>
+                                                </a>
+                                            </li>
+                                            <li class="nav-main-heading">Push</li>
+                                            <li class="nav-main-item">
+                                                <a class="nav-main-link" href="subscription_manage.php">
+                                                    <i class="nav-main-link-icon fa fa-bell"></i>
+                                                    <span class="nav-main-link-name"><b>订阅与消息模板</b></span>
+                                                </a>
+                                            </li>
+                                            <li class="nav-main-item">
+                                                <a class="nav-main-link" href="power_config.php">
+                                                    <i class="nav-main-link-icon fa fa-bolt"></i>
+                                                    <span class="nav-main-link-name"><b>电费推送配置</b></span>
+                                                </a>
+                                            </li>
+                                            <li class="nav-main-item">
+                                                <a class="nav-main-link" href="academic_push_config.php">
+                                                    <i class="nav-main-link-icon fa fa-graduation-cap"></i>
+                                                    <span class="nav-main-link-name"><b>学术推送配置</b></span>
+                                                </a>
+                                            </li>
+                                            <li class="nav-main-item">
+                                                <a class="nav-main-link" href="schedule_time.php">
+                                                    <i class="nav-main-link-icon fa fa-table-list"></i>
+                                                    <span class="nav-main-link-name"><b>课程时间配置</b></span>
+                                                </a>
+                                            </li>
+                                            <li class="nav-main-item">
+                                                <a class="nav-main-link" href="oauth_config.php">
+                                                    <i class="nav-main-link-icon fa fa-link"></i>
+                                                    <span class="nav-main-link-name"><b>聚合登录配置</b></span>
                                                 </a>
                                             </li>
                                             <li class="nav-main-heading">Settings</li>
