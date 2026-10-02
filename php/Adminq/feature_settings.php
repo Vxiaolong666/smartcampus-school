@@ -38,6 +38,11 @@ $features = $DB->query("SELECT * FROM nteam_feature_settings ORDER BY id ASC")->
         <div class="block block-rounded">
             <div class="block-header block-header-default">
                 <h3 class="block-title">功能开关与公告设置</h3>
+                <div class="block-options">
+                    <button type="button" class="btn btn-sm btn-primary" onclick="openAddModal()">
+                        <i class="fa fa-plus me-1"></i>添加功能标识
+                    </button>
+                </div>
             </div>
             <div class="block-content">
                 <div class="table-responsive">
@@ -104,6 +109,9 @@ $features = $DB->query("SELECT * FROM nteam_feature_settings ORDER BY id ASC")->
                                     <button type="button" class="btn btn-sm btn-alt-primary" onclick="editFeature(<?php echo $feature['id']; ?>)">
                                         <i class="fa fa-edit me-1"></i>编辑
                                     </button>
+                                    <button type="button" class="btn btn-sm btn-alt-danger" onclick="deleteFeature(<?php echo $feature['id']; ?>)">
+                                        <i class="fa fa-trash me-1"></i>删除
+                                    </button>
                                 </td>
                             </tr>
                             <?php endforeach; ?>
@@ -116,7 +124,8 @@ $features = $DB->query("SELECT * FROM nteam_feature_settings ORDER BY id ASC")->
 </div>
 
 <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+    <!-- 移动端适配参考 alist.php：保持对话框形态（非全屏），居中显示 + 内容超出时可滚动 -->
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="editModalLabel">编辑功能设置</h5>
@@ -171,6 +180,72 @@ $features = $DB->query("SELECT * FROM nteam_feature_settings ORDER BY id ASC")->
                 <button type="button" class="btn btn-alt-secondary" data-bs-dismiss="modal">取消</button>
                 <button type="button" class="btn btn-alt-primary" onclick="saveFeature()">
                     <i class="fa fa-check me-1"></i>保存设置
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== 手动添加功能标识（移动端适配参考 alist.php：非全屏，居中显示 + 内容超出时可滚动） ===== -->
+<div class="modal fade" id="addModal" tabindex="-1" aria-labelledby="addModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addModalLabel">添加功能标识</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addForm" onsubmit="return false;">
+                    <div class="row g-3">
+                        <div class="col-12 col-md-6">
+                            <label class="form-label" for="add_name"><b>功能名称</b> <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="add_name" maxlength="100" placeholder="如：网页端 AI 对话" autocomplete="off">
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label" for="add_key"><b>功能标识</b> <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="add_key" maxlength="50" placeholder="如：web_ai_chat" autocomplete="off">
+                            <div class="form-text">仅字母、数字、下划线、短横线，且不可与已有标识重复；客户端按该标识读取开关。</div>
+                        </div>
+                    </div>
+                    <div class="mt-4 mb-4">
+                        <label class="form-label"><b>初始状态</b></label>
+                        <div class="space-x-2">
+                            <div class="form-check form-check-inline">
+                                <label class="form-check-label">
+                                    <input class="form-check-input" type="radio" name="add_is_enabled" id="add_enabled_1" value="1" checked> 启用
+                                </label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <label class="form-check-label">
+                                    <input class="form-check-input" type="radio" name="add_is_enabled" id="add_enabled_0" value="0"> 禁用
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label" for="add_announcement"><b>公告内容</b></label>
+                        <textarea class="form-control" id="add_announcement" rows="3" placeholder="留空则不显示公告；功能被禁用时该内容会作为提示文案展示给用户"></textarea>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label" for="add_announcement_type"><b>公告类型</b></label>
+                        <select class="form-select" id="add_announcement_type">
+                            <option value="info">信息（蓝色）</option>
+                            <option value="success">成功（绿色）</option>
+                            <option value="warning">警告（黄色）</option>
+                            <option value="danger">危险（红色）</option>
+                        </select>
+                    </div>
+                    <div class="alert alert-info mb-0 fs-sm">
+                        <i class="fa fa-info-circle me-1"></i>
+                        功能标识需与前端代码约定一致才能在页面上生效（例如 <code>web_ai_chat</code> 对应网页端 / App 端「AI 对话」）。
+                        添加后可在左侧「操作」列点击「编辑」补充公告或调整状态。
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-alt-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-alt-primary" onclick="saveNewFeature()">
+                    <i class="fa fa-plus me-1"></i>确定添加
                 </button>
             </div>
         </div>
@@ -273,6 +348,120 @@ function saveFeature() {
             layer.msg('服务器错误');
         }
     });
+}
+
+// ===== 删除功能标识 =====
+function deleteFeature(id) {
+    var feature = (featureData || []).find(function (f) { return f.id == id; });
+    if (!feature) {
+        layer.msg('未找到该功能设置', {icon: 0});
+        return false;
+    }
+
+    var tip = '确认删除功能标识「<b>' + feature.feature_name + '</b>」(<code>' + feature.feature_key + '</code>)？'
+        + '<br><span class="text-muted fs-sm">删除后列表不再显示该标识；客户端读取不到该标识时会按「未限制」处理，'
+        + '对应功能将恢复可用。如只是暂时停用，建议改用「禁用」。</span>';
+
+    layer.confirm(tip, {icon: 3, title: '删除功能标识'}, function (index) {
+        layer.close(index);
+
+        var ii = layer.load(2, {shade: [0.1, '#fff']});
+        $.ajax({
+            type: 'POST',
+            url: 'Ajax.php?act=delete_feature_setting',
+            data: {id: id},
+            dataType: 'json',
+            success: function (data) {
+                layer.close(ii);
+                if (data.code == 0) {
+                    layer.alert(data.msg, {
+                        icon: 1,
+                        closeBtn: false
+                    }, function () {
+                        window.location.reload();
+                    });
+                } else {
+                    layer.alert(data.msg, {icon: 2});
+                }
+            },
+            error: function () {
+                layer.close(ii);
+                layer.msg('服务器错误');
+            }
+        });
+    });
+    return false;
+}
+
+// ===== 手动添加功能标识 =====
+function openAddModal() {
+    document.getElementById('add_name').value = '';
+    document.getElementById('add_key').value = '';
+    document.getElementById('add_enabled_1').checked = true;
+    document.getElementById('add_announcement').value = '';
+    document.getElementById('add_announcement_type').value = 'info';
+    new bootstrap.Modal(document.getElementById('addModal')).show();
+}
+
+function saveNewFeature() {
+    var name = (document.getElementById('add_name').value || '').trim();
+    var key = (document.getElementById('add_key').value || '').trim();
+    var enabledInput = document.querySelector('input[name="add_is_enabled"]:checked');
+    var announcement = document.getElementById('add_announcement').value;
+    var announcementType = document.getElementById('add_announcement_type').value;
+
+    if (!name) {
+        layer.msg('请填写功能名称', {icon: 0});
+        return false;
+    }
+    if (!key) {
+        layer.msg('请填写功能标识', {icon: 0});
+        return false;
+    }
+    if (!/^[A-Za-z0-9_-]{1,50}$/.test(key)) {
+        layer.msg('功能标识只能包含字母、数字、下划线或短横线（不超过 50 个字符）', {icon: 0});
+        return false;
+    }
+    // 前端先查重，避免明显重复也发一次请求（后端仍会再校验一次）
+    var duplicated = (featureData || []).some(function (f) {
+        return String(f.feature_key).toLowerCase() === key.toLowerCase();
+    });
+    if (duplicated) {
+        layer.msg('功能标识「' + key + '」已存在', {icon: 0});
+        return false;
+    }
+
+    var ii = layer.load(2, {shade: [0.1, '#fff']});
+    $.ajax({
+        type: 'POST',
+        url: 'Ajax.php?act=add_feature_setting',
+        data: {
+            feature_name: name,
+            feature_key: key,
+            is_enabled: enabledInput ? enabledInput.value : 1,
+            announcement: announcement,
+            announcement_type: announcementType
+        },
+        dataType: 'json',
+        success: function (data) {
+            layer.close(ii);
+            if (data.code == 0) {
+                layer.alert(data.msg, {
+                    icon: 1,
+                    closeBtn: false
+                }, function () {
+                    window.location.reload();
+                });
+            } else {
+                layer.alert(data.msg, {icon: 2});
+            }
+        },
+        error: function () {
+            layer.close(ii);
+            layer.msg('服务器错误');
+        }
+    });
+    return false;
 }
 </script>
 </body>

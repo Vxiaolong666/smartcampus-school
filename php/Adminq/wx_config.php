@@ -67,7 +67,7 @@ $config = $DB->getRow("SELECT * FROM nteam_wx_config ORDER BY id DESC LIMIT 1");
                         <button type="submit" class="btn btn-primary">
                             <i class="fa fa-check opacity-50 me-1"></i> <b>保存配置</b>
                         </button>
-                        <a href="wx_templates.php" class="btn btn-alt-primary ms-2">
+                        <a href="subscription_manage.php?tab=templates" class="btn btn-alt-primary ms-2">
                             <i class="fa fa-list opacity-50 me-1"></i> <b>管理消息模板</b>
                         </a>
                     </div>

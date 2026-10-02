@@ -1,5 +1,18 @@
 <template>
   <view class="page-container">
+    <!-- 后台「功能设置」关闭 UNIAPP 端 AI 对话开关（uniapp_ai_chat）时的遮罩：
+         顶部导航一并盖住，覆盖范围到 tabBar 上方，仅底部 Tab 保持可用（可切换其它 Tab） -->
+    <view v-if="featureDisabled" class="feature-disabled-mask">
+      <!-- 图标与文案动态取自后台公告；未配置公告时用内置红叉 + 兜底文案 -->
+      <view v-if="featureIcon" class="feature-disabled-icon feature-disabled-icon-plain">
+        <image class="feature-disabled-icon-image" :src="featureIcon" mode="aspectFit"></image>
+      </view>
+      <view v-else class="feature-disabled-icon">
+        <view class="feature-disabled-cross"></view>
+      </view>
+      <view class="feature-disabled-text">{{ featureTip }}</view>
+    </view>
+
     <cb-nav-bar compact>
       <view class="nav-title">AI 助手</view>
       <view slot="right" class="nav-action" @click="clearChat">
@@ -194,6 +207,7 @@
 
 <script>
 import api from '../../utils/api';
+import feature from '../../utils/feature.js';
 import MsgBubble from './msg-bubble.vue';
 
 const SYSTEM_PROMPT = '你是“智慧校园”AI 助手，帮助学生解答校园生活、学习规划、教务查询（成绩/课表）、宿舍用电等方面的问题。回答简洁友好、条理清晰，可适当使用 Markdown。展示数据时使用友好的中文名称（如宿舍名称、“第X节/上午第1节/下午第2节”等），不要展示系统内部的编码或编号（如宿舍 ID、classTime 等）。';
@@ -228,7 +242,11 @@ export default {
       showModelMenu: false,
       modelMenuBottom: '260rpx',
       deepThink: true,
-      suggestions: SUGGESTIONS
+      suggestions: SUGGESTIONS,
+      // 后台「功能设置」开关（uniapp_ai_chat）：关闭时展示整页遮罩，文案 / 图标取后台公告
+      featureDisabled: false,
+      featureTip: '',
+      featureIcon: ''
     };
   },
 
@@ -243,10 +261,37 @@ export default {
   },
 
   onLoad() {
-    this.loadModels();
+    this.checkAiFeature();
+  },
+
+  // 页面每次显示都重新校验开关（后台调整后返回本页即时生效；首次显示由 onLoad 校验）
+  onShow() {
+    if (this._entered) {
+      this.checkAiFeature();
+    } else {
+      this._entered = true;
+    }
   },
 
   methods: {
+    // 校验后台「UNIAPP 端 AI 对话」开关（uniapp_ai_chat）：
+    // 开关关闭时展示整页遮罩（与小程序端一致），开启时才加载模型列表；
+    // 后台尚未创建该标识时 feature.checkFeature 默认返回启用，不影响老环境。
+    checkAiFeature() {
+      feature.checkFeature('uniapp_ai_chat').then((res) => {
+        const disabled = !!(res && res.enabled === false);
+        const ann = res && res.announcement;
+        const hasAnn = !!(ann && ann.content);
+        this.featureDisabled = disabled;
+        this.featureTip = hasAnn ? ann.content : 'AI 对话暂未开放，请稍后再试';
+        this.featureIcon = hasAnn ? feature.getAnnouncementIcon(ann.type) : '';
+        if (!disabled && !this._modelsLoaded) {
+          this._modelsLoaded = true;
+          this.loadModels();
+        }
+      });
+    },
+
     toggleThink(m) {
       if (m.thinkState !== 'done') return;
       m.thinkOpen = !m.thinkOpen;
@@ -1097,4 +1142,87 @@ uni-page-body {
   padding-bottom: calc(56px + env(safe-area-inset-bottom));
 }
 /* #endif */
+
+/* ===== 后台「功能设置」关闭 AI 对话（uniapp_ai_chat）：遮罩提示（与小程序端样式一致） ===== */
+/* 覆盖范围：从顶部一直盖到 tabBar 上方（顶部导航一并盖住，仅保留底部 Tab 可切换）；
+   App 端页面本身在原生 tabBar 之上，bottom: 0 即等于 tabBar 上方；H5 / 小程序端由下方变量与条件编译兜底 */
+.feature-disabled-mask {
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: var(--window-bottom, 0px);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 80rpx;
+  text-align: center;
+  background: rgba(239, 241, 255, 0.97);
+}
+
+/* H5 端 tabBar 为 fixed 覆盖底部，与 .chat-input 的预留高度保持一致，避免遮罩盖住底部 Tab */
+/* #ifdef H5 */
+.feature-disabled-mask {
+  bottom: calc(56px + env(safe-area-inset-bottom));
+}
+/* #endif */
+
+.feature-disabled-icon {
+  width: 132rpx;
+  height: 132rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 36rpx;
+  background: rgba(255, 77, 79, 0.12);
+}
+
+/* 动态图标（后台公告类型对应的图标）：白底 + 轻投影，避免与红叉的浅红底冲突 */
+.feature-disabled-icon-plain {
+  background: #ffffff;
+  box-shadow: 0 8rpx 24rpx rgba(72, 65, 111, 0.12);
+}
+
+.feature-disabled-icon-image {
+  width: 72rpx;
+  height: 72rpx;
+}
+
+/* 兜底图标（后台未配置公告）：红叉，两条红杠旋转 ±45° 叠加 */
+.feature-disabled-cross {
+  position: relative;
+  width: 72rpx;
+  height: 72rpx;
+}
+
+.feature-disabled-cross::before,
+.feature-disabled-cross::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 72rpx;
+  height: 12rpx;
+  margin: -6rpx 0 0 -36rpx;
+  border-radius: 8rpx;
+  background: #ff4d4f;
+}
+
+.feature-disabled-cross::before {
+  transform: rotate(45deg);
+}
+
+.feature-disabled-cross::after {
+  transform: rotate(-45deg);
+}
+
+.feature-disabled-text {
+  max-width: 520rpx;
+  font-size: 30rpx;
+  line-height: 1.8;
+  color: #4b5563;
+}
 </style>

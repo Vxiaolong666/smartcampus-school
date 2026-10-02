@@ -7,6 +7,29 @@ if($adminData['adminRank']== 2) {
   exit;
 }
 include './head.php';
+
+// ===== 每日维护时段（独立于「电费推送配置 → 服务停止时段」） =====
+if (!function_exists('h')) {
+    function h($v) { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); }
+}
+
+// 字段是否已升级（未升级时页面只给出导入提示，不展示表单）
+$maintColumnsReady = false;
+try {
+    $colChk = @$DB->query("SHOW COLUMNS FROM nteam_config LIKE 'Maintenance_Start'");
+    if ($colChk && $colChk->fetch()) $maintColumnsReady = true;
+} catch (Exception $e) {
+    $maintColumnsReady = false;
+}
+
+// 当前生效时段（与 api.php 的 get_maintenance_config 同一套取值逻辑）：
+// 只读本页维护的独立字段，留空 / 非法时使用内置默认 23:00 ~ 06:00，
+// 与「电费推送配置 → 服务停止时段」完全无关。
+$maintStart = $maintColumnsReady ? trim((string)conf('Maintenance_Start')) : '';
+$maintEnd   = $maintColumnsReady ? trim((string)conf('Maintenance_End'))   : '';
+$maintUsingDefault = (!preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $maintStart) || !preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $maintEnd));
+if (!preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $maintStart)) $maintStart = '23:00';
+if (!preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $maintEnd))   $maintEnd   = '06:00';
 ?>
 <div id="pjax-container">
     <div class="bg-body-light">
@@ -121,6 +144,60 @@ include './head.php';
                 </form>
             </div>
         </div>
+
+        <!-- ============ 每日维护时段（独立配置） ============ -->
+        <div class="block block-rounded">
+            <div class="block-header block-header-default">
+                <h3 class="block-title"><i class="fa fa-wrench me-2"></i>每日维护时段</h3>
+            </div>
+            <div class="block-content">
+                <p class="text-muted fs-sm mb-4">
+                    在此时段内，UNIAPP 端与微信小程序端启动、或从后台回到前台时会进入「系统维护」页；
+                    开始时间晚于结束时间表示跨天（例如 23:00 ~ 次日 06:00）。
+                </p>
+
+                <?php if (!$maintColumnsReady): ?>
+                <div class="alert alert-warning mb-0">
+                    <i class="fa fa-exclamation-triangle me-2"></i>
+                    当前数据库缺少 <code>Maintenance_Start / Maintenance_End</code> 字段，
+                    请先导入 <code>php/config_maintenance_update.sql</code> 后再设置。
+                </div>
+                <?php else: ?>
+                <form onsubmit="return saveMaintenanceSetting(this)" method="post" name="maintenance-form">
+                    <div class="row">
+                        <div class="col-md-3 col-6">
+                            <div class="mb-4">
+                                <label class="form-label" for="Maintenance_Start"><b>开始时间</b></label>
+                                <input type="time" class="form-control form-control-lg" id="Maintenance_Start" name="Maintenance_Start"
+                                       value="<?php echo h(conf('Maintenance_Start')); ?>" placeholder="23:00">
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <div class="mb-4">
+                                <label class="form-label" for="Maintenance_End"><b>结束时间</b></label>
+                                <input type="time" class="form-control form-control-lg" id="Maintenance_End" name="Maintenance_End"
+                                       value="<?php echo h(conf('Maintenance_End')); ?>" placeholder="06:00">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-light fs-sm">
+                        <i class="fa fa-clock me-1"></i>
+                        当前生效时段：<b><?php echo h($maintStart); ?> ~ <?php echo h($maintEnd); ?></b>
+                        <?php if ($maintUsingDefault): ?>
+                        <span class="text-muted">（尚未配置，客户端暂按系统默认 23:00 ~ 06:00 判断；在这里填写并保存后即以此处为准）</span>
+                        <?php endif; ?>
+                    </div>
+
+                    <div class="mb-4">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fa fa-check opacity-50 me-1"></i> <b>保存维护时段</b>
+                        </button>
+                    </div>
+                </form>
+                <?php endif; ?>
+            </div>
+        </div>
     </div>
 </div>
 <?php include 'foot.php'?>
@@ -139,6 +216,34 @@ function checkURL(obj)
     url = url+"/";
   }
   $(obj).val(url);
+}
+// ===== 每日维护时段：独立保存（走独立的 act，写入 nteam_config，与网站信息互不影响） =====
+function saveMaintenanceSetting(obj){
+  var ii = layer.load(2, {shade:[0.1,'#fff']});
+  $.ajax({
+    type : 'POST',
+    url : 'Ajax.php?act=save_maintenance_config',
+    data : $(obj).serialize(),
+    dataType : 'json',
+    success : function(data) {
+      layer.close(ii);
+      if(data.code == 0){
+        layer.alert(data.msg, {
+          icon: 1,
+          closeBtn: false
+        }, function(){
+          window.location.reload()
+        });
+      }else{
+        layer.alert(data.msg, {icon: 2})
+      }
+    },
+    error:function(){
+      layer.close(ii);
+      layer.msg('服务器错误');
+    }
+  });
+  return false;
 }
 function saveSetting(obj){
   var ii = layer.load(2, {shade:[0.1,'#fff']});

@@ -260,7 +260,7 @@ foreach($contactFields as $label => $value){
                 <div class="text-center py-4 text-muted">
                     <i class="fa fa-address-book fa-3x mb-3"></i>
                     <h4 class="h5">暂未配置联系方式</h4>
-                    <p class="mb-0">管理员尚未在后台「官网配置」中填写联系方式，你可以先通过本页表单提交反馈。</p>
+                    <p class="mb-0">管理员暂未配置联系方式，你可以先通过本页表单提交反馈。</p>
                 </div>
                 <?php else: ?>
                 <div class="row justify-content-center">

@@ -106,6 +106,36 @@ switch($act){
             exit('{"code":0,"msg":"设置保存成功！"}');
         }else{ exit('{"code":-1,"msg":"修改设置失败['.$DB->error().']"}');}
     break;
+
+    // ===== 网站配置：每日维护时段（独立于「电费推送配置 → 服务停止时段」） =====
+    case 'save_maintenance_config':
+        if(!$isLogin)exit('{"code":0,"msg":"未登录"}');
+        if($adminData['adminRank']!=1){exit('{"code":-1,"msg":"您的账号没有权限使用此功能！"}');}
+        {
+            // 字段是否已升级（未升级时给出明确提示，避免静默失败）
+            $colChk = @$DB->query("SHOW COLUMNS FROM nteam_config LIKE 'Maintenance_Start'");
+            if (!$colChk || !$colChk->fetch()) {
+                exit('{"code":-1,"msg":"数据库缺少 Maintenance_Start / Maintenance_End 字段，请先导入 php/config_maintenance_update.sql"}');
+            }
+
+            $maintStart = isset($_POST['Maintenance_Start']) ? trim($_POST['Maintenance_Start']) : '';
+            $maintEnd   = isset($_POST['Maintenance_End'])   ? trim($_POST['Maintenance_End'])   : '';
+
+            if (!preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $maintStart) || !preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $maintEnd)) {
+                exit('{"code":-1,"msg":"请填写合法的开始 / 结束时间（HH:MM）"}');
+            }
+            if ($maintStart === $maintEnd) {
+                exit('{"code":-1,"msg":"开始时间与结束时间不能相同"}');
+            }
+
+            $sql = "UPDATE nteam_config SET `Maintenance_Start`='" . addslashes($maintStart) . "', `Maintenance_End`='" . addslashes($maintEnd) . "' WHERE `id`=1";
+            if ($DB->exec($sql) !== false) {
+                $DB->query("insert into `nteam_log` (`adminUser`,`type`,`data`,`ip`,`city`) values ('" . $_SESSION['adminUser'] . "','修改了每日维护时段: " . addslashes($maintStart) . " ~ " . addslashes($maintEnd) . "', NOW(), '".$ip."', '')");
+                exit('{"code":0,"msg":"维护时段已保存：' . $maintStart . ' ~ ' . $maintEnd . '"}');
+            }
+            exit('{"code":-1,"msg":"保存失败['.$DB->error().']"}');
+        }
+    break;
     case 'AddAdmin':
         if(!$isLogin)exit('{"code":0,"msg":"未登录"}');
         if($adminData['adminRank']!=1){exit('{"code":-1,"msg":"您的账号没有权限使用此功能！"}');}
@@ -665,6 +695,68 @@ switch($act){
             exit('{"code":0,"msg":"保存成功"}');
         } else {
             exit('{"code":-1,"msg":"保存失败"}');
+        }
+    break;
+
+    // ===== 功能设置：删除功能标识 =====
+    case 'delete_feature_setting':
+        if(!$isLogin)exit('{"code":-1,"msg":"未登录"}');
+        if($adminData['adminRank']!=1){exit('{"code":-1,"msg":"您的账号没有权限使用此功能！"}');}
+        {
+            $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
+            if ($id <= 0) exit('{"code":-1,"msg":"参数错误"}');
+
+            $existing = $DB->getRow("SELECT * FROM nteam_feature_settings WHERE id='$id'");
+            if (!$existing) exit('{"code":-1,"msg":"功能设置不存在"}');
+
+            // 说明：删除后列表中不再出现该标识；客户端读不到该标识时按「未限制」处理
+            // （维护开关 weihu_open 同理，删除即等于「未开启维护」），因此不做额外限制，仅记日志。
+            if ($DB->exec("DELETE FROM nteam_feature_settings WHERE id='$id'") !== false) {
+                $DB->query("insert into `nteam_log` (`adminUser`,`type`,`data`,`ip`,`city`) values ('" . $_SESSION['adminUser'] . "','删除功能标识「" . addslashes($existing['feature_name']) . "」(" . addslashes($existing['feature_key']) . ")', NOW(), '".$ip."', '')");
+                exit('{"code":0,"msg":"已删除功能标识：' . $existing['feature_key'] . '"}');
+            }
+            exit('{"code":-1,"msg":"删除失败['.$DB->error().']"}');
+        }
+    break;
+
+    // ===== 功能设置：手动添加功能标识 =====
+    case 'add_feature_setting':
+        if(!$isLogin)exit('{"code":-1,"msg":"未登录"}');
+        if($adminData['adminRank']!=1){exit('{"code":-1,"msg":"您的账号没有权限使用此功能！"}');}
+        {
+            $featureName = isset($_POST['feature_name']) ? trim($_POST['feature_name']) : '';
+            $featureKey  = isset($_POST['feature_key'])  ? trim($_POST['feature_key'])  : '';
+            $isEnabled   = (isset($_POST['is_enabled']) && intval($_POST['is_enabled']) === 1) ? 1 : 0;
+            $announcement     = isset($_POST['announcement']) ? trim($_POST['announcement']) : '';
+            $announcementType = isset($_POST['announcement_type']) ? trim($_POST['announcement_type']) : 'info';
+
+            if ($featureName === '') exit('{"code":-1,"msg":"请填写功能名称"}');
+            if ($featureKey === '')  exit('{"code":-1,"msg":"请填写功能标识"}');
+            // 标识规则：仅字母 / 数字 / 下划线 / 短横线，最长 50（与表结构 varchar(50) 对齐）
+            if (!preg_match('/^[A-Za-z0-9_-]{1,50}$/', $featureKey)) {
+                exit('{"code":-1,"msg":"功能标识只能包含字母、数字、下划线或短横线（不超过 50 个字符）"}');
+            }
+            if (mb_strlen($featureName, 'UTF-8') > 100) exit('{"code":-1,"msg":"功能名称过长（最多 100 个字符）"}');
+            if (mb_strlen($announcement, 'UTF-8') > 1000) exit('{"code":-1,"msg":"公告内容过长（最多 1000 个字符）"}');
+            if (!in_array($announcementType, array('info', 'success', 'warning', 'danger'), true)) {
+                $announcementType = 'info';
+            }
+
+            // 标识唯一（表结构为 UNIQUE，这里先给出友好提示）
+            $dup = $DB->getRow("SELECT id FROM nteam_feature_settings WHERE feature_key='" . addslashes($featureKey) . "'");
+            if ($dup) exit('{"code":-1,"msg":"功能标识「' . $featureKey . '」已存在，请换一个"}');
+
+            $sql = "INSERT INTO nteam_feature_settings
+                    (`feature_key`,`feature_name`,`is_enabled`,`announcement`,`announcement_type`,`updated_at`)
+                    VALUES ('" . addslashes($featureKey) . "','" . addslashes($featureName) . "','" . $isEnabled . "','"
+                    . addslashes($announcement) . "','" . addslashes($announcementType) . "', NOW())";
+
+            if ($DB->exec($sql) !== false) {
+                $newId = intval($DB->lastInsertId());
+                $DB->query("insert into `nteam_log` (`adminUser`,`type`,`data`,`ip`,`city`) values ('" . $_SESSION['adminUser'] . "','新增功能标识「" . addslashes($featureName) . "」(" . addslashes($featureKey) . ")', NOW(), '".$ip."', '')");
+                exit('{"code":0,"msg":"添加成功，功能标识：' . $featureKey . '（ID: ' . $newId . '）"}');
+            }
+            exit('{"code":-1,"msg":"添加失败['.$DB->error().']"}');
         }
     break;
     

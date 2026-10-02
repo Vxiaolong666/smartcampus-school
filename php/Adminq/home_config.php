@@ -244,26 +244,6 @@ if (!function_exists('homePager')) {
                                 <input type="text" class="form-control form-control-lg" id="contact_address" name="contact_address" value="<?php echo h(cfgVal($cfg,'contact_address')); ?>" placeholder="请输入公司地址">
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <div class="mb-4">
-                                <label class="form-label" for="contact_desc"><b>联系我们页简介</b></label>
-                                <input type="text" class="form-control form-control-lg" id="contact_desc" name="contact_desc" value="<?php echo h(cfgVal($cfg,'contact_desc')); ?>" placeholder="请输入联系我们页简介">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-4">
-                                <label class="form-label" for="download_intro"><b>下载页说明</b></label>
-                                <input type="text" class="form-control form-control-lg" id="download_intro" name="download_intro" value="<?php echo h(cfgVal($cfg,'download_intro')); ?>" placeholder="请输入下载页说明">
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-4">
-                                <label class="form-label" for="faq_intro"><b>常见问题页说明</b></label>
-                                <input type="text" class="form-control form-control-lg" id="faq_intro" name="faq_intro" value="<?php echo h(cfgVal($cfg,'faq_intro')); ?>" placeholder="请输入常见问题页说明">
-                            </div>
-                        </div>
                     </div>
                     <div class="mb-4">
                         <button type="submit" class="btn btn-primary">
@@ -280,15 +260,19 @@ if (!function_exists('homePager')) {
         <!-- ============ 下载方式 ============ -->
         <div class="block block-rounded">
             <div class="block-header block-header-default">
-                <h3 class="block-title"><i class="fa fa-download me-2"></i>下载方式（下载地址）</h3>
+                <h3 class="block-title"><i class="fa fa-download me-2"></i>下载方式</h3>
                 <div class="block-options">
+                    <button type="button" class="btn btn-sm btn-primary me-2" id="dlAddBtn" data-add-label="添加下载方式" onclick="toggleAddForm('dl')">
+                        <?php if ($editDl): ?><i class="fa fa-times me-1"></i>收起表单<?php else: ?><i class="fa fa-plus me-1"></i>添加下载方式<?php endif; ?>
+                    </button>
                     <button type="button" onclick="window.location.reload()" class="btn-block-option" data-toggle="block-option" data-action="state_toggle" data-action-mode="demo">
                         <i class="si si-refresh"></i>
                     </button>
                 </div>
             </div>
             <div class="block-content">
-                <form onsubmit="return saveDownload(this)" method="post" name="dl-form">
+                <!-- 添加 / 编辑表单默认收起，点击右上角「添加下载方式」后展开；编辑态（?edit_dl=）由服务端直接展开 -->
+                <form id="dlAddForm" onsubmit="return saveDownload(this)" method="post" name="dl-form" style="display:<?php echo $editDl ? 'block' : 'none'; ?>;">
                     <input type="hidden" name="id" value="<?php echo $editDl ? intval($editDl['id']) : 0; ?>">
                     <div class="row">
                         <div class="col-md-3">
@@ -411,13 +395,17 @@ if (!function_exists('homePager')) {
             <div class="block-header block-header-default">
                 <h3 class="block-title"><i class="fa fa-question-circle me-2"></i>常见问题配置</h3>
                 <div class="block-options">
+                    <button type="button" class="btn btn-sm btn-primary me-2" id="faqAddBtn" data-add-label="添加问题" onclick="toggleAddForm('faq')">
+                        <?php if ($editFaq): ?><i class="fa fa-times me-1"></i>收起表单<?php else: ?><i class="fa fa-plus me-1"></i>添加问题<?php endif; ?>
+                    </button>
                     <button type="button" onclick="window.location.reload()" class="btn-block-option" data-toggle="block-option" data-action="state_toggle" data-action-mode="demo">
                         <i class="si si-refresh"></i>
                     </button>
                 </div>
             </div>
             <div class="block-content">
-                <form onsubmit="return saveFaq(this)" method="post" name="faq-form">
+                <!-- 添加 / 编辑表单默认收起，点击右上角「添加问题」后展开；编辑态（?edit_faq=）由服务端直接展开 -->
+                <form id="faqAddForm" onsubmit="return saveFaq(this)" method="post" name="faq-form" style="display:<?php echo $editFaq ? 'block' : 'none'; ?>;">
                     <input type="hidden" name="id" value="<?php echo $editFaq ? intval($editFaq['id']) : 0; ?>">
                     <div class="row">
                         <div class="col-md-3">
@@ -574,6 +562,36 @@ function saveDownload(obj) {
 }
 function saveFaq(obj) {
     return postAct('home_faq_save', $(obj).serialize());
+}
+
+// ===== 添加表单默认收起，点击「添加…」按钮后才展开 =====
+// kind：'dl'（下载方式）、'faq'（常见问题）；编辑态由服务端直接把表单渲染为展开状态
+function toggleAddForm(kind) {
+    var form = document.getElementById(kind + 'AddForm');
+    var btn = document.getElementById(kind + 'AddBtn');
+    if (!form) return false;
+
+    var willShow = (form.style.display === 'none' || !form.style.display);
+    form.style.display = willShow ? 'block' : 'none';
+
+    if (btn) {
+        var label = btn.getAttribute('data-add-label') || '添加';
+        btn.innerHTML = willShow
+            ? '<i class="fa fa-times me-1"></i>收起表单'
+            : '<i class="fa fa-plus me-1"></i>' + label;
+    }
+
+    if (willShow) {
+        // 展开后定位到表单并聚焦第一个输入框，移动端点击后能直接开始填写
+        var first = form.querySelector('input[name="title"], input[name="question"]');
+        if (first && first.focus) {
+            try { first.focus(); } catch (e) {}
+        }
+        if (form.scrollIntoView) {
+            try { form.scrollIntoView({behavior: 'smooth', block: 'nearest'}); } catch (e) {}
+        }
+    }
+    return false;
 }
 function delRow(act, id, tip) {
     layer.confirm(tip || '确认删除？', {icon: 3, title: '提示'}, function (index) {

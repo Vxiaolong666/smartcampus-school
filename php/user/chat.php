@@ -2,6 +2,21 @@
 $title = 'AI 对话';
 $requireLogin = true;
 include('./head.php');
+require_once('../funsion/feature_settings.php');
+
+// 后台「功能设置」中的「网页端 / App 端 AI 对话」开关（功能标识 web_ai_chat）：
+// 后台尚未创建该标识时不限制（与移动端 feature.checkFeature 的默认值保持一致）；
+// 标识存在且被禁用时给出「暂未开放」提示（文案取后台公告），并终止渲染对话界面。
+$aiChatFeature = getFeatureSetting($DB, 'web_ai_chat');
+if ($aiChatFeature && intval($aiChatFeature['is_enabled']) !== 1) {
+    echo '<div id="pjax-container"><div class="content animated fadeIn">
+        <div class="block block-rounded block-bordered">
+            <div class="block-content block-content-full">';
+    checkFeatureAccess($DB, 'web_ai_chat');
+    echo '</div></div></div>';
+    include('./foot.php');
+    exit;
+}
 ?>
     <!-- 页面加载遮罩：加载完成后淡出并移除 -->
     <div id="pageLoadingMask">
@@ -22,6 +37,7 @@ include('./head.php');
                     </div>
                 </div>
                 <div class="block-content block-content-full">
+                    <?php renderFeatureAnnouncement($DB, 'web_ai_chat'); ?>
                     <div class="aic-topic" id="chatTopic"></div>
                     <div class="aic-topic-sub" id="chatTopicSub">AI 生成可能有误，注意核实</div>
                     <div class="aic-body" id="chatList">

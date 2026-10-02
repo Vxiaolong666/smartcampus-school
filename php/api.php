@@ -3543,22 +3543,33 @@ switch($act) {
         jsonResponse(0, 'success', $banners);
     break;
     
-    // 每日例行维护时段：取自后台「电费/推送配置 → 服务停止时段」（quiet_hours_start / quiet_hours_end）
+    // 每日例行维护时段（客户端启动 / 回到前台时判断是否进入系统维护页）
+    // 取值：网站配置中的独立维护时段（后台「网站信息配置」→ 每日维护时段：
+    //       nteam_config.Maintenance_Start / Maintenance_End，见 Adminq/set.php）；
+    //       留空或非法时使用内置默认 23:00 ~ 06:00。
+    // 注意：「电费推送配置 → 服务停止时段」(nteam_power_config.quiet_hours_*) 仅用于
+    //       电费推送定时任务，与本维护时段完全独立，不再作为兜底取值。
     case 'get_maintenance_config':
-        $start = '23:00';
-        $end   = '06:00';
+        $start = '';
+        $end   = '';
+
         try {
-            $rs = @$DB->query("SELECT quiet_hours_start, quiet_hours_end FROM nteam_power_config WHERE id=1");
+            $rs = @$DB->query("SELECT `Maintenance_Start`, `Maintenance_End` FROM nteam_config WHERE id=1");
             if ($rs) {
                 $row = $rs->fetch();
                 if ($row) {
-                    if (!empty($row['quiet_hours_start'])) $start = substr($row['quiet_hours_start'], 0, 5);
-                    if (!empty($row['quiet_hours_end']))   $end   = substr($row['quiet_hours_end'], 0, 5);
+                    $start = trim((string)$row['Maintenance_Start']);
+                    $end   = trim((string)$row['Maintenance_End']);
                 }
             }
         } catch (Exception $e) {
-            // 表不存在时沿用内置默认值
+            // 字段未升级（未导入 php/config_maintenance_update.sql）时走内置默认值
         }
+
+        // 留空 / 非法值 → 内置默认（只保留 HH:MM）
+        if (!preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $start)) $start = '23:00';
+        if (!preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $end))   $end   = '06:00';
+
         jsonResponse(0, 'success', ['start' => $start, 'end' => $end]);
     break;
 

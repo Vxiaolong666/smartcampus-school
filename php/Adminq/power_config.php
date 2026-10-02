@@ -276,7 +276,7 @@ $pushTypeMap = [
                     <?php if ($hasTemplateColumns): ?>
                     <h4 class="mb-3 mt-4">微信订阅消息模板</h4>
                     <div class="alert alert-info mb-3">
-                        <strong>说明：</strong>请先在<a href="wx_templates.php">微信模板管理</a>中添加对应场景的模板，然后在此选择。
+                        <strong>说明：</strong>请先在<a href="subscription_manage.php?tab=templates">消息模板管理</a>中添加对应场景的模板，然后在此选择。
                     </div>
                     <div class="row">
                         <div class="col-md-4">
@@ -320,7 +320,7 @@ $pushTypeMap = [
                     
                     <h4 class="mb-3 mt-4">服务停止时段</h4>
                     <div class="alert alert-warning mb-3">
-                        <strong>说明：</strong>在服务停止时段内，定时任务将暂停执行电费查询和推送，避免在夜间等时段打扰用户。
+                        <strong>说明：</strong>在服务停止时段内，<b>电费推送定时任务</b>将暂停执行电费查询与推送，避免在夜间等时段打扰用户。
                     </div>
                     <div class="row">
                         <div class="col-md-3">

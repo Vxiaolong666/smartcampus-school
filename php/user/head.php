@@ -647,9 +647,9 @@ function getUserDisplayName($nickname, $username) {
                                         </li>
                                         <li class="nav-main-heading">Account</li>
                                         <li class="nav-main-item">
-                                            <a class="nav-main-link" href="profile.php">
-                                                <i class="nav-main-link-icon fa fa-user"></i>
-                                                <span class="nav-main-link-name"><b>个人资料</b></span>
+                                            <a class="nav-main-link" href="academic_bind.php">
+                                                <i class="nav-main-link-icon fa fa-graduation-cap"></i>
+                                                <span class="nav-main-link-name"><b>教务账号绑定</b></span>
                                             </a>
                                         </li>
                                         <li class="nav-main-item">
@@ -659,9 +659,9 @@ function getUserDisplayName($nickname, $username) {
                                             </a>
                                         </li>
                                         <li class="nav-main-item">
-                                            <a class="nav-main-link" href="academic_bind.php">
-                                                <i class="nav-main-link-icon fa fa-graduation-cap"></i>
-                                                <span class="nav-main-link-name"><b>教务账号绑定</b></span>
+                                            <a class="nav-main-link" href="profile.php">
+                                                <i class="nav-main-link-icon fa fa-user"></i>
+                                                <span class="nav-main-link-name"><b>个人资料</b></span>
                                             </a>
                                         </li>
                                         <li class="nav-main-item">
@@ -686,7 +686,7 @@ function getUserDisplayName($nickname, $username) {
                                         <li class="nav-main-item">
                                             <a class="nav-main-link" href="contact.php">
                                                 <i class="nav-main-link-icon fa fa-headset"></i>
-                                                <span class="nav-main-link-name"><b>联系我们</b></span>
+                                                <span class="nav-main-link-name"><b>联系反馈</b></span>
                                             </a>
                                         </li>
                                         <li class="nav-main-heading text-center">- 更多功能敬请期待 -</li>

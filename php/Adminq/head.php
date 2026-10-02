@@ -516,15 +516,9 @@ include('../Common/Core_brain.php');
                                             </li>
                                             <li class="nav-main-heading">Push</li>
                                             <li class="nav-main-item">
-                                                <a class="nav-main-link" href="wx_templates.php">
-                                                    <i class="nav-main-link-icon fa fa-file-alt"></i>
-                                                    <span class="nav-main-link-name"><b>消息模板管理</b></span>
-                                                </a>
-                                            </li>
-                                            <li class="nav-main-item">
                                                 <a class="nav-main-link" href="subscription_manage.php">
                                                     <i class="nav-main-link-icon fa fa-bell"></i>
-                                                    <span class="nav-main-link-name"><b>用户订阅管理</b></span>
+                                                    <span class="nav-main-link-name"><b>订阅与消息模板</b></span>
                                                 </a>
                                             </li>
                                             <li class="nav-main-item">
@@ -539,7 +533,25 @@ include('../Common/Core_brain.php');
                                                     <span class="nav-main-link-name"><b>学术推送配置</b></span>
                                                 </a>
                                             </li>
+                                            <li class="nav-main-item">
+                                                <a class="nav-main-link" href="schedule_time.php">
+                                                    <i class="nav-main-link-icon fa fa-table-list"></i>
+                                                    <span class="nav-main-link-name"><b>课程时间配置</b></span>
+                                                </a>
+                                            </li>
+                                            <li class="nav-main-item">
+                                                <a class="nav-main-link" href="oauth_config.php">
+                                                    <i class="nav-main-link-icon fa fa-link"></i>
+                                                    <span class="nav-main-link-name"><b>聚合登录配置</b></span>
+                                                </a>
+                                            </li>
                                             <li class="nav-main-heading">Content</li>
+                                            <li class="nav-main-item">
+                                                <a class="nav-main-link" href="set.php">
+                                                    <i class="nav-main-link-icon fa fa-cogs"></i>
+                                                    <span class="nav-main-link-name"><b>网站配置</b></span>
+                                                </a>
+                                            </li>
                                             <li class="nav-main-item">
                                                 <a class="nav-main-link" href="feature_settings.php">
                                                     <i class="nav-main-link-icon fa fa-toggle-on"></i>
@@ -565,12 +577,6 @@ include('../Common/Core_brain.php');
                                                 </a>
                                             </li>
                                             <li class="nav-main-item">
-                                                <a class="nav-main-link" href="set.php">
-                                                    <i class="nav-main-link-icon fa fa-cogs"></i>
-                                                    <span class="nav-main-link-name"><b>网站配置</b></span>
-                                                </a>
-                                            </li>
-                                            <li class="nav-main-item">
                                                 <a class="nav-main-link" href="smtp.php">
                                                     <i class="nav-main-link-icon fa fa-envelope-open"></i>
                                                     <span class="nav-main-link-name"><b>邮箱配置</b></span>
@@ -581,18 +587,6 @@ include('../Common/Core_brain.php');
                                                 <a class="nav-main-link" href="wx_config.php">
                                                     <i class="nav-main-link-icon fab fa-weixin"></i>
                                                     <span class="nav-main-link-name"><b>小程序配置</b></span>
-                                                </a>
-                                            </li>
-                                            <li class="nav-main-item">
-                                                <a class="nav-main-link" href="schedule_time.php">
-                                                    <i class="nav-main-link-icon fa fa-table-list"></i>
-                                                    <span class="nav-main-link-name"><b>课程时间配置</b></span>
-                                                </a>
-                                            </li>
-                                            <li class="nav-main-item">
-                                                <a class="nav-main-link" href="oauth_config.php">
-                                                    <i class="nav-main-link-icon fa fa-link"></i>
-                                                    <span class="nav-main-link-name"><b>聚合登录配置</b></span>
                                                 </a>
                                             </li>
                                             <li class="nav-main-item">
