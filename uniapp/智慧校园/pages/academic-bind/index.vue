@@ -10,6 +10,10 @@
 		</view>
 
 		<view class="content-wrapper">
+			<view v-if="announcement">
+				<announcement :content="announcement.content" :type="announcement.type" :closable="true" />
+			</view>
+
 			<view class="form-card">
 				<view class="card-header">
 					<image class="card-logo" src="/static/assets/058-video-conference.svg" mode="widthFix"></image>
@@ -104,6 +108,7 @@
  * 处理教务账号绑定和解绑
  */
 import api from '../../utils/api.js';
+import feature from '../../utils/feature.js';
 
 export default {
 	data() {
@@ -113,7 +118,8 @@ export default {
 			realName: '',
 			loading: false,
 			isBound: false,
-			academicInfo: {}
+			academicInfo: {},
+			announcement: null
 		};
 	},
 
@@ -123,7 +129,11 @@ export default {
 			api.goLoginWithTip();
 			return;
 		}
-		this.loadAcademicInfo();
+		this.checkFeature().then(canProceed => {
+			if (canProceed) {
+				this.loadAcademicInfo();
+			}
+		});
 	},
 
 	onShow() {
@@ -133,6 +143,24 @@ export default {
 	},
 
 	methods: {
+		async checkFeature() {
+			try {
+				const result = await feature.checkFeature('academic_bind');
+				if (!result.enabled) {
+					this.announcement = null;
+					feature.showDisabledAlert(result.featureName, result.announcement);
+					return false;
+				}
+				if (result.announcement) {
+					this.announcement = result.announcement;
+				}
+				return true;
+			} catch (err) {
+				console.error('检查功能开关失败', err);
+				return true;
+			}
+		},
+
 		loadAcademicInfo() {
 			api.getAcademic()
 				.then(res => {

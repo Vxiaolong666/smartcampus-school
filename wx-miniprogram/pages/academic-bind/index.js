@@ -3,6 +3,7 @@
  * 处理教务账号绑定和解绑
  */
 const api = require('../../utils/api.js');
+const feature = require('../../utils/feature.js');
 
 Page({
     data: {
@@ -11,7 +12,8 @@ Page({
         realName: '',         // 真实姓名（可选）
         loading: false,       // 加载状态
         isBound: false,       // 是否已绑定教务账号
-        academicInfo: null    // 教务账号信息
+        academicInfo: null,
+        announcement: null    // 教务账号信息
     },
 
     //页面加载
@@ -22,10 +24,33 @@ Page({
             api.goLoginWithTip();
             return;
         }
-        // 加载教务账号绑定信息
-        this.loadAcademicInfo();
+        // 检查功能开关
+        this.checkFeature().then(canProceed => {
+            if (canProceed) {
+                this.loadAcademicInfo();
+            }
+        });
     },
 
+
+    // 检查功能开关
+    async checkFeature() {
+        try {
+            const result = await feature.checkFeature('academic_bind');
+            if (!result.enabled) {
+                this.setData({ announcement: null });
+                feature.showDisabledAlert(result.featureName, result.announcement);
+                return false;
+            }
+            if (result.announcement) {
+                this.setData({ announcement: result.announcement });
+            }
+            return true;
+        } catch (err) {
+            console.error('检查功能开关失败', err);
+            return true;
+        }
+    },
 
     //页面显示
     onShow() {

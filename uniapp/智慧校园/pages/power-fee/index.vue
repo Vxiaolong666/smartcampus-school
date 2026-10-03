@@ -1087,6 +1087,7 @@ page {
 	display: flex;
 	gap: 20rpx;
 	margin-top: 12rpx;
+	margin-bottom: 24rpx;
 }
 
 .detail-grid-item {

@@ -12,8 +12,8 @@
   </view>
 
   <view class="content-wrapper">
-    <view wx:if="{{announcement}}" class="announcement-wrapper">
-      <view class="announcement-simple">{{announcement.content}}</view>
+    <view wx:if="{{announcement}}">
+      <announcement content="{{announcement.content}}" type="{{announcement.type}}" closable="{{true}}" />
     </view>
 
     <view class="filter-card">

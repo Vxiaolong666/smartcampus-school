@@ -4,6 +4,17 @@ $requireLogin = true;
 include('./head.php');
 
 $userId = $_SESSION['userId'];
+
+if (!isFeatureEnabled($DB, 'academic_bind')) {
+    echo '<div id="pjax-container"><div class="content animated fadeIn">
+        <div class="block block-rounded block-bordered">
+            <div class="block-content block-content-full">';
+    checkFeatureAccess($DB, 'academic_bind');
+    echo '</div></div></div>';
+    include('./foot.php');
+    exit;
+}
+
 $academicAccount = $DB->getRow("SELECT * FROM nteam_academic_accounts WHERE user_id='$userId'");
 ?>
 
@@ -16,6 +27,7 @@ $academicAccount = $DB->getRow("SELECT * FROM nteam_academic_accounts WHERE user
                 </h3>
             </div>
             <div class="block-content block-content-full">
+                <?php renderFeatureAnnouncement($DB, 'academic_bind'); ?>
                 <?php if ($academicAccount): ?>
                 <div class="alert alert-success d-flex align-items-center mb-4" role="alert">
                     <i class="fa fa-check-circle me-2"></i>

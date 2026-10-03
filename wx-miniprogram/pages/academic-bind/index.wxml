@@ -9,6 +9,10 @@
   </view>
 
   <view class="content-wrapper">
+    <view wx:if="{{announcement}}">
+      <announcement content="{{announcement.content}}" type="{{announcement.type}}" closable="{{true}}" />
+    </view>
+
     <view class="form-card">
       <view class="card-header">
         <image class="card-logo" src="/assets/058-video-conference.svg" mode="widthFix"></image>

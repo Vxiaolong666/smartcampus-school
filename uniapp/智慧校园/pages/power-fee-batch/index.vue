@@ -13,9 +13,7 @@
 		</view>
 
 		<view class="content-wrapper">
-			<view v-if="announcement" class="announcement-wrapper">
-				<view class="announcement-simple">{{ announcement.content }}</view>
-			</view>
+			<announcement v-if="announcement" :content="announcement.content" :type="announcement.type" :closable="true" />
 
 			<view class="filter-card">
 				<view class="filter-row">
@@ -622,16 +620,5 @@ page {
 	color: #948eb3;
 }
 
-.announcement-wrapper {
-	margin-bottom: 20rpx;
-}
 
-.announcement-simple {
-	background: rgba(59, 130, 246, 0.1);
-	color: #3b82f6;
-	padding: 16rpx 24rpx;
-	border-radius: 12rpx;
-	font-size: 26rpx;
-	border: 1rpx solid rgba(59, 130, 246, 0.2);
-}
 </style>
