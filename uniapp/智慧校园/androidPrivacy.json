@@ -1,3 +1,38 @@
 {
-    "prompt" : "template"
+  "version": "2",
+  "prompt": "template",
+  "title": "服务协议与隐私政策",
+  "message": "　　欢迎使用<font color=\"#007AFF\">智校通</font>！我们非常重视你的个人信息与隐私保护。在正式使用前，请你务必审慎阅读、充分理解<font color=\"#007AFF\"><a href=\"https://mc.xzwmc.com/csgocs/user/agreement_detail.php?key=service\">《用户服务协议》</a></font>和<font color=\"#007AFF\"><a href=\"https://mc.xzwmc.com/csgocs/privacy-policy.php\">《隐私政策》</a></font>的全部条款，特别是以下关键内容：<br/>　　<font color=\"#E64340\">1. 为向你提供登录验证、教务查询、电费查询与消息推送等服务，我们需要收集你的设备标识、账号信息与操作日志；</font><br/>　　<font color=\"#E64340\">2. 上述信息仅用于功能实现与服务优化，未经你的同意不会用于其他目的。</font><br/>　　点击“同意并继续”即代表你已阅读并同意前述协议；如你不同意，我们将无法为你提供服务。",
+  "buttonAccept": "同意并继续",
+  "buttonRefuse": "不同意",
+  "hrefLoader": "system",
+  "backToExit": "false",
+  "second": {
+    "title": "温馨提示",
+    "message": "　　你尚未阅读并同意<font color=\"#007AFF\"><a href=\"https://mc.xzwmc.com/csgocs/user/agreement_detail.php?key=service\">《用户服务协议》</a></font>和<font color=\"#007AFF\"><a href=\"https://mc.xzwmc.com/csgocs/privacy-policy.php\">《隐私政策》</a></font>，无法进入应用。如需在未同意的情况下体验基础功能，可返回点击“游客进入”，否则请点击“退出应用”。",
+    "buttonAccept": "同意并继续",
+    "buttonRefuse": "退出应用"
+  },
+  "disagreeMode": {
+    "support": false,
+    "loadNativePlugins": false,
+    "visitorEntry": true,
+    "showAlways": true
+  },
+  "styles": {
+    "backgroundColor": "#FFFFFF",
+    "borderRadius": "12px",
+    "title": {
+      "color": "#333333"
+    },
+    "buttonAccept": {
+      "color": "#007AFF"
+    },
+    "buttonRefuse": {
+      "color": "#999999"
+    },
+    "buttonVisitor": {
+      "color": "#007AFF"
+    }
+  }
 }
