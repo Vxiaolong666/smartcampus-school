@@ -104,7 +104,8 @@
         <view class="fb-modal-title">反馈详情</view>
         <view class="fb-modal-close" bindtap="closeDetail">×</view>
       </view>
-      <scroll-view scroll-y class="fb-modal-body" style="max-height: 60vh;">
+      <!-- 内容高度上限由 .fb-modal-body 样式控制，模板里不再内联 -->
+      <scroll-view scroll-y class="fb-modal-body">
         <view class="fb-modal-top">
           <view class="fb-modal-subject">#{{detail.id}} {{detail.subject || '（无主题）'}}</view>
           <view class="fb-badge {{detail.statusClass}}">{{detail.status_text}}</view>
@@ -117,13 +118,16 @@
           <view class="fb-modal-label">处理备注</view>
           <view class="fb-modal-remark">{{detail.remark}}</view>
         </view>
-        <view class="fb-modal-row">
-          <text class="fb-modal-label">提交时间</text>
-          <text class="fb-modal-value">{{detail.create_time}}</text>
-        </view>
-        <view class="fb-modal-row" wx:if="{{detail.update_time}}">
-          <text class="fb-modal-label">更新时间</text>
-          <text class="fb-modal-value">{{detail.update_time}}</text>
+        <!-- 元信息区：用细分割线与正文分开；更新时间与提交时间相同（从未处理过）时不重复展示 -->
+        <view class="fb-modal-meta">
+          <view class="fb-modal-row">
+            <text class="fb-modal-label">提交时间</text>
+            <text class="fb-modal-value">{{detail.create_time}}</text>
+          </view>
+          <view class="fb-modal-row" wx:if="{{detail.update_time && detail.update_time !== detail.create_time}}">
+            <text class="fb-modal-label">更新时间</text>
+            <text class="fb-modal-value">{{detail.update_time}}</text>
+          </view>
         </view>
       </scroll-view>
       <view class="fb-modal-foot">

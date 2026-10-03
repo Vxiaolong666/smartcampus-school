@@ -366,7 +366,16 @@ export default {
 			this.loadGlanceData();
 			this.loadLowSubscriptions();
 			this.loadNotices();
+		} else {
+			// 再次显示（登录成功回跳首页 / 从其它页面返回）：异步刷新课程与电费信息，
+			// 不展示 loading、失败也不清空，避免闪烁
+			this.loadGlanceData({ silent: true });
 		}
+	},
+
+	// 点击底部「首页」导航（含重复点击当前 Tab）：异步刷新课程与电费信息
+	onTabItemTap() {
+		this.loadGlanceData({ silent: true });
 	},
 
 	onHide() {
@@ -435,7 +444,11 @@ export default {
 			}
 		},
 
-		async loadGlanceData() {
+		// 加载今日速览数据（下一节课 / 电费余额）
+		// options.silent = true 表示后台静默刷新（登录成功回跳首页、点击首页 Tab 时使用）：
+		// 失败时保留原有展示，避免数据被清空造成闪空
+		async loadGlanceData(options) {
+			const silent = !!(options && options.silent);
 			if (!api.isLoggedIn()) return;
 			try {
 				const res = await api.getGlanceData();
@@ -448,6 +461,7 @@ export default {
 				this.noDormitory = data.no_dormitory || false;
 			} catch (err) {
 				console.error('加载速览数据失败', err);
+				if (silent) return;
 				this.nextCourse = null;
 				this.allCoursesEnded = false;
 				this.courseLoadError = true;

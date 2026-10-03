@@ -36,10 +36,10 @@
 					<view class="dorm-header">
 						<view class="dorm-name">
 							<image class="dorm-icon" src="/static/assets/wxmp-home2.svg" mode="widthFix"></image>
-							<text>{{ item.displayName }}</text>
+							<text class="dorm-title">{{ item.displayName }}</text>
 							<text v-if="item.is_default == 1" class="default-tag">默认</text>
 						</view>
-						<switch :checked="item.isEnabled" @change="togglePush" :data-index="index" color="#13c2c2" />
+						<switch class="dorm-switch" :checked="item.isEnabled" @change="togglePush" :data-index="index" color="#13c2c2" />
 					</view>
 
 					<view v-if="item.isEnabled" class="dorm-content">
@@ -530,18 +530,34 @@ page {
 .dorm-name {
 	display: flex;
 	align-items: center;
+	/* 关键：允许收缩（min-width:0），名称过长时由名称文字换行，而不是挤压右侧内容 */
+	flex: 1 1 auto;
+	min-width: 0;
+	margin-right: 20rpx;
 	font-size: 32rpx;
 	font-weight: bold;
 	color: #48416f;
 }
 
+/* 宿舍名称：过长时换行显示，不再挤压「默认」标签
+   （flex: 0 1 auto —— 可收缩换行但不拉伸，保证「默认」紧跟名称，不被推到最右侧） */
+.dorm-title {
+	flex: 0 1 auto;
+	min-width: 0;
+	word-break: break-all;
+}
+
 .dorm-icon {
+	flex: 0 0 auto;
 	width: 36rpx;
 	height: 36rpx;
 	margin-right: 10rpx;
 }
 
 .default-tag {
+	/* 标签不参与收缩、文字不折行，避免名称过长时「默认」被折成两行 */
+	flex: 0 0 auto;
+	white-space: nowrap;
 	background: linear-gradient(135deg, #13c2c2 0%, #10aeff 100%);
 	color: #fff;
 	font-size: 22rpx;
@@ -549,6 +565,11 @@ page {
 	border-radius: 8rpx;
 	margin-left: 10rpx;
 	font-weight: normal;
+}
+
+/* 右侧推送开关：固定尺寸，不被长名称挤压 */
+.dorm-switch {
+	flex: 0 0 auto;
 }
 
 .dorm-content {

@@ -142,8 +142,11 @@ Page({
         return `${d.getMonth() + 1}月${d.getDate()}日 ${weekdays[d.getDay()]}`;
     },
 
-    //加载今日速览数据
-    async loadGlanceData() {
+    //加载今日速览数据（下一节课 / 电费余额）
+    // options.silent = true 表示后台静默刷新（登录成功回跳首页、点击首页 Tab 时使用）：
+    // 失败时保留原有展示，避免数据被清空造成闪空
+    async loadGlanceData(options) {
+        const silent = !!(options && options.silent);
         if (!api.isLoggedIn()) return;
         try {
             const res = await api.getGlanceData();
@@ -158,6 +161,7 @@ Page({
             });
         } catch (err) {
             console.error('加载速览数据失败', err);
+            if (silent) return;
             this.setData({
                 nextCourse: null,
                 allCoursesEnded: false,
@@ -254,13 +258,22 @@ Page({
         // 刷新今日日期（跨天后回到页面也能更新）
         this.setData({ todayText: this.getTodayText() });
 
-        // 仅首次显示时加载数据（避免重复加载）
+        // 首次显示：完整加载（避免重复加载）
         if (!this.data._dataLoaded) {
             this.setData({ _dataLoaded: true });
             this.loadGlanceData();
             this.loadLowSubscriptions();
             this.loadNotices();
+        } else {
+            // 再次显示（登录成功回跳首页 / 从其它页面返回）：异步刷新课程与电费信息，
+            // 不展示 loading、失败也不清空，避免闪烁
+            this.loadGlanceData({ silent: true });
         }
+    },
+
+    //点击底部「首页」导航（含重复点击当前 Tab）：异步刷新课程与电费信息
+    onTabItemTap() {
+        this.loadGlanceData({ silent: true });
     },
 
     //跳转到订阅管理页

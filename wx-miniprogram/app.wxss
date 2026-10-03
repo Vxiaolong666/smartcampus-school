@@ -218,6 +218,11 @@
 	margin-bottom: 24rpx;
 }
 
+/* 提交反馈卡片：说明文字与上方「提交反馈」标题之间留出间距 */
+.fb-card-title + .fb-card-desc {
+	margin-top: 20rpx;
+}
+
 .fb-field {
 	margin-bottom: 24rpx;
 }
@@ -510,14 +515,16 @@
 }
 
 .fb-modal-body {
-	padding: 24rpx 32rpx 8rpx;
+	/* 底部留白稍大，滚动到底时内容不贴住按钮区 */
+	padding: 24rpx 32rpx 20rpx;
 	max-height: 60vh;
 	box-sizing: border-box;
 }
 
 .fb-modal-top {
 	display: flex;
-	align-items: center;
+	/* 徽章与主题首行对齐：主题很长占多行时，徽章不会浮在中间 */
+	align-items: flex-start;
 	justify-content: space-between;
 	margin-bottom: 20rpx;
 }
@@ -562,10 +569,17 @@
 	white-space: pre-wrap;
 }
 
+/* 元信息区（提交 / 更新时间）：与上方正文用细分割线隔开，避免看成处理备注的一部分 */
+.fb-modal-meta {
+	margin-top: 2rpx;
+	padding-top: 18rpx;
+	border-top: 1rpx solid #f0f0f0;
+}
+
 .fb-modal-row {
 	display: flex;
 	justify-content: space-between;
-	padding: 8rpx 0;
+	padding: 6rpx 0;
 	font-size: 24rpx;
 }
 

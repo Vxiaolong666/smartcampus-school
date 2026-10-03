@@ -162,6 +162,18 @@
 <style>
 	/*每个页面公共css */
 
+	/* ===== H5 选择器（picker）弹层层级 =====
+	   uni-app H5 的 picker 展开时会把自己的弹层节点移动到应用根节点下，
+	   而该弹层自身 z-index 仅为 999，低于页面内弹窗（如「宿舍绑定」的 .modal-mask: 1000），
+	   于是被弹窗内容与页面列表遮挡（选择器显示不全 / 看不到选项）。
+	   这里统一提升到页面弹窗之上（仍低于 App 级弹窗 9990+，如联系客服、版本更新弹窗），
+	   保证选择器始终完整展示。小程序 / App 端为原生 picker，不受影响。 */
+	/* #ifdef H5 */
+	.uni-picker-container {
+		z-index: 1100 !important;
+	}
+	/* #endif */
+
 	/* AI 结果浮层：遮罩本身作为滚动容器并禁止溢出滚动链式传递给背景页面，
 	   避免手指在遮罩上滑动时页面跟着滚动 */
 	.ai-mask {
@@ -396,6 +408,11 @@
 		color: #8a94a6;
 		line-height: 1.7;
 		margin-bottom: 24rpx;
+	}
+
+	/* 提交反馈卡片：说明文字与上方「提交反馈」标题之间留出间距 */
+	.fb-card-title + .fb-card-desc {
+		margin-top: 20rpx;
 	}
 
 	.fb-field {
@@ -690,14 +707,16 @@
 	}
 
 	.fb-modal-body {
-		padding: 24rpx 32rpx 8rpx;
+		/* 底部留白稍大，滚动到底时内容不贴住按钮区 */
+		padding: 24rpx 32rpx 20rpx;
 		max-height: 60vh;
 		box-sizing: border-box;
 	}
 
 	.fb-modal-top {
 		display: flex;
-		align-items: center;
+		/* 徽章与主题首行对齐：主题很长占多行时，徽章不会浮在中间 */
+		align-items: flex-start;
 		justify-content: space-between;
 		margin-bottom: 20rpx;
 	}
@@ -742,10 +761,17 @@
 		white-space: pre-wrap;
 	}
 
+	/* 元信息区（提交 / 更新时间）：与上方正文用细分割线隔开，避免看成处理备注的一部分 */
+	.fb-modal-meta {
+		margin-top: 2rpx;
+		padding-top: 18rpx;
+		border-top: 1rpx solid #f0f0f0;
+	}
+
 	.fb-modal-row {
 		display: flex;
 		justify-content: space-between;
-		padding: 8rpx 0;
+		padding: 6rpx 0;
 		font-size: 24rpx;
 	}
 

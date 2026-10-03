@@ -35,10 +35,10 @@
                 <view class="dorm-header">
                     <view class="dorm-name">
                         <image class="dorm-icon" src="/assets/wxmp-home2.svg" mode="widthFix"></image>
-                        <text>{{item.displayName}}</text>
+                        <text class="dorm-title">{{item.displayName}}</text>
                         <text wx:if="{{item.is_default == 1}}" class="default-tag">默认</text>
                     </view>
-                    <switch checked="{{item.isEnabled}}" bindchange="togglePush" data-index="{{index}}" color="#13c2c2" />
+                    <switch class="dorm-switch" checked="{{item.isEnabled}}" bindchange="togglePush" data-index="{{index}}" color="#13c2c2" />
                 </view>
                 
                 <view wx:if="{{item.isEnabled}}" class="dorm-content">
