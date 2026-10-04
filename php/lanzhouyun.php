@@ -75,6 +75,10 @@ if ($cached !== false) {
 }
 $cookie="";
 $softInfo = MloocCurlGetWithChallenge($url, $UserAgent, $cookie);
+//下载接口地址：新版蓝奏把 ajax 接口迁到了独立域名（如 https://apifile.woozooo.com/ajaxfile.php?file=NNN，
+//页面里写的是绝对地址），分享域名上已不再提供该接口——POST 过去会返回 407，必须优先使用页面里的绝对地址
+preg_match_all("~https?://[a-z0-9.\-]+/ajax(?:m|file)\.php\?file=\d+~i", $softInfo, $ajaxAbsUrl);
+$ajaxAbsolute = isset($ajaxAbsUrl[0][0]) ? $ajaxAbsUrl[0][0] : '';
 //判断文件链接是否失效
 if (strpos($softInfo, "文件取消分享了") !== false || strpos($softInfo, "文件不存在") !== false) {
 	die(
@@ -129,7 +133,9 @@ if(strpos($softInfo, "function down_p(){") != false  && empty($webpage)) {
 	}
 	preg_match_all("~(?:^|/)(ajax(?:m|file)\.php\?file=\d+)~", $softInfo, $ajaxm);
 	$ajaxPath = isset($ajaxm[1][0]) ? $ajaxm[1][0] : '';
-	if(empty($sign) || empty($ajaxPath)) {
+	//优先使用页面里的绝对接口地址，取不到时退回「分享域名 + 相对路径」（兼容旧版页面）
+	$ajaxUrl = $ajaxAbsolute !== '' ? $ajaxAbsolute : ($ajaxPath !== '' ? $origin . '/' . $ajaxPath : '');
+	if(empty($sign) || $ajaxUrl === '') {
 		die(
 			json_encode(
 				array(
@@ -145,7 +151,7 @@ if(strpos($softInfo, "function down_p(){") != false  && empty($webpage)) {
 		"p" => $pwd,
 		"kd" => 1
 	);
-	$softInfo = MloocCurlPost($post_data, $origin."/".$ajaxPath, $url, $UserAgent, "acw_sc__v2=".$cookie);
+	$softInfo = MloocCurlPost($post_data, $ajaxUrl, $url, $UserAgent, "acw_sc__v2=".$cookie);
 	$nameInfo = json_decode($softInfo, true);
 	$softName[1] = (is_array($nameInfo) && isset($nameInfo['inf'])) ? $nameInfo['inf'] : '';
 } else {
@@ -184,7 +190,12 @@ if(strpos($softInfo, "function down_p(){") != false  && empty($webpage)) {
 	    );
 	}
 	$ajaxmPath = $ajaxm[1][0] ?? '';
-	$softInfo = MloocCurlPost($post_data, $origin."/".$ajaxmPath, $ifurl, $UserAgent, "acw_sc__v2=".$cookie);
+	//同上：优先使用页面里的绝对接口地址
+	$ajaxUrl = $ajaxAbsolute !== '' ? $ajaxAbsolute : ($ajaxmPath !== '' ? $origin . '/' . $ajaxmPath : '');
+	if($ajaxUrl === '') {
+		JsonError('未找到下载接口参数');
+	}
+	$softInfo = MloocCurlPost($post_data, $ajaxUrl, $ifurl, $UserAgent, "acw_sc__v2=".$cookie);
 }
 //其他情况下的信息输出
 $decoded = json_decode($softInfo, true);
@@ -202,9 +213,11 @@ if (!is_array($decoded) || !isset($decoded['zt']) || $decoded['zt'] != 1) {
 $softInfo = $decoded;
 //拼接链接
 $downUrl1 = $softInfo['dom'] . '/file/' . $softInfo['url'];
-$softInfo=MloocCurlGet($downUrl1,$UserAgent,"acw_sc__v2=".$cookie);
-//解析最终直链地址
-$downUrl2 = MloocCurlHead($downUrl1, $origin, $UserAgent, "down_ip=1; acw_sc__v2=".$cookie);
+//先按新版流程解析（CDN 挑战 +「系统发现您的网络异常」验证页换直链），失败再回退到旧的 302 跳转方式
+$downUrl2 = LanzouResolveDirect($downUrl1, $origin, $UserAgent, $cookie);
+if ($downUrl2 === '') {
+	$downUrl2 = MloocCurlHead($downUrl1, $origin, $UserAgent, "down_ip=1; acw_sc__v2=".$cookie);
+}
 //判断最终链接是否获取成功，如未成功则使用原链接
 if(strpos($downUrl2,"http") === false) {
 	$downUrl = $downUrl1;
@@ -449,6 +462,143 @@ function MloocCurlGetWithChallenge($url, $UserAgent, &$cookie, $referer = '') {
 	}
 	return $response;
 }
+/**
+ * 精简 GET 请求（不带 X-FORWARDED-FOR 伪造头，CDN 会按真实来源 IP 绑定校验 Cookie）
+ *
+ * @param string     $url
+ * @param string     $UserAgent
+ * @param string     $cookie
+ * @param string     $referer
+ * @param array|null $setCookies 回传响应头下发的 Cookie（name=value）
+ * @return string 响应体
+ */
+function LanzouHttpGet($url, $UserAgent, $cookie, $referer, &$setCookies = null) {
+	$setCookies = array();
+	$curl = curl_init();
+	curl_setopt($curl, CURLOPT_URL, $url);
+	curl_setopt($curl, CURLOPT_FOLLOWLOCATION, 1);
+	curl_setopt($curl, CURLOPT_COOKIE, $cookie);
+	if ($UserAgent != "") {
+		curl_setopt($curl, CURLOPT_USERAGENT, $UserAgent);
+	}
+	if ($referer != "") {
+		curl_setopt($curl, CURLOPT_REFERER, $referer);
+	}
+	curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);
+	curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, false);
+	curl_setopt($curl, CURLOPT_ENCODING, 'gzip');
+	curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+	curl_setopt($curl, CURLOPT_TIMEOUT, 10);
+	curl_setopt($curl, CURLOPT_HEADERFUNCTION, function ($ch, $line) use (&$setCookies) {
+		$trim = trim($line);
+		if (stripos($trim, 'set-cookie:') === 0) {
+			$value = trim(substr($trim, 11));
+			$semi = strpos($value, ';');
+			$setCookies[] = ($semi === false) ? $value : substr($value, 0, $semi);
+		}
+		return strlen($line);
+	});
+	$response = curl_exec($curl);
+	curl_close($curl);
+	return $response;
+}
+
+/**
+ * 精简 POST 请求（用于 CDN 验证接口，表单编码 + XHR 头，与页面 jQuery 保持一致）
+ */
+function LanzouHttpPost($url, $data, $referer, $UserAgent, $cookie) {
+	$curl = curl_init();
+	curl_setopt($curl, CURLOPT_URL, $url);
+	curl_setopt($curl, CURLOPT_POST, 1);
+	curl_setopt($curl, CURLOPT_POSTFIELDS, http_build_query($data));
+	curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+	curl_setopt($curl, CURLOPT_TIMEOUT, 10);
+	curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);
+	curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, false);
+	curl_setopt($curl, CURLOPT_ENCODING, 'gzip');
+	if ($UserAgent != "") {
+		curl_setopt($curl, CURLOPT_USERAGENT, $UserAgent);
+	}
+	curl_setopt($curl, CURLOPT_COOKIE, $cookie);
+	if ($referer != "") {
+		curl_setopt($curl, CURLOPT_REFERER, $referer);
+	}
+	curl_setopt($curl, CURLOPT_HTTPHEADER, array('X-Requested-With: XMLHttpRequest'));
+	$response = curl_exec($curl);
+	curl_close($curl);
+	return $response;
+}
+
+/**
+ * 解析「{$dom}/file/?token」形式的下载地址（新版蓝奏页面结构）
+ *
+ * 流程：
+ *   1. 请求 file 地址时，CDN（阿里云 ESA）先返回带 arg1 的 JS 挑战页；算出 acw_sc__v2 后，
+ *      连同响应下发的 acw_tc / cdn_sec_tc 一起重试；
+ *   2. 重试后若返回「系统发现您的网络异常，需要验证后下载文件」页，则取页面里的 file / sign，
+ *      延时后再 POST 到 {$dom}/file/ajax.php 换成真实直链（蓝奏要求页面出现约 2 秒再提交，
+ *      过早提交只会返回 {"zt":1,"url":"?SignError"}）；
+ *   3. 页面形态不认识或换取失败返回 ''，由调用方回退到旧的 302 跳转方式。
+ *
+ * @param string $fileUrl     {$dom}/file/?token
+ * @param string $referer     分享页地址（Referer）
+ * @param string $UserAgent
+ * @param string $shareCookie 分享页挑战得到的 acw_sc__v2 值
+ * @return string 直链；失败返回 ''
+ */
+function LanzouResolveDirect($fileUrl, $referer, $UserAgent, $shareCookie) {
+	$parts = parse_url($fileUrl);
+	if (!isset($parts['scheme'], $parts['host'])) {
+		return '';
+	}
+	$cdnOrigin = $parts['scheme'] . '://' . $parts['host'];
+
+	// 1. 首次请求：可能是 JS 挑战页，也可能直接就是验证页
+	$response = LanzouHttpGet($fileUrl, $UserAgent, 'down_ip=1', $referer, $setCookies);
+	$cookie = 'down_ip=1';
+	$hasChallenge = false;
+	if (preg_match("~var\s+arg1=['\"]([0-9a-f]{40})['\"]~i", $response, $m)) {
+		$hasChallenge = true;
+		$cookie .= '; acw_sc__v2=' . acw_sc_v2_simple($m[1]);
+	}
+	foreach ($setCookies as $sc) {
+		//只带上 CDN 校验相关 Cookie，避免污染请求
+		if (preg_match('~^(acw_tc|cdn_sec_tc)=~i', $sc)) {
+			$cookie .= '; ' . $sc;
+		}
+	}
+
+	// 2. 带挑战 Cookie 重试（挑战页本身没有验证参数，必须换一次再取）
+	if ($hasChallenge) {
+		$response = LanzouHttpGet($fileUrl, $UserAgent, $cookie, $referer, $ignored);
+	}
+
+	// 3. 从验证页取 file / sign
+	if (!preg_match("~'file'\s*:\s*'([^']{20,})'~s", $response, $fm) ||
+		!preg_match("~'sign'\s*:\s*'([^']+)'~s", $response, $sm)) {
+		return '';
+	}
+	$fileToken = $fm[1];
+	$verifySign = $sm[1];
+
+	// 4. 延时后换取直链（el：1/2/3 分别对应页面上三个按钮，网络异常场景是 2）
+	sleep(3);
+	foreach (array(2, 1, 3) as $el) {
+		$raw = LanzouHttpPost(
+			$cdnOrigin . '/file/ajax.php',
+			array('file' => $fileToken, 'el' => $el, 'sign' => $verifySign),
+			$fileUrl,
+			$UserAgent,
+			$cookie
+		);
+		$json = json_decode($raw, true);
+		if (is_array($json) && !empty($json['url']) && stripos($json['url'], 'http') === 0) {
+			return html_entity_decode($json['url'], ENT_QUOTES, 'UTF-8');
+		}
+	}
+	return '';
+}
+
 //JSON错误输出
 function JsonError($message) {
 	die(json_encode(array('code' => 400, 'msg' => $message), JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));

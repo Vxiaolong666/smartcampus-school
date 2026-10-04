@@ -81,7 +81,9 @@ if (!function_exists('lanzouIsUrl')) {
      *
      * @return array{directUrl:string,name:string,filesize:string}|null 失败返回 null
      */
-    function lanzouResolve($url, $pwd = '', $timeout = 15)
+    // 超时放宽到 25 秒：新版蓝奏解析链路更长（分享页挑战 → 接口换链 → CDN 挑战 →
+    // 验证页换直链），其中还有约 3 秒的延时门，15 秒容易在慢网络下被掐断
+    function lanzouResolve($url, $pwd = '', $timeout = 25)
     {
         if (!function_exists('curl_init')) {
             return null;
