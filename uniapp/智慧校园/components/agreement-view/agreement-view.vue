@@ -22,13 +22,26 @@
 						<view class="ag-empty-desc">该协议尚未开放或已停用，如有疑问请联系管理员。</view>
 					</view>
 				</view>
+				<!-- 正文始终从接口获取：加载中 -->
+				<view v-else-if="loading" class="ag-body">
+					<view class="ag-loading-box">
+						<view class="ag-loading-spinner"></view>
+						<view class="ag-loading-tip">加载中…</view>
+					</view>
+				</view>
+				<!-- 拉取失败（网络异常 / 协议表未初始化）：不再回退本地内置内容 -->
+				<view v-else-if="failed" class="ag-body">
+					<view class="ag-empty">
+						<image class="ag-empty-icon" src="/static/assets/wxmp-empty.svg" mode="widthFix"></image>
+						<view class="ag-empty-title">协议加载失败</view>
+						<view class="ag-empty-desc">网络异常或服务暂不可用，请稍后重试。</view>
+						<view class="ag-retry-btn" @click="retryLoad">重新加载</view>
+					</view>
+				</view>
 				<view v-else class="ag-body">
 					<view v-if="updatedAt" class="ag-update">最后更新日期：{{ updatedAt }}</view>
 					<!-- 正文拆成「文本块 + 图片块」：文本交 rich-text，图片用原生 image（各端稳定显示、可点击放大） -->
-					<block v-if="blocks.length">
-						<md-blocks :blocks="blocks" @preview="previewImage" />
-					</block>
-					<view v-else class="ag-loading">加载中…</view>
+					<md-blocks :blocks="blocks" @preview="previewImage" />
 				</view>
 				<view class="ag-footer">感谢您信任并使用本服务</view>
 			</view>
@@ -65,13 +78,13 @@
 /**
  * 协议内容渲染（协议中心各协议页共用）
  * ------------------------------------------------------------------
- * 传入协议标识 akey，内容优先来源于后台「协议管理」（接口下发 Markdown）：
- *   - 后台已停用 / 未配置（not_published）：展示「当前协议未发布」兜底；
- *   - 其它情况（网络异常等）拉取失败时回退到内置内容（utils/agreements.js）。
+ * 传入协议标识 akey，内容一律来源于后台「协议管理」（接口下发 Markdown），
+ * 本地不留存任何协议预留信息：
+ *   - 后台已停用 / 未配置（not_published）：展示「当前协议未发布」；
+ *   - 其它情况（网络异常、协议表未初始化等）：展示「加载失败 + 重新加载」。
  */
 import api from '../../utils/api.js';
 import { markdownToBlocks } from '../../utils/markdown.js';
-import agreements from '../../utils/agreements.js';
 
 export default {
 	name: 'agreement-view',
@@ -83,7 +96,9 @@ export default {
 			title: '',
 			updatedAt: '',
 			blocks: [],          // 正文块：{type:'html',html} 或 {type:'image',src}
-			notPublished: false,
+			loading: true,       // 正文始终从接口获取
+			failed: false,       // 拉取失败（网络异常 / 协议表未初始化等）
+			notPublished: false, // 后台未配置 / 已停用
 			// 联系客服弹窗（非小程序端）
 			contactShow: false,
 			contactLines: []
@@ -102,40 +117,43 @@ export default {
 		toBlocks(md) {
 			return markdownToBlocks(md || '', { resolveUrl: api.getFileUrl });
 		},
-		load() {
-			if (!this.akey) return;
-			this.notPublished = false;
-			const doc = agreements.get(this.akey);
-			if (doc) {
-				this.title = doc.title;
-				this.updatedAt = doc.updatedAt;
-				this.blocks = this.toBlocks(doc.content);
-			} else {
-				this.title = '协议内容';
-				this.updatedAt = '';
+		// 内容一律来自接口（本地不留存任何协议预留信息）
+		async load() {
+			if (!this.akey) {
+				this.loading = false;
+				this.failed = true;
+				this.notPublished = false;
 				this.blocks = [];
+				this.updatedAt = '';
+				return;
 			}
-			this.loadFromServer();
-		},
-		// 服务端内容为准（后台可编辑）；未发布时展示兜底提示，网络异常时沿用内置内容
-		async loadFromServer() {
+			this.loading = true;
+			this.failed = false;
+			this.notPublished = false;
 			try {
 				const res = await api.getAgreement(this.akey);
 				const d = (res && res.data) || {};
-				if (!d.content) return;
 				this.title = d.title || this.title;
 				this.updatedAt = d.updated_at ? this.fmtDate(d.updated_at) : '';
-				this.blocks = this.toBlocks(d.content);
-				this.notPublished = false;
+				this.blocks = d.content ? this.toBlocks(d.content) : [];
+				this.loading = false;
+				// 接口成功但正文为空：按「未发布」处理，避免出现空白页
+				this.notPublished = !d.content;
 			} catch (e) {
-				// 后台明确「未发布」：清空内置内容，改展示兜底提示
-				if (e && e.data && e.data.not_published) {
-					this.notPublished = true;
-					this.blocks = [];
-					this.updatedAt = '';
-				}
-				// 其它错误（网络异常等）：保留内置内容，保证离线仍可阅读
+				// 后台明确「未发布」：展示「当前协议未发布」
+				// 其它错误（网络异常、协议表未初始化等）：展示「加载失败」，不再回退本地内容
+				const notPublished = !!(e && e.data && e.data.not_published);
+				this.loading = false;
+				this.notPublished = notPublished;
+				this.failed = !notPublished;
+				this.blocks = [];
+				this.updatedAt = '';
 			}
+		},
+
+		// 拉取失败后「重新加载」
+		retryLoad() {
+			this.load();
 		},
 		// 正文图片点击放大
 		previewImage(src) {

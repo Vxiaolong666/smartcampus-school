@@ -480,6 +480,21 @@ page {
     margin-top: 24rpx;
 }
 
+/* 浅色底圆角块：与周期统计（.fun-totals）一致的背景形状 */
+.fun-panel {
+    margin-top: 14rpx;
+    padding: 10rpx 20rpx;
+    background: #f7f8fc;
+    border-radius: 16rpx;
+}
+
+/* 面板内的行去掉上外边距，改为纵向内间距（首尾由面板内边距补足） */
+.fun-panel .fun-row,
+.fun-panel .fun-extreme {
+    margin-top: 0;
+    padding: 12rpx 0;
+}
+
 .fun-block-title {
     font-size: 24rpx;
     font-weight: 600;

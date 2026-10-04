@@ -1014,11 +1014,44 @@
 		color: #48416f;
 	}
 
-	.ag-loading {
+	/* 协议加载中：转圈动画（协议页通用） */
+	.ag-loading-box {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
 		padding: 80rpx 0;
-		text-align: center;
+	}
+
+	.ag-loading-spinner {
+		width: 60rpx;
+		height: 60rpx;
+		border: 4rpx solid #e0e0e0;
+		border-top-color: #13c2c2;
+		border-radius: 50%;
+		animation: ag-spin 0.8s linear infinite;
+	}
+
+	@keyframes ag-spin {
+		to {
+			transform: rotate(360deg);
+		}
+	}
+
+	.ag-loading-tip {
+		margin-top: 20rpx;
 		font-size: 26rpx;
 		color: #948eb3;
+	}
+
+	/* 协议加载失败：重新加载按钮（协议页通用） */
+	.ag-retry-btn {
+		margin-top: 30rpx;
+		padding: 14rpx 44rpx;
+		font-size: 26rpx;
+		color: #ffffff;
+		background: linear-gradient(135deg, #13c2c2 0%, #0ea5a5 100%);
+		border-radius: 40rpx;
 	}
 
 	/* 协议未发布：兜底空状态 */

@@ -21,13 +21,26 @@
           <view class="ag-empty-desc">该协议尚未开放或已停用，如有疑问请联系管理员。</view>
         </view>
       </view>
+      <!-- 正文始终从接口获取：加载中 -->
+      <view class="ag-body" wx:elif="{{loading}}">
+        <view class="ag-loading-box">
+          <view class="ag-loading-spinner"></view>
+          <view class="ag-loading-tip">加载中…</view>
+        </view>
+      </view>
+      <!-- 拉取失败（网络异常 / 协议表未初始化）：不再回退本地内置内容 -->
+      <view class="ag-body" wx:elif="{{failed}}">
+        <view class="ag-empty">
+          <image class="ag-empty-icon" src="/assets/wxmp-empty.svg" mode="widthFix"></image>
+          <view class="ag-empty-title">协议加载失败</view>
+          <view class="ag-empty-desc">网络异常或服务暂不可用，请稍后重试。</view>
+          <view class="ag-retry-btn" bindtap="retryLoad">重新加载</view>
+        </view>
+      </view>
       <view class="ag-body" wx:else>
         <view class="ag-update" wx:if="{{updatedAt}}">最后更新日期：{{updatedAt}}</view>
         <!-- 正文拆成「文本块 + 图片块」：文本交 rich-text，图片用原生 image（各端稳定显示、可点击放大） -->
-        <block wx:if="{{blocks.length}}">
-          <md-blocks blocks="{{blocks}}" bind:preview="previewImage" />
-        </block>
-        <view wx:else class="ag-loading">加载中…</view>
+        <md-blocks blocks="{{blocks}}" bind:preview="previewImage" />
       </view>
       <view class="ag-footer">感谢您信任并使用本服务</view>
     </view>

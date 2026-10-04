@@ -1,13 +1,8 @@
+/**
+ * 隐私协议
+ * 内容一律来自后台「协议管理」的 privacy 协议（接口下发），本地不内置任何协议正文；
+ * 后台未配置 / 已停用 → 「当前协议未发布」；拉取失败 → 「加载失败 + 重新加载」。
+ */
+const agreements = require('../../utils/agreements.js');
 
-Page({
-  // 关于我们
-  goAbout() {
-    wx.navigateTo({ url: '/pages/about/index' });
-  },
-
-  // 联系客服：先询问「在线客服 / 其他联系方式」
-  openContactGuide() {
-    const guide = this.selectComponent('#contactGuide');
-    if (guide) guide.open();
-  }
-});
+Page(agreements.pageConfig('privacy', '隐私协议'));

@@ -92,12 +92,20 @@ $pricePerKwh = floatval($config['price_per_kwh'] ?? 0.61);
                     </div>
                 </div>
                 
+                <!-- 统计概览：4 个统计卡片放在本卡片内（由 renderStatistics 填充） -->
+                <div id="statsTiles">
+                    <div class="text-center py-4">
+                        <i class="fa fa-spinner fa-spin fa-2x text-muted"></i>
+                        <p class="text-muted mt-2 mb-0">加载中...</p>
+                    </div>
+                </div>
+                
                 <?php endif; ?>
             </div>
         </div>
         
         <?php if(!empty($bindings)): ?>
-        <!-- 以下各区块（统计卡片 / 近24小时趋势 / 每日趋势 / 历史记录 / 趣味账单）均为独立卡片 -->
+        <!-- 以下各区块（近24小时趋势 / 每日趋势 / 历史记录 / 趣味账单）均为独立卡片 -->
         <div id="statsContent">
             <div class="text-center py-5">
                 <i class="fa fa-spinner fa-spin fa-2x text-muted"></i>
@@ -134,6 +142,7 @@ function loadStatistics() {
     var roomNum = $('#roomSelect').val();
     
     if (!roomNum) {
+        $('#statsTiles').empty();
         $('#statsContent').html('<div class="alert alert-warning">请选择宿舍</div>');
         return;
     }
@@ -153,7 +162,10 @@ function loadStatistics() {
         if ($('#endDate').val()) params.end = $('#endDate').val();
     }
 
-    $('#statsContent').html('<div class="text-center py-5"><i class="fa fa-spinner fa-spin fa-2x text-muted"></i><p class="text-muted mt-2">加载中...</p></div>');
+    // 统计概览（卡片内）与下方各卡片：同时显示加载中
+    var statsLoading = '<div class="text-center py-4"><i class="fa fa-spinner fa-spin fa-2x text-muted"></i><p class="text-muted mt-2 mb-0">加载中...</p></div>';
+    $('#statsTiles').html(statsLoading);
+    $('#statsContent').html(statsLoading);
     
     $.ajax({
         url: '../api.php',
@@ -164,10 +176,12 @@ function loadStatistics() {
             if (res.code == 0) {
                 renderStatistics(res.data);
             } else {
+                $('#statsTiles').empty();
                 $('#statsContent').html('<div class="alert alert-danger">' + (res.msg || '获取数据失败') + '</div>');
             }
         },
         error: function() {
+            $('#statsTiles').empty();
             $('#statsContent').html('<div class="alert alert-danger">网络错误，请稍后重试</div>');
         }
     });
@@ -177,81 +191,94 @@ function loadStatistics() {
 // 账单数据由 api.php 的 get_power_bill 按周期独立返回，不受页面上方筛选条件影响
 var funBillState = { range: 'week', offset: 0, room: '' };
 
-// 卡片外壳：账单类型 + 周期选择 + 内容容器（内容由 loadFunBill 填充）
-function funBillShell() {
-    var tabs = [
+// 账单类型切换按钮（高亮用 OneUI 工具类 bg-primary，切换主题配色时同步变化）
+function funBillTabsHtml() {
+    return [
         { value: 'week', label: '周账单' },
         { value: 'half', label: '半月账单' },
         { value: 'month', label: '月账单' }
     ].map(function(t) {
         var active = (t.value === funBillState.range);
-        return '<button type="button" class="btn btn-sm ' + (active ? 'btn-info' : 'btn-alt-secondary')
+        return '<button type="button" class="fun-tab' + (active ? ' active bg-primary' : '')
             + '" data-range="' + t.value + '">' + t.label + '</button>';
-    }).join(' ');
+    }).join('');
+}
 
-    return '<div class="row mb-4">'
+// 卡片外壳：账单类型 + 周期选择 + 内容容器（内容由 loadFunBill 填充）
+function funBillShell() {
+    return '<div class="row">'
         + '<div class="col-12">'
-        + '<div class="block block-rounded mb-0">'
+        + '<div class="block block-rounded">'
         + '<div class="block-header"><h3 class="block-title"><i class="fa fa-gift me-2"></i>趣味账单</h3>'
-        + '<div class="block-options"><span id="funBillBadge" class="badge bg-info d-none"></span></div></div>'
+        + '<div class="block-options"><span id="funBillBadge" class="fun-badge bg-primary d-none"></span></div></div>'
         + '<div class="block-content">'
-        + '<div class="d-flex flex-wrap gap-2 mb-3" id="funBillTabs">' + tabs + '</div>'
-        + '<div class="d-flex align-items-center justify-content-between mb-3">'
-        + '<button type="button" class="btn btn-sm btn-alt-secondary" id="funBillPrev"><i class="fa fa-chevron-left"></i></button>'
-        + '<div class="text-center"><div class="fw-semibold" id="funBillPeriod">加载中…</div>'
-        + '<div class="text-muted small" id="funBillTag"></div></div>'
-        + '<button type="button" class="btn btn-sm btn-alt-secondary" id="funBillNext"><i class="fa fa-chevron-right"></i></button>'
+        + '<div class="fun-toolbar">'
+        + '<div class="fun-tabs" id="funBillTabs">' + funBillTabsHtml() + '</div>'
+        + '<div class="fun-nav">'
+        + '<button type="button" class="fun-nav-btn text-primary" id="funBillPrev"><i class="fa fa-chevron-left"></i></button>'
+        + '<div class="fun-nav-mid"><div class="fun-period" id="funBillPeriod">加载中…</div>'
+        + '<div class="fun-tag" id="funBillTag"></div></div>'
+        + '<button type="button" class="fun-nav-btn text-primary" id="funBillNext"><i class="fa fa-chevron-right"></i></button>'
+        + '</div>'
         + '</div>'
         + '<div id="funBillBody"></div>'
         + '</div></div></div></div>';
 }
 
-// 账单内容：总用电/电费 + 生活化换算 + 用电之最 + 夜猫子指数 + 评语
+// 账单内容：周期用电/电费 + 生活化换算 + 用电之最 + 夜猫子指数 + 评语
 function funBillBodyHtml(fb) {
+    // 生活化换算：每项一张小卡片（图标 / 数值 / 名称）
     var eqHtml = (fb.equivalents || []).map(function(eq) {
-        return '<div class="d-flex justify-content-between small py-1">'
-            + '<span>' + eq.icon + ' ' + eq.label + '</span>'
-            + '<span class="fw-semibold text-info">' + eq.value + eq.unit + '</span></div>';
+        return '<div class="fun-eq">'
+            + '<div class="fun-eq-icon">' + eq.icon + '</div>'
+            + '<div class="fun-eq-value text-primary">' + eq.value + '<span>' + eq.unit + '</span></div>'
+            + '<div class="fun-eq-label">' + eq.label + '</div>'
+            + '</div>';
     }).join('');
     if (fb.cost_fun) {
-        eqHtml += '<div class="d-flex justify-content-between small py-1">'
-            + '<span>' + fb.cost_fun.icon + ' ' + fb.cost_fun.label + '</span>'
-            + '<span class="fw-semibold text-info">' + fb.cost_fun.value + fb.cost_fun.unit + '</span></div>';
+        eqHtml += '<div class="fun-eq">'
+            + '<div class="fun-eq-icon">' + fb.cost_fun.icon + '</div>'
+            + '<div class="fun-eq-value text-primary">' + fb.cost_fun.value + '<span>' + fb.cost_fun.unit + '</span></div>'
+            + '<div class="fun-eq-label">' + fb.cost_fun.label + '</div>'
+            + '</div>';
     }
 
     var extremeHtml = '';
     if (fb.max_day) {
-        extremeHtml += '<div class="fw-semibold mt-3 mb-2">用电之最</div>'
-            + '<div class="d-flex align-items-center small py-1"><span class="badge bg-danger me-2">最猛</span>'
-            + '<span class="flex-grow-1">' + fb.max_day.date + '</span>'
-            + '<span class="fw-semibold">' + fb.max_day.usage + ' 度</span></div>';
+        extremeHtml += '<div class="fun-extreme"><span class="fun-pill high text-danger">最猛</span>'
+            + '<span class="fun-extreme-date">' + fb.max_day.date + '</span>'
+            + '<span class="fun-extreme-value">' + fb.max_day.usage + ' 度</span></div>';
         if (fb.min_day) {
-            extremeHtml += '<div class="d-flex align-items-center small py-1"><span class="badge bg-success me-2">最省</span>'
-                + '<span class="flex-grow-1">' + fb.min_day.date + '</span>'
-                + '<span class="fw-semibold">' + fb.min_day.usage + ' 度</span></div>';
+            extremeHtml += '<div class="fun-extreme"><span class="fun-pill low text-success">最省</span>'
+                + '<span class="fun-extreme-date">' + fb.min_day.date + '</span>'
+                + '<span class="fun-extreme-value">' + fb.min_day.usage + ' 度</span></div>';
         }
     }
 
     var nightHtml = '';
     if (fb.night) {
-        nightHtml = '<div class="fw-semibold mt-3 mb-2">夜猫子指数 · ' + fb.night.level + '</div>'
-            + '<div class="progress" style="height:8px;"><div class="progress-bar bg-info" style="width:' + fb.night.ratio + '%;"></div></div>'
-            + '<div class="text-muted small mt-1">最近 24 小时里，夜间（23:00-06:00）用了 ' + fb.night.usage
-            + ' 度，占全部用电的 ' + fb.night.ratio + '%</div>';
+        nightHtml = '<div class="fun-block-title">夜猫子指数</div>'
+            + '<div class="fun-night">'
+            + '<div class="fun-night-head"><span>夜间用电占比</span><span class="fun-night-level text-primary">' + fb.night.level + '</span></div>'
+            + '<div class="fun-night-bar"><div class="fun-night-fill" style="width:' + fb.night.ratio + '%;"></div></div>'
+            + '<div class="fun-night-tip">最近 24 小时里，夜间（23:00-06:00）用了 ' + fb.night.usage
+            + ' 度，占全部用电的 ' + fb.night.ratio + '%</div>'
+            + '</div>';
     }
 
-    return '<div class="text-muted small mb-3">' + fb.period_text + ' · 共 ' + fb.days + ' 天</div>'
-        + '<div class="row text-center mb-4">'
-        + '<div class="col-6"><div class="fs-3 fw-bold text-info">' + fb.total_usage
-        + '<span class="fs-sm fw-normal ms-1">度</span></div><div class="text-muted small">周期用电</div></div>'
-        + '<div class="col-6"><div class="fs-3 fw-bold text-info">' + fb.total_cost
-        + '<span class="fs-sm fw-normal ms-1">元</span></div><div class="text-muted small">周期电费</div></div>'
+    return '<div class="fun-caption">' + fb.period_text + ' · 共 ' + fb.days + ' 天</div>'
+        + '<div class="fun-summary">'
+        + '<div class="fun-summary-item"><div class="fun-summary-value text-primary">' + fb.total_usage
+        + '<span>度</span></div><div class="fun-summary-label">周期用电</div></div>'
+        + '<div class="fun-summary-split"></div>'
+        + '<div class="fun-summary-item"><div class="fun-summary-value text-primary">' + fb.total_cost
+        + '<span>元</span></div><div class="fun-summary-label">周期电费</div></div>'
         + '</div>'
-        + '<div class="fw-semibold mb-2">这些电都够干什么</div>'
-        + eqHtml
-        + extremeHtml
+        + '<div class="fun-block-title">这些电都够干什么</div>'
+        + '<div class="fun-eq-grid">' + eqHtml + '</div>'
+        + (extremeHtml ? '<div class="fun-block-title">用电之最</div>' + extremeHtml : '')
         + nightHtml
-        + '<div class="text-muted small mt-3 pt-3 border-top">' + fb.comment + '</div>';
+        + '<div class="fun-comment"><i class="fa fa-comment-dots me-2"></i>' + fb.comment + '</div>';
 }
 
 // 按当前 range/offset 拉取账单并渲染
@@ -295,8 +322,8 @@ function bindFunBill() {
         if (funBillState.range === range) return;
         funBillState.range = range;
         funBillState.offset = 0;
-        $('#funBillTabs button').removeClass('btn-info').addClass('btn-alt-secondary');
-        $(this).removeClass('btn-alt-secondary').addClass('btn-info');
+        // 重渲染类型按钮：高亮（bg-primary）与 active 一起切换
+        $('#funBillTabs').html(funBillTabsHtml());
         loadFunBill();
     });
     $(document).off('click', '#funBillPrev').on('click', '#funBillPrev', function() {
@@ -324,8 +351,9 @@ function renderStatistics(data) {
         healthIcon = 'fa-check';
     }
     
-    var html = `
-        <div class="row mb-4">
+    // 统计概览（4 个统计卡片）：放进「用电统计」卡片内，故与外层卡片同底、行内不再加下间距
+    var tilesHtml = `
+        <div class="row">
             <div class="col-md-3 mb-3 mb-md-0">
                 <div class="block block-rounded mb-0 ${healthClass}">
                     <div class="block-content text-center py-3">
@@ -363,10 +391,12 @@ function renderStatistics(data) {
                 </div>
             </div>
         </div>
-        
-        <div class="row mb-4">
+    `;
+
+    var html = `
+        <div class="row">
             <div class="col-12">
-                <div class="block block-rounded mb-0">
+                <div class="block block-rounded">
                     <div class="block-header">
                         <h3 class="block-title"><i class="fa fa-clock me-2"></i>近24小时用电量趋势</h3>
                     </div>
@@ -380,9 +410,9 @@ function renderStatistics(data) {
             </div>
         </div>
         
-        <div class="row mb-4">
+        <div class="row">
             <div class="col-12">
-                <div class="block block-rounded mb-0">
+                <div class="block block-rounded">
                     <div class="block-header">
                         <h3 class="block-title"><i class="fa fa-calendar me-2"></i>每日用电总量趋势</h3>
                     </div>
@@ -396,9 +426,9 @@ function renderStatistics(data) {
             </div>
         </div>
         
-        <div class="row mb-4">
+        <div class="row">
             <div class="col-12">
-                <div class="block block-rounded mb-0">
+                <div class="block block-rounded">
                     <div class="block-header">
                         <h3 class="block-title"><i class="fa fa-list me-2"></i>历史电费记录</h3>
                     </div>
@@ -458,6 +488,8 @@ function renderStatistics(data) {
         ${funBillShell()}
     `;
     
+    // 统计概览渲染进「用电统计」卡片；趋势/记录/账单为独立卡片
+    $('#statsTiles').html(tilesHtml);
     $('#statsContent').html(html);
 
     // 趣味账单：默认周账单（当前周期），按周期独立取数（不受上方筛选条件影响）
@@ -867,5 +899,64 @@ function aiAnalyzePower() {
     });
 }
 </script>
+
+<style>
+/* ==================== 区块卡片间距（对齐 OneUI 原生规则） ==================== */
+/* OneUI 的 .block-content 下内边距只有 1px（主题靠末元素自身 margin 撑开），
+ * 本页各区块卡片内容较多，这里补回正常下内边距，避免内容紧贴卡片下沿。 */
+#statsContent .block-content { padding-bottom: 1.25rem; }
+/* 卡片之间的间距由 OneUI 的 .block（margin-bottom: 1.875rem）提供，
+ * 卡片上不再写 mb-0 / 外层 row 不再写 mb-4，避免把它覆盖掉。 */
+
+/* ==================== 趣味账单（配色走 OneUI 主题，版式不变） ====================
+ * 强调色（主色/危险色/成功色）由 HTML 上的 OneUI 工具类（bg-primary、text-primary、
+ * text-danger、text-success）承担，切换「主题配色」时会同步变化；这里的 CSS 只负责
+ * 布局与浅色底/描边等细节，颜色取自 OneUI 的 :root 变量（--bs-primary、--bs-light 等）。 */
+.fun-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.fun-tabs { display: inline-flex; padding: 4px; background: var(--bs-light); border-radius: 10px; }
+.fun-tab { padding: 6px 18px; font-size: 14px; color: var(--bs-secondary); background: transparent; border: 0; border-radius: 8px; cursor: pointer; transition: background .15s ease, color .15s ease; }
+.fun-tab:hover { color: var(--bs-primary); }
+.fun-tab.active { color: #fff; font-weight: 600; background: var(--bs-primary); box-shadow: 0 4px 12px rgba(var(--bs-primary-rgb), .28); }
+.fun-nav { display: inline-flex; align-items: center; gap: 10px; min-width: 260px; }
+.fun-nav-btn { width: 32px; height: 32px; color: var(--bs-primary); background: var(--bs-light); border: 0; border-radius: 50%; cursor: pointer; transition: background .15s ease; }
+.fun-nav-btn:hover:not(:disabled) { background: rgba(var(--bs-primary-rgb), .14); }
+.fun-nav-btn:disabled { color: #b9bfc9 !important; cursor: not-allowed; }
+.fun-nav-mid { flex: 1; text-align: center; line-height: 1.3; }
+.fun-period { font-size: 14px; font-weight: 600; color: var(--bs-body-color); }
+.fun-tag { font-size: 12px; color: var(--bs-secondary); }
+.fun-badge { display: inline-block; padding: 4px 14px; font-size: 12px; color: #fff; background: var(--bs-primary); border-radius: 20px; }
+.fun-caption { margin-top: 16px; font-size: 12px; color: var(--bs-secondary); text-align: center; }
+.fun-summary { display: flex; align-items: stretch; margin-top: 12px; padding: 16px 8px; background: rgba(var(--bs-primary-rgb), .06); border-radius: 14px; }
+.fun-summary-item { flex: 1; text-align: center; }
+.fun-summary-split { width: 1px; background: rgba(var(--bs-primary-rgb), .15); }
+.fun-summary-value { font-size: 26px; font-weight: 700; line-height: 1.2; color: var(--bs-primary); }
+.fun-summary-value span { margin-left: 3px; font-size: 13px; font-weight: 400; color: var(--bs-secondary); }
+.fun-summary-label { margin-top: 4px; font-size: 12px; color: var(--bs-secondary); }
+.fun-block-title { margin: 20px 0 10px; font-size: 13px; font-weight: 600; color: var(--bs-secondary); }
+.fun-eq-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.fun-eq { padding: 12px; text-align: center; background: #fff; border: 1px solid var(--bs-border-color); border-radius: 12px; transition: border-color .15s ease, box-shadow .15s ease; }
+.fun-eq:hover { border-color: rgba(var(--bs-primary-rgb), .45); box-shadow: 0 4px 12px rgba(var(--bs-primary-rgb), .12); }
+.fun-eq-icon { font-size: 22px; line-height: 1.2; }
+.fun-eq-value { margin-top: 4px; font-size: 17px; font-weight: 700; color: var(--bs-primary); }
+.fun-eq-value span { margin-left: 2px; font-size: 12px; font-weight: 400; color: var(--bs-secondary); }
+.fun-eq-label { margin-top: 2px; font-size: 12px; color: var(--bs-secondary); }
+.fun-extreme { display: flex; align-items: center; margin-bottom: 8px; padding: 8px 14px; background: var(--bs-light); border-radius: 10px; }
+.fun-extreme:last-child { margin-bottom: 0; }
+.fun-pill { padding: 2px 10px; font-size: 12px; border-radius: 20px; }
+.fun-pill.high { color: var(--bs-danger); background: rgba(var(--bs-danger-rgb), .12); }
+.fun-pill.low { color: var(--bs-success); background: rgba(var(--bs-success-rgb), .14); }
+.fun-extreme-date { flex: 1; margin-left: 10px; font-size: 13px; color: var(--bs-body-color); }
+.fun-extreme-value { font-size: 13px; font-weight: 600; color: var(--bs-body-color); }
+.fun-night-head { display: flex; align-items: center; justify-content: space-between; font-size: 13px; color: var(--bs-secondary); }
+.fun-night-level { font-weight: 600; color: var(--bs-primary); }
+.fun-night-bar { margin-top: 8px; height: 8px; background: var(--bs-light); border-radius: 6px; overflow: hidden; }
+.fun-night-fill { height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--bs-primary) 0%, var(--bs-info) 100%); }
+.fun-night-tip { margin-top: 8px; font-size: 12px; line-height: 1.7; color: var(--bs-secondary); }
+.fun-comment { margin-top: 20px; padding: 12px 14px; font-size: 13px; line-height: 1.7; color: var(--bs-body-color); background: rgba(var(--bs-primary-rgb), .07); border-radius: 12px; }
+@media (max-width: 575.98px) {
+    .fun-toolbar { justify-content: center; }
+    .fun-nav { width: 100%; min-width: 0; }
+}
+</style>
 
 <?php include 'foot.php'; ?>

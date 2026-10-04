@@ -327,29 +327,33 @@
 
 					<view class="fun-block">
 						<text class="fun-block-title">这些电都够干什么</text>
-						<view class="fun-row" v-for="(eq, i) in billData.bill.equivalents" :key="i">
-							<text class="fun-row-icon">{{ eq.icon }}</text>
-							<text class="fun-row-label">{{ eq.label }}</text>
-							<text class="fun-row-value">{{ eq.value }}{{ eq.unit }}</text>
-						</view>
-						<view class="fun-row" v-if="billData.bill.cost_fun">
-							<text class="fun-row-icon">{{ billData.bill.cost_fun.icon }}</text>
-							<text class="fun-row-label">{{ billData.bill.cost_fun.label }}</text>
-							<text class="fun-row-value">{{ billData.bill.cost_fun.value }}{{ billData.bill.cost_fun.unit }}</text>
+						<view class="fun-panel">
+							<view class="fun-row" v-for="(eq, i) in billData.bill.equivalents" :key="i">
+								<text class="fun-row-icon">{{ eq.icon }}</text>
+								<text class="fun-row-label">{{ eq.label }}</text>
+								<text class="fun-row-value">{{ eq.value }}{{ eq.unit }}</text>
+							</view>
+							<view class="fun-row" v-if="billData.bill.cost_fun">
+								<text class="fun-row-icon">{{ billData.bill.cost_fun.icon }}</text>
+								<text class="fun-row-label">{{ billData.bill.cost_fun.label }}</text>
+								<text class="fun-row-value">{{ billData.bill.cost_fun.value }}{{ billData.bill.cost_fun.unit }}</text>
+							</view>
 						</view>
 					</view>
 
 					<view class="fun-block" v-if="billData.bill.max_day">
 						<text class="fun-block-title">用电之最</text>
-						<view class="fun-extreme">
-							<text class="fun-extreme-tag high">最猛</text>
-							<text class="fun-extreme-date">{{ billData.bill.max_day.date }}</text>
-							<text class="fun-extreme-value">{{ billData.bill.max_day.usage }} 度</text>
-						</view>
-						<view class="fun-extreme" v-if="billData.bill.min_day">
-							<text class="fun-extreme-tag low">最省</text>
-							<text class="fun-extreme-date">{{ billData.bill.min_day.date }}</text>
-							<text class="fun-extreme-value">{{ billData.bill.min_day.usage }} 度</text>
+						<view class="fun-panel">
+							<view class="fun-extreme">
+								<text class="fun-extreme-tag high">最猛</text>
+								<text class="fun-extreme-date">{{ billData.bill.max_day.date }}</text>
+								<text class="fun-extreme-value">{{ billData.bill.max_day.usage }} 度</text>
+							</view>
+							<view class="fun-extreme" v-if="billData.bill.min_day">
+								<text class="fun-extreme-tag low">最省</text>
+								<text class="fun-extreme-date">{{ billData.bill.min_day.date }}</text>
+								<text class="fun-extreme-value">{{ billData.bill.min_day.usage }} 度</text>
+							</view>
 						</view>
 					</view>
 
@@ -1470,6 +1474,21 @@ page {
 
 .fun-block {
 	margin-top: 24rpx;
+}
+
+/* 浅色底圆角块：与周期统计（.fun-totals）一致的背景形状 */
+.fun-panel {
+	margin-top: 14rpx;
+	padding: 10rpx 20rpx;
+	background: #f7f8fc;
+	border-radius: 16rpx;
+}
+
+/* 面板内的行去掉上外边距，改为纵向内间距（首尾由面板内边距补足） */
+.fun-panel .fun-row,
+.fun-panel .fun-extreme {
+	margin-top: 0;
+	padding: 12rpx 0;
 }
 
 .fun-block-title {

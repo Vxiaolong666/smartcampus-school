@@ -5,7 +5,8 @@
  * 与 uniapp 端 pages/agreement/index.vue 对应：
  *   1) 清单取后台「协议管理」（nteam_agreements，仅启用项，按 sort_order 排序）；
  *   2) 每项跳转到通用详情页 agreement_detail.php?key=xxx（后台新增协议无需改页面）；
- *   3) 后台未发布任何协议 / 协议表未初始化时展示「暂无协议」空态。
+ *   3) 页面不预设任何协议标题/说明等预留信息，说明统一展示后台的「最近更新」日期；
+ *   4) 后台未发布任何协议 / 协议表未初始化时展示「暂无协议」空态。
  */
 $title = '协议中心';
 include('./head.php');
@@ -14,14 +15,6 @@ require_once('../funsion/Agreements.php');
 // 协议清单（仅启用项）与协议表状态
 $agList = agreementList($DB, true);
 $agTableReady = agreementTableReady($DB);
-
-// 内置协议说明（与 uniapp utils/agreements.js 的 LIST 保持一致）
-$agDescMap = array(
-    'service'    => '使用本服务前请先阅读并同意本协议',
-    'privacy'    => '了解我们如何收集、使用与保护您的信息',
-    'cancel'     => '账号注销的影响、流程与注意事项',
-    'disclaimer' => '关于信息来源、AI 内容与责任限制的说明',
-);
 ?>
 
 <div id="pjax-container">
@@ -51,11 +44,8 @@ $agDescMap = array(
                 <div class="row g-3">
                     <?php foreach($agList as $ag):
                         $akey = $ag['akey'];
-                        // 内置说明优先，后台新增的协议显示「最近更新：YYYY-MM-DD」
-                        $desc = isset($agDescMap[$akey]) ? $agDescMap[$akey] : '';
-                        if($desc === '' && !empty($ag['updated_at'])){
-                            $desc = '最近更新：' . date('Y-m-d', strtotime($ag['updated_at']));
-                        }
+                        // 不预设任何说明文案（本地不留存协议预留信息）：统一展示后台的「最近更新」日期
+                        $desc = !empty($ag['updated_at']) ? ('最近更新：' . date('Y-m-d', strtotime($ag['updated_at']))) : '';
                     ?>
                     <div class="col-md-6">
                         <?php /* 卡片用 Bootstrap card（与公告列表一致的观感）：

@@ -15,7 +15,25 @@
 				<view class="ag-intro-desc">这里汇总了本服务的全部协议与声明。请在使用相关服务前仔细阅读并充分理解相关内容，点击即可查看完整条款。</view>
 			</view>
 
-			<view v-if="list.length" class="ag-list-card">
+			<!-- 加载中 -->
+			<view v-if="loading" class="ag-list-card">
+				<view class="ag-loading-box">
+					<view class="ag-loading-spinner"></view>
+					<view class="ag-loading-tip">加载中…</view>
+				</view>
+			</view>
+
+			<!-- 拉取失败（网络异常 / 协议表未初始化）：不再回退本地内置清单 -->
+			<view v-else-if="failed" class="ag-list-card">
+				<view class="ag-empty">
+					<image class="ag-empty-icon" src="/static/assets/wxmp-empty.svg" mode="widthFix"></image>
+					<view class="ag-empty-title">协议加载失败</view>
+					<view class="ag-empty-desc">网络异常或服务暂不可用，请稍后重试。</view>
+					<view class="ag-retry-btn" @click="retryLoad">重新加载</view>
+				</view>
+			</view>
+
+			<view v-else-if="list.length" class="ag-list-card">
 				<view
 					class="ag-item"
 					v-for="item in list"
@@ -73,9 +91,10 @@
 <script>
 /**
  * 协议中心
- * 清单优先取后台「协议管理」（接口下发）：后台未发布任何协议时展示「暂无协议」；
- * 请求失败（网络异常 / 协议表未初始化）时回退到内置清单，保证离线可读；
- * 每项协议跳转到各自的独立页面（内置协议）或通用详情页。
+ * 清单始终取后台「协议管理」（接口下发），本地不内置任何协议清单/正文等预留信息：
+ *   - 后台未发布任何协议：展示「暂无协议」；
+ *   - 请求失败（网络异常 / 协议表未初始化）：展示「协议加载失败 + 重新加载」。
+ * 每项协议统一跳转到通用详情页。
  */
 import api from '../../utils/api.js';
 import agreements from '../../utils/agreements.js';
@@ -83,13 +102,9 @@ import agreements from '../../utils/agreements.js';
 export default {
 	data() {
 		return {
-			// 先用内置清单渲染，避免等待网络
-			list: agreements.list.map(it => ({
-				key: it.key,
-				title: it.title,
-				desc: it.desc,
-				route: agreements.resolvePath(it.key)
-			})),
+			list: [],
+			loading: true,   // 清单始终从接口获取
+			failed: false,   // 拉取失败（网络异常 / 协议表未初始化）
 			// 联系客服弹窗（非小程序端）
 			contactShow: false,
 			contactLines: []
@@ -100,23 +115,30 @@ export default {
 	},
 	methods: {
 		async loadFromServer() {
+			this.loading = true;
+			this.failed = false;
 			try {
 				const res = await api.getAgreements();
-				const rows = (res && Array.isArray(res.data)) ? res.data : null;
-				// 响应异常（非数组）：沿用内置清单
-				if (!rows) return;
-				const descMap = {};
-				agreements.list.forEach(it => { descMap[it.key] = it.desc; });
+				const rows = (res && Array.isArray(res.data)) ? res.data : [];
 				// 以服务端清单为准（可能为空：后台把协议全部停用 → 展示「暂无协议」）
 				this.list = rows.map(r => ({
 					key: r.key,
 					title: r.title,
-					desc: descMap[r.key] || (r.updated_at ? ('最近更新：' + this.fmtDate(r.updated_at)) : ''),
+					desc: r.updated_at ? ('最近更新：' + this.fmtDate(r.updated_at)) : '',
 					route: agreements.resolvePath(r.key)
 				}));
+				this.loading = false;
 			} catch (e) {
-				// 拉取失败（网络异常 / 协议表未初始化）：沿用内置清单
+				// 拉取失败（网络异常 / 协议表未初始化）：展示失败态，不回退本地内置清单
+				this.list = [];
+				this.loading = false;
+				this.failed = true;
 			}
+		},
+
+		// 失败后重新加载
+		retryLoad() {
+			this.loadFromServer();
 		},
 		openAgreement(item) {
 			if (!item) return;

@@ -1,8 +1,9 @@
 /**
  * 协议中心
- * 清单优先取后台「协议管理」（接口下发）：后台未发布任何协议时展示「暂无协议」；
- * 请求失败（网络异常 / 协议表未初始化）时回退内置清单，保证离线可读；
- * 每项协议跳转到各自的独立页面（内置协议）或通用详情页。
+ * 清单始终取后台「协议管理」（接口下发），本地不内置任何协议清单/正文等预留信息：
+ *   - 后台未发布任何协议 → 展示「暂无协议」；
+ *   - 请求失败（网络异常 / 协议表未初始化）→ 展示「协议加载失败」+ 重新加载。
+ * 每项协议统一跳转到通用详情页。
  */
 const api = require('../../utils/api.js');
 const agreements = require('../../utils/agreements.js');
@@ -10,13 +11,9 @@ const { formatDate } = require('../../utils/common.js');
 
 Page({
   data: {
-    // 先用内置清单渲染，避免等待网络
-    list: agreements.list.map(item => ({
-      key: item.key,
-      title: item.title,
-      desc: item.desc,
-      route: agreements.resolvePath(item.key)
-    }))
+    list: [],
+    loading: true,   // 清单始终从接口获取
+    failed: false    // 拉取失败（网络异常 / 协议表未初始化）
   },
 
   onLoad() {
@@ -24,24 +21,29 @@ Page({
   },
 
   loadFromServer() {
+    this.setData({ loading: true, failed: false });
     api.getAgreements().then(res => {
-      const rows = (res && Array.isArray(res.data)) ? res.data : null;
-      // 响应异常（非数组）：沿用内置清单
-      if (!rows) return;
-      const descMap = {};
-      agreements.list.forEach(item => { descMap[item.key] = item.desc; });
+      const rows = (res && Array.isArray(res.data)) ? res.data : [];
       // 以服务端清单为准（可能为空：后台把协议全部停用 → 展示「暂无协议」）
       this.setData({
+        loading: false,
+        failed: false,
         list: rows.map(r => ({
           key: r.key,
           title: r.title,
-          desc: descMap[r.key] || (r.updated_at ? ('最近更新：' + formatDate(r.updated_at)) : ''),
+          desc: r.updated_at ? ('最近更新：' + formatDate(r.updated_at)) : '',
           route: agreements.resolvePath(r.key)
         }))
       });
     }).catch(() => {
-      // 拉取失败（网络异常 / 协议表未初始化）：沿用内置清单
+      // 拉取失败（网络异常 / 协议表未初始化）：展示失败态，不回退本地内置清单
+      this.setData({ loading: false, failed: true, list: [] });
     });
+  },
+
+  // 失败后重新加载
+  retryLoad() {
+    this.loadFromServer();
   },
 
   // 打开某份协议（统一走通用详情页）
