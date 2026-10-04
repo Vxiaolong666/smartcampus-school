@@ -140,10 +140,9 @@ Page({
         this.loadSchedule();
     },
 
-    //周次选择变化
+    //周次选择变化：选择后自动查询课程表
     onWeekChange(e) {
-        // 仅更新周次索引，不自动查询（需点击查询按钮）
-        this.setData({ weekIndex: e.detail.value });
+        this.setData({ weekIndex: e.detail.value }, () => this.loadSchedule());
     },
 
     //查询课程表
@@ -500,8 +499,8 @@ Page({
         if (this.data.aiLoading) {
             // 正在分析中再次点击：聚焦浮层并提示，不重复发起请求
             this.setData({
-                aiResult: '### AI 正在分析…\n\n正在生成分析报告，请稍候（通常需要十几秒）。',
-                aiResultHtml: markdownToHtml('### AI 正在分析…\n\n正在生成分析报告，请稍候（通常需要十几秒）。'),
+                aiResult: '### AI 正在分析…\n\n正在生成分析报告，请稍候......\n（该过程通常需要十几秒）',
+                aiResultHtml: markdownToHtml('### AI 正在分析…\n\n正在生成分析报告，请稍候......\n（该过程通常需要十几秒）'),
                 showAiResult: true
             });
             this.initSheetHeight();
@@ -524,7 +523,7 @@ Page({
             return;
         }
         this.setData({ aiLoading: true });
-        const loadingText = '### AI 正在分析…\n\n正在读取课表数据并生成分析报告，请稍候（通常需要十几秒）。';
+        const loadingText = '### AI 正在分析…\n\n正在读取课表数据并生成分析报告，请稍候......\n（该过程通常需要十几秒）';
         this.setData({
             aiResult: loadingText,
             aiResultHtml: markdownToHtml(loadingText),

@@ -472,7 +472,7 @@ Page({
     // ===== AI 智能分析用电 =====
     async aiAnalyze() {
         if (this.data.aiLoading) {
-            const t = '### AI 正在分析…\n\n正在生成分析报告，请稍候（通常需要十几秒）。';
+            const t = '### AI 正在分析…\n\n正在生成分析报告，请稍候......\n（该过程通常需要十几秒）';
             this.setData({ aiResult: t, aiResultHtml: markdownToHtml(t), showAiResult: true });
             this.initSheetHeight();
             wx.showToast({ title: 'AI 正在分析...', icon: 'none' });
@@ -494,7 +494,7 @@ Page({
             return;
         }
         this.setData({ aiLoading: true });
-        const loadingText = '### AI 正在分析…\n\n正在读取用电数据并生成分析报告，请稍候（通常需要十几秒）。';
+        const loadingText = '### AI 正在分析…\n\n正在读取用电数据并生成分析报告，请稍候......\n（该过程通常需要十几秒）';
         this.setData({
             aiResult: loadingText,
             aiResultHtml: markdownToHtml(loadingText),

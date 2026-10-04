@@ -259,6 +259,13 @@ export default {
 		this.refreshCacheSize();
 	},
 
+	// 点击底部「我的」导航（含重复点击当前 Tab）：强制刷新页面数据
+	onTabItemTap() {
+		this.checkLoginStatus();
+		this.loadPageData(true);
+		this.refreshCacheSize();
+	},
+
 	methods: {
 		// 刷新缓存占用：优先取本地存储真实占用（KB→MB）；受限时按「上次清理时间」推算 0~3MB
 		refreshCacheSize() {
@@ -314,10 +321,11 @@ export default {
 			});
 		},
 
-		loadPageData() {
+		// force = true 时跳过节流（点击 Tab 强制刷新使用）
+		loadPageData(force) {
 			// 短时间内反复回到本页时不再重复发请求，减少低端设备的网络等待
 			const now = Date.now();
-			if (this._lastLoadAt && now - this._lastLoadAt < 30000) return;
+			if (!force && this._lastLoadAt && now - this._lastLoadAt < 30000) return;
 			this._lastLoadAt = now;
 
 			this.loadUserInfo();

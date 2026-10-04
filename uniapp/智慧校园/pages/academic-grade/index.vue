@@ -391,7 +391,7 @@ export default {
 			async aiAnalyze() {
 			if (this.aiLoading) {
 			// 正在分析中允许再次点击：重新聚焦分析弹窗并提示，不重复发起请求
-			this.aiResult = '### AI 正在分析…\n\n正在生成分析报告，请稍候（通常需要十几秒）。';
+			this.aiResult = '### AI 正在分析…\n\n正在生成分析报告，请稍候......\n（该过程通常需要十几秒）';
 			this.showAiResult = true;
 			uni.showToast({ title: 'AI 正在分析...', icon: 'none' });
 			return;

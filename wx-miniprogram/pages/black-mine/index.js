@@ -363,20 +363,30 @@ Page({
         });
     },
 
-    //页面显示
-    onShow() {
-        // 更新TabBar状态
-        if (typeof this.getTabBar === 'function' && this.getTabBar() && __tab__ !== -1) {
-            this.getTabBar().switchTabByIndex(__tab__);
-        }
-        
-        // 刷新所有状态
+    //刷新全部状态（onShow 与点击 Tab 时共用）
+    refreshAllStatus() {
         this.checkLoginStatus();
         this.loadUserInfo();
         this.checkAcademicStatus();
         this.checkDormitoryStatus();
         this.checkSubscriptionStatus();
         this.refreshCacheSize();
+    },
+
+    //页面显示
+    onShow() {
+        // 更新TabBar状态
+        if (typeof this.getTabBar === 'function' && this.getTabBar() && __tab__ !== -1) {
+            this.getTabBar().switchTabByIndex(__tab__);
+        }
+
+        // 刷新所有状态
+        this.refreshAllStatus();
+    },
+
+    //点击底部「我的」导航（含重复点击当前 Tab）：刷新页面数据
+    onTabItemTap() {
+        this.refreshAllStatus();
     },
 
   

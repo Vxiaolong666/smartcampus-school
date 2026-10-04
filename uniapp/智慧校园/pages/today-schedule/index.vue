@@ -592,6 +592,12 @@ export default {
 		if (this._featureChecked) this.startTimer();
 	},
 
+	// 点击底部「课程」导航（含重复点击当前 Tab）：异步刷新课程表，不显示 loading
+	onTabItemTap() {
+		if (!api.isLoggedIn()) return;
+		this.loadSchedule({ silent: true });
+	},
+
 	onHide() {
 		// 页面不可见时必须停止计时，否则后台仍在做整页状态计算，拖慢页面切换
 		this._pageVisible = false;
@@ -841,17 +847,23 @@ export default {
 			return Math.max(12, max || 11);
 		},
 
-		loadSchedule() {
-			this.loading = true;
-			this.needBind = false;
+		// options.silent = true 表示点击 Tab 静默刷新：不显示 loading，失败保留原数据、不打扰用户
+		loadSchedule(options) {
+			const silent = !!(options && options.silent);
+			if (!silent) {
+				this.loading = true;
+				this.needBind = false;
+			}
 			api.querySchedule('', '')
 				.then(res => this.processScheduleData(res.data || []))
 				.catch(err => {
-					this.loading = false;
 					if (feature.isAcademicNotBound(err)) {
+						this.loading = false;
 						this.needBind = true;
 						return;
 					}
+					if (silent) return;
+					this.loading = false;
 					uni.showToast({ title: err.msg || '查询失败', icon: 'none' });
 				});
 		},
@@ -1015,7 +1027,7 @@ export default {
 		async aiAnalyze() {
 			if (this.aiLoading) {
 			// 正在分析中允许再次点击：重新聚焦分析弹窗并提示，不重复发起请求
-			this.aiResult = '### AI 正在分析…\n\n正在生成分析报告，请稍候（通常需要十几秒）。';
+			this.aiResult = '### AI 正在分析…\n\n正在生成分析报告，请稍候......\n（该过程通常需要十几秒）';
 			this.showAiResult = true;
 			uni.showToast({ title: 'AI 正在分析...', icon: 'none' });
 			return;
@@ -1031,7 +1043,7 @@ export default {
 				return;
 			}
 			this.aiLoading = true;
-			this.aiResult = '### AI 正在分析…\n\n正在读取今日课程安排并生成分析报告，请稍候（通常需要十几秒）。';
+			this.aiResult = '### AI 正在分析…\n\n正在读取今日课程安排并生成分析报告，请稍候......\n（该过程通常需要十几秒）';
 			this.showAiResult = true;
 			const courses = this.dayCourses.map(c => ({
 				name: c.courseName,

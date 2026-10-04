@@ -33,7 +33,7 @@ class AiHelper
 
         $useModel = $model ? $model : $cfg['model'];
         if ($cfg['token'] === '' || $cfg['base_url'] === '' || $useModel === '') {
-            return ['success' => false, 'msg' => 'AI 未配置：请在后台「AI 配置」中填写 Token、Base URL 与模型'];
+            return ['success' => false, 'msg' => 'AI分析失败：请联系客服处理：服务暂未配置'];
         }
 
         $url = rtrim($cfg['base_url'], '/') . '/chat/completions';
@@ -75,7 +75,7 @@ class AiHelper
                     sleep($retryDelay);
                     continue;
                 }
-                return ['success' => false, 'msg' => '请求 AI 接口失败：' . $curlErr];
+                return ['success' => false, 'msg' => 'AI分析失败：请联系客服处理：网络连接异常'];
             }
 
             $data = json_decode($response, true);
@@ -91,7 +91,7 @@ class AiHelper
                     sleep($retryDelay);
                     continue;
                 }
-                return ['success' => false, 'msg' => 'AI 返回异常(' . $httpCode . ')：' . $err];
+                return ['success' => false, 'msg' => 'AI分析失败：请联系客服处理：服务返回异常(' . $httpCode . ')'];
             }
 
             $content = trim($data['choices'][0]['message']['content']);
@@ -101,13 +101,13 @@ class AiHelper
                     sleep($retryDelay);
                     continue;
                 }
-                return ['success' => false, 'msg' => 'AI 连接超时（可能是网络波动），请稍后重试'];
+                return ['success' => false, 'msg' => 'AI分析失败：请联系客服处理：服务响应为空，请稍后重试'];
             }
 
             return ['success' => true, 'content' => $content];
         }
 
-        return ['success' => false, 'msg' => 'AI 请求失败（已重试，仍无有效结果）'];
+        return ['success' => false, 'msg' => 'AI分析失败：请联系客服处理：服务繁忙，请稍后重试'];
     }
 
     /**
@@ -120,13 +120,13 @@ class AiHelper
     public static function chatStream(array $messages, array $opts = [], $onChunk = null, $model = null)
     {
         if (!is_callable($onChunk)) {
-            return ['success' => false, 'msg' => '缺少流式回调'];
+            return ['success' => false, 'msg' => 'AI分析失败：请联系客服处理：缺少流式回调'];
         }
         $cfg = self::getConfig();
 
         $useModel = $model ? $model : $cfg['model'];
         if ($cfg['token'] === '' || $cfg['base_url'] === '' || $useModel === '') {
-            return ['success' => false, 'msg' => 'AI 接口未配置：请联系管理员处理'];
+            return ['success' => false, 'msg' => 'AI分析失败：请联系客服处理：服务暂未配置'];
         }
 
         $url = rtrim($cfg['base_url'], '/') . '/chat/completions';
@@ -188,7 +188,7 @@ class AiHelper
             curl_close($ch);
 
             if ($curlErr !== '') {
-                return ['success' => false, 'msg' => '请求 AI 接口失败：' . $curlErr];
+                return ['success' => false, 'msg' => 'AI分析失败：请联系客服处理：网络连接异常'];
             }
             if ($httpCode === 200) {
                 return ['success' => true];
@@ -198,10 +198,10 @@ class AiHelper
                 sleep($retryDelay);
                 continue;
             }
-            return ['success' => false, 'msg' => 'AI 接口返回 HTTP ' . $httpCode];
+            return ['success' => false, 'msg' => 'AI分析失败：请联系客服处理：服务返回异常(' . $httpCode . ')'];
         }
 
-        return ['success' => false, 'msg' => 'AI 请求失败（已重试，仍无有效结果）'];
+        return ['success' => false, 'msg' => 'AI分析失败：请联系客服处理：服务繁忙，请稍后重试'];
     }
 
     /**
@@ -331,7 +331,7 @@ class AiHelper
         }
         $content = self::collapseDuplicate(isset($result['content']) ? trim($result['content']) : '');
         if ($content === '') {
-            return ['success' => false, 'msg' => '分析结果为空，请重试'];
+            return ['success' => false, 'msg' => 'AI分析失败：请联系客服处理：服务响应为空，请稍后重试'];
         }
 
         $now = date('Y-m-d H:i:s');
