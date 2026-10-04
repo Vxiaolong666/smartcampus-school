@@ -25,7 +25,7 @@
 					<view class="notice-meta">
 						<text v-if="notice.author">作者：{{ notice.author }}</text>
 						<text>浏览：{{ notice.view_count }}</text>
-						<text>{{ notice.create_time }}</text>
+						<text>{{ fmtDateTime(notice.create_time) }}</text>
 					</view>
 					<view class="divider"></view>
 

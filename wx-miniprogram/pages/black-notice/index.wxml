@@ -1,3 +1,4 @@
+<wxs src="../../utils/date.wxs" module="dt" />
 <view class="container">
   <top-menu showBack="{{true}}">
     <view class="nav-title">通知公告</view>
@@ -29,7 +30,7 @@
             <text wx:if="{{item.is_top == 1}}" class="top-badge">置顶</text>
             {{item.title}}
           </view>
-          <view class="notice-date">{{item.create_time}}</view>
+          <view class="notice-date">{{dt.formatDateTime(item.create_time)}}</view>
         </view>
       </view>
     </view>

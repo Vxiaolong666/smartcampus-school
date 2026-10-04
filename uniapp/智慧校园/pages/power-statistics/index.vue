@@ -54,11 +54,11 @@
 				</view>
 				<view v-if="timeRange === 'custom'" class="time-custom">
 					<picker mode="date" class="custom-picker" :value="customStart" @change="onCustomStart">
-						<view>{{ customStart || '开始日期' }}</view>
+						<view>{{ fmtDate(customStart) || '开始日期' }}</view>
 					</picker>
 					<text class="custom-sep">至</text>
 					<picker mode="date" class="custom-picker" :value="customEnd" @change="onCustomEnd">
-						<view>{{ customEnd || '结束日期' }}</view>
+						<view>{{ fmtDate(customEnd) || '结束日期' }}</view>
 					</picker>
 				</view>
 			</view>
@@ -67,6 +67,7 @@
 					<view class="stats-header">
 						<image class="stats-header-icon" src="/static/assets/wxmp-chart.svg" mode="widthFix"></image>
 						<text class="stats-header-title">用电概览</text>
+						<text class="stats-header-period" v-if="periodText">{{ periodText }}</text>
 					</view>
 
 					<view class="stats-cards">
@@ -121,6 +122,19 @@
 							</view>
 						</view>
 
+						<view class="stat-card hourly">
+							<view class="stat-card-content">
+								<view class="stat-icon-wrapper">
+									<image class="stat-icon" src="/static/assets/wxmp-clock.svg" mode="widthFix"></image>
+								</view>
+								<view class="stat-info">
+									<view class="stat-value">{{ hourlyAvgUsage }}<text class="stat-unit">度</text></view>
+									<view class="stat-label">平均每小时用电</view>
+									<view class="stat-sub" v-if="hourlyAvgCost !== '-'">约 ¥{{ hourlyAvgCost }}/时</view>
+								</view>
+							</view>
+						</view>
+
 						<view class="stat-card estimated" v-if="stats.estimatedDays !== null && stats.estimatedDays !== undefined">
 							<view class="stat-card-content">
 								<view class="stat-icon-wrapper">
@@ -137,31 +151,20 @@
 
 				<view class="chart-section">
 					<view class="section-header">
-						<image class="section-icon" src="/static/assets/wxmp-activity.svg" mode="widthFix"></image>
-						<text class="section-title">用电量趋势</text>
+						<image class="section-icon" src="/static/assets/wxmp-activity-teal.svg" mode="widthFix"></image>
+						<text class="section-title">近24小时用电量趋势</text>
 					</view>
 					<view v-if="recentTrend.length === 0" class="no-data">
 						<image class="no-data-icon" src="/static/assets/wxmp-coffee.svg" mode="widthFix"></image>
 						<text>暂无数据</text>
 					</view>
-					<!-- #ifdef MP-WEIXIN -->
-					<canvas
+					<line-chart
 						v-else
-						type="2d"
-						class="chart-canvas"
-						id="recentChart"
-						:style="{ width: '100%', height: '200px' }"
-					></canvas>
-					<!-- #endif -->
-					<!-- #ifndef MP-WEIXIN -->
-					<canvas
-						v-else
-						class="chart-canvas"
-						id="recentChart"
-						canvas-id="recentChart"
-						:style="{ width: '100%', height: '200px' }"
-					></canvas>
-					<!-- #endif -->
+						:data="recentChartData"
+						:color="trendColor"
+						:height="200"
+						unit="度"
+					/>
 					<view class="chart-footer">
 						<view class="chart-footer-item">
 							<text class="chart-footer-label">数据点</text>
@@ -171,6 +174,9 @@
 							<text class="chart-footer-label">电价</text>
 							<text class="chart-footer-value">{{ pricePerKwh }}元/度</text>
 						</view>
+					</view>
+					<view class="chart-note">
+						固定展示最近 24 小时数据，不受上方筛选条件影响；其中 06:00 一条为前一晚 23:00-06:00 的整晚合计。
 					</view>
 				</view>
 
@@ -183,24 +189,13 @@
 						<image class="no-data-icon" src="/static/assets/wxmp-coffee.svg" mode="widthFix"></image>
 						<text>暂无数据</text>
 					</view>
-					<!-- #ifdef MP-WEIXIN -->
-					<canvas
+					<line-chart
 						v-else
-						type="2d"
-						class="chart-canvas"
-						id="dailyChart"
-						:style="{ width: '100%', height: '200px' }"
-					></canvas>
-					<!-- #endif -->
-					<!-- #ifndef MP-WEIXIN -->
-					<canvas
-						v-else
-						class="chart-canvas"
-						id="dailyChart"
-						canvas-id="dailyChart"
-						:style="{ width: '100%', height: '200px' }"
-					></canvas>
-					<!-- #endif -->
+						:data="dailyChartData"
+						:color="trendColor"
+						:height="200"
+						unit="度"
+					/>
 					<view class="chart-footer">
 						<view class="chart-footer-item">
 							<text class="chart-footer-label">统计天数</text>
@@ -211,7 +206,7 @@
 
 				<view class="records-section">
 					<view class="section-header">
-						<image class="section-icon" src="/static/assets/wxmp-list.svg" mode="widthFix"></image>
+						<image class="section-icon" src="/static/assets/wxmp-list-teal.svg" mode="widthFix"></image>
 						<text class="section-title">历史电费记录</text>
 						<text class="section-count">共{{ records.length }}条</text>
 					</view>
@@ -260,7 +255,7 @@
 							</view>
 							<view class="record-content">
 								<view class="record-header">
-									<text class="record-time">{{ item.record_time || item.created_at }}</text>
+									<text class="record-time">{{ fmtDateTime(item.record_time || item.created_at) }}</text>
 								</view>
 								<view class="record-data">
 									<view class="record-main">
@@ -284,6 +279,92 @@
 						</view>
 					</view>
 										<view class="records-footer">用电量根据余额变化和电价({{ pricePerKwh }}元/度)自动计算</view>
+				</view>
+
+				<!-- 趣味账单：周/半月/月账单 + 周期前后翻看（数据由 get_power_bill 独立返回，不受页面筛选影响） -->
+				<view class="fun-bill">
+					<view class="section-header">
+						<image class="section-icon" src="/static/assets/wxmp-star.svg" mode="widthFix"></image>
+						<text class="section-title">趣味账单</text>
+						<text v-if="billData && billData.bill" class="fun-badge">{{ billData.bill.title }}</text>
+					</view>
+
+					<!-- 账单类型 -->
+					<view class="fun-tabs">
+						<view
+							v-for="opt in billRangeOptions"
+							:key="opt.value"
+							class="fun-tab"
+							:class="{ active: billRange === opt.value }"
+							@click="setBillRange(opt.value)"
+						>{{ opt.label }}</view>
+					</view>
+
+					<!-- 周期选择：◀ 看更早的周期，▶ 回到较新的周期 -->
+					<view class="fun-nav">
+						<text class="fun-nav-btn" :class="{ disabled: !billData || billData.can_prev === false }" @click="billPrev">◀</text>
+						<view class="fun-nav-mid">
+							<text class="fun-nav-period">{{ billData ? billData.period_text : '加载中…' }}</text>
+							<text v-if="billData && billData.tag" class="fun-nav-tag">{{ billData.tag }}</text>
+						</view>
+						<text class="fun-nav-btn" :class="{ disabled: !billOffset }" @click="billNext">▶</text>
+					</view>
+
+					<view v-if="billData && !billData.has_data" class="fun-empty">该周期暂无用电数据，可切换周期查看</view>
+
+					<view v-if="billData && billData.bill">
+					<view class="fun-totals">
+						<view class="fun-total">
+							<text class="fun-total-value">{{ billData.bill.total_usage }}<text class="fun-total-unit">度</text></text>
+							<text class="fun-total-label">周期用电</text>
+						</view>
+						<view class="fun-total-divider"></view>
+						<view class="fun-total">
+							<text class="fun-total-value">{{ billData.bill.total_cost }}<text class="fun-total-unit">元</text></text>
+							<text class="fun-total-label">周期电费</text>
+						</view>
+					</view>
+
+					<view class="fun-block">
+						<text class="fun-block-title">这些电都够干什么</text>
+						<view class="fun-row" v-for="(eq, i) in billData.bill.equivalents" :key="i">
+							<text class="fun-row-icon">{{ eq.icon }}</text>
+							<text class="fun-row-label">{{ eq.label }}</text>
+							<text class="fun-row-value">{{ eq.value }}{{ eq.unit }}</text>
+						</view>
+						<view class="fun-row" v-if="billData.bill.cost_fun">
+							<text class="fun-row-icon">{{ billData.bill.cost_fun.icon }}</text>
+							<text class="fun-row-label">{{ billData.bill.cost_fun.label }}</text>
+							<text class="fun-row-value">{{ billData.bill.cost_fun.value }}{{ billData.bill.cost_fun.unit }}</text>
+						</view>
+					</view>
+
+					<view class="fun-block" v-if="billData.bill.max_day">
+						<text class="fun-block-title">用电之最</text>
+						<view class="fun-extreme">
+							<text class="fun-extreme-tag high">最猛</text>
+							<text class="fun-extreme-date">{{ billData.bill.max_day.date }}</text>
+							<text class="fun-extreme-value">{{ billData.bill.max_day.usage }} 度</text>
+						</view>
+						<view class="fun-extreme" v-if="billData.bill.min_day">
+							<text class="fun-extreme-tag low">最省</text>
+							<text class="fun-extreme-date">{{ billData.bill.min_day.date }}</text>
+							<text class="fun-extreme-value">{{ billData.bill.min_day.usage }} 度</text>
+						</view>
+					</view>
+
+					<view class="fun-block" v-if="billData.bill.night">
+						<text class="fun-block-title">夜猫子指数 · {{ billData.bill.night.level }}</text>
+						<view class="fun-night-bar">
+							<view class="fun-night-fill" :style="'width:' + billData.bill.night.ratio + '%'"></view>
+						</view>
+						<text class="fun-night-text">
+							最近 24 小时里，夜间（23:00-06:00）用了 {{ billData.bill.night.usage }} 度，占全部用电的 {{ billData.bill.night.ratio }}%
+						</text>
+					</view>
+
+					<view class="fun-comment">{{ billData.bill.comment }}</view>
+					</view>
 				</view>
 
 				<!-- AI 智能分析按钮：置于页面最下方 -->
@@ -345,11 +426,21 @@ export default {
 			stats: null,
 			recentTrend: [],
 			dailyTrend: [],
+			// 趣味账单：支持周/半月/月账单 + 周期前后翻看（由 get_power_bill 独立取数）
+			billData: null,       // 账单接口返回：bill / period_text / tag / can_prev / can_next / has_data
+			billRange: 'week',    // week=周账单, half=半月账单, month=月账单
+			billOffset: 0,        // 0=当前周期, 1=上一个周期…
+			billRangeOptions: [
+				{ value: 'week', label: '周账单' },
+				{ value: 'half', label: '半月账单' },
+				{ value: 'month', label: '月账单' }
+			],
 			records: [],
+			periodText: '',
 			pricePerKwh: 0.61,
 			loading: true,
-			// 时间筛选：all=全部, 7=近7天, 30=近30天, custom=自定义
-			timeRange: 'all',
+			// 时间筛选：all=全部, 7=近7天, 30=近30天, custom=自定义（默认近30天）
+			timeRange: '30',
 			customStart: '',
 			customEnd: '',
 			// 历史电费记录筛选/排序（同一行的下拉选项，切换后由服务端筛选排序）
@@ -400,12 +491,39 @@ export default {
 			if (s === 'normal') return '/static/assets/wxmp-heart-yellow.svg';
 			return '/static/assets/wxmp-heart-red.svg';
 		},
+		// 用电健康度对应的图表主色：节能=绿，正常=橙，偏高=红
+		trendColor() {
+			const s = this.stats && this.stats.healthStatus;
+			if (s === 'saving') return '#52c41a';
+			if (s === 'normal') return '#fa8c16';
+			return '#ff4d4f';
+		},
 		// 当前余额按电价换算的电量（元 ÷ 元/度），用于余额卡片下方展示
 		balanceKwhText() {
 			const balance = this.stats ? parseFloat(this.stats.latestBalance) : NaN;
 			const price = parseFloat(this.pricePerKwh) || 0;
 			if (isNaN(balance) || price <= 0) return '';
 			return (balance / price).toFixed(2);
+		},
+		// 平均每小时用电量（按日均 ÷ 24 估算）
+		hourlyAvgUsage() {
+			const v = parseFloat(this.stats && this.stats.dailyAvgUsage);
+			if (isNaN(v) || v <= 0) return '-';
+			return String(Number((v / 24).toFixed(3)));
+		},
+		// 平均每小时电费（按日均费用 ÷ 24 估算）
+		hourlyAvgCost() {
+			const v = parseFloat(this.stats && this.stats.dailyAvgCost);
+			if (isNaN(v) || v <= 0) return '-';
+			return String(Number((v / 24).toFixed(3)));
+		},
+		// 图表数据：近24小时用电量趋势（每小时一个采集点，由后端固定取最近 24 小时）
+		recentChartData() {
+			return (this.recentTrend || []).map(d => ({ label: d.time || d.date || '', value: Number(d.usage) || 0 }));
+		},
+		// 图表数据：每日用电总量趋势
+		dailyChartData() {
+			return (this.dailyTrend || []).map(d => ({ label: d.date || d.time || '', value: Number(d.usage) || 0 }));
 		}
 	},
 
@@ -466,6 +584,7 @@ export default {
 					this.dormitories = dormitories;
 					this.loading = false;
 					this.loadStatistics();
+					this.loadBill();
 				} else {
 					this.loading = false;
 					this.dormitories = [];
@@ -479,6 +598,53 @@ export default {
 		onDormitoryChange(e) {
 			this.selectedIndex = e.detail.value;
 			this.loadStatistics();
+			this.loadBill();
+		},
+
+		// ===== 趣味账单：按账单周期独立取数（不受页面筛选条件影响）=====
+		loadBill() {
+			const dorm = this.dormitories[this.selectedIndex];
+			if (!dorm) {
+				this.billData = null;
+				return;
+			}
+			api.request({
+				act: 'get_power_bill',
+				method: 'GET',
+				data: {
+					room_num: dorm.room_num,
+					bill_range: this.billRange,
+					bill_offset: this.billOffset
+				}
+			})
+				.then(res => {
+					this.billData = res.data || null;
+				})
+				.catch(err => {
+					uni.showToast({ title: err.msg || '账单加载失败', icon: 'none' });
+				});
+		},
+
+		// 切换账单类型（周/半月/月）：回到当前周期
+		setBillRange(range) {
+			if (this.billRange === range) return;
+			this.billRange = range;
+			this.billOffset = 0;
+			this.loadBill();
+		},
+
+		// 查看更早的周期
+		billPrev() {
+			if (this.billData && this.billData.can_prev === false) return;
+			this.billOffset += 1;
+			this.loadBill();
+		},
+
+		// 回到较新的周期（最多到当前周期）
+		billNext() {
+			if (this.billOffset <= 0) return;
+			this.billOffset -= 1;
+			this.loadBill();
 		},
 
 		setTimeRange(range) {
@@ -536,6 +702,42 @@ export default {
 			return y + '-' + m + '-' + day;
 		},
 
+		// 统计周期文案：优先用查询区间；「全部」时从返回数据取最早/最晚日期
+		resolvePeriod(params, data) {
+			let start = (params && params.start) || '';
+			let end = (params && params.end) || '';
+			if (!start || !end) {
+				// 趋势日期为展示格式（2026/9/21），排序改用补零 ISO 键，避免字典序错乱
+				const dates = [];
+				(data.daily_trend || []).forEach(d => {
+					if (d && d.date) dates.push(String(d.date));
+				});
+				if (!dates.length) {
+					(data.records || []).forEach(r => {
+						if (r && r.record_time) dates.push(String(r.record_time));
+					});
+				}
+				const valid = dates
+					.filter(d => this.isoKey(d))
+					.sort((a, b) => (this.isoKey(a) < this.isoKey(b) ? -1 : (this.isoKey(a) > this.isoKey(b) ? 1 : 0)));
+				if (valid.length) {
+					if (!start) start = valid[0];
+					if (!end) end = valid[valid.length - 1];
+				}
+			}
+			const a = this.fmtDate(start);
+			const b = this.fmtDate(end);
+			if (!a && !b) return '';
+			return (a || '?') + '-' + (b || '?');
+		},
+
+		// 排序键：2026-9-5 / 2026/9/5 / 2026-09-05 12:00 → 2026-09-05
+		isoKey(s) {
+			const m = /^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/.exec(String(s || ''));
+			if (!m) return '';
+			return m[1] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[3]).slice(-2);
+		},
+
 		async loadStatistics() {
 			const { dormitories, selectedIndex } = this;
 
@@ -546,10 +748,11 @@ export default {
 			this.loading = true;
 
 			try {
+				const query = this.buildQuery(dorm.room_num);
 				const res = await api.request({
 					act: 'get_power_statistics',
 					method: 'GET',
-					data: this.buildQuery(dorm.room_num)
+					data: query
 				});
 
 				const data = res.data;
@@ -572,16 +775,12 @@ export default {
 				this.dailyTrend = data.daily_trend || [];
 				this.records = processedRecords;
 				this.pricePerKwh = data.price_per_kwh || 0.61;
+				this.periodText = this.resolvePeriod(query, data);
 				this.loading = false;
 
 				// 当前余额改用实时电费查询接口获取（统计接口返回的是最后一条记录的余额，非实时）
 				this.balanceLive = false;
 				this.loadRealtimeBalance(dorm.room_num);
-
-				setTimeout(() => {
-					this.drawChart('recentChart', data.recent_trend || [], 'time');
-					this.drawChart('dailyChart', data.daily_trend || [], 'date');
-				}, 200);
 			} catch (err) {
 				this.loading = false;
 				uni.showToast({ title: err.msg || '获取数据失败', icon: 'none' });
@@ -666,185 +865,6 @@ export default {
 			} catch (e) {
 				// 实时查询失败时保留统计接口返回的余额，不打断页面
 			}
-		},
-
-		/**
-		 * 统一获取画布上下文
-		 * 微信小程序使用 Canvas 2D（node）接口，其他平台使用旧版 canvas-id 接口
-		 */
-		getCanvasContext(canvasId) {
-			return new Promise(resolve => {
-				// #ifdef MP-WEIXIN
-				uni.createSelectorQuery()
-					.in(this)
-					.select('#' + canvasId)
-					.fields({ node: true, size: true })
-					.exec(res => {
-						if (!res || !res[0] || !res[0].node) {
-							resolve(null);
-							return;
-						}
-						const canvas = res[0].node;
-						const ctx = canvas.getContext('2d');
-						const width = res[0].width;
-						const height = res[0].height;
-						const sysInfo = uni.getWindowInfo ? uni.getWindowInfo() : uni.getSystemInfoSync();
-						const dpr = sysInfo.pixelRatio || 1;
-						canvas.width = width * dpr;
-						canvas.height = height * dpr;
-						ctx.scale(dpr, dpr);
-						resolve({ ctx, width, height, legacy: false });
-					});
-				// #endif
-
-				// #ifndef MP-WEIXIN
-				uni.createSelectorQuery()
-					.in(this)
-					.select('#' + canvasId)
-					.boundingClientRect()
-					.exec(res => {
-						const rect = res && res[0];
-						const width = (rect && rect.width) || 320;
-						const height = (rect && rect.height) || 200;
-						const ctx = uni.createCanvasContext(canvasId, this);
-						resolve({ ctx: this.wrapLegacyContext(ctx), width, height, legacy: true });
-					});
-				// #endif
-			});
-		},
-
-		/**
-		 * 将旧版 canvas 上下文适配为 Canvas 2D 风格的接口
-		 */
-		wrapLegacyContext(ctx) {
-			return {
-				set fillStyle(v) {
-					ctx.setFillStyle(v);
-				},
-				set strokeStyle(v) {
-					ctx.setStrokeStyle(v);
-				},
-				set lineWidth(v) {
-					ctx.setLineWidth(v);
-				},
-				set font(v) {
-					const m = /(\d+)px/.exec(v);
-					if (m) ctx.setFontSize(parseInt(m[1], 10));
-				},
-				set textAlign(v) {
-					ctx.setTextAlign(v);
-				},
-				fillRect: (...a) => ctx.fillRect(...a),
-				beginPath: () => ctx.beginPath(),
-				moveTo: (...a) => ctx.moveTo(...a),
-				lineTo: (...a) => ctx.lineTo(...a),
-				stroke: () => ctx.stroke(),
-				fill: () => ctx.fill(),
-				closePath: () => ctx.closePath(),
-				arc: (...a) => ctx.arc(...a),
-				fillText: (...a) => ctx.fillText(...a),
-				scale: () => {},
-				draw: () => ctx.draw()
-			};
-		},
-
-		async drawChart(canvasId, data, labelKey) {
-			if (!data || data.length === 0) return;
-
-			const target = await this.getCanvasContext(canvasId);
-			if (!target) return;
-
-			const { ctx, width, height, legacy } = target;
-
-			const padding = { top: 20, right: 15, bottom: 35, left: 45 };
-			const chartWidth = width - padding.left - padding.right;
-			const chartHeight = height - padding.top - padding.bottom;
-
-			ctx.fillStyle = '#fff';
-			ctx.fillRect(0, 0, width, height);
-
-			const values = data.map(d => d.usage);
-			let maxVal = Math.max.apply(null, values);
-			let minVal = Math.min.apply(null, values);
-			if (maxVal === minVal) {
-				maxVal = minVal + 1;
-				minVal = Math.max(0, minVal - 1);
-			}
-			const range = maxVal - minVal;
-			maxVal = maxVal + range * 0.1;
-			minVal = Math.max(0, minVal - range * 0.1);
-
-			ctx.strokeStyle = '#f0f0f0';
-			ctx.lineWidth = 1;
-			for (let i = 0; i <= 4; i++) {
-				const y = padding.top + (chartHeight * i) / 4;
-				ctx.beginPath();
-				ctx.moveTo(padding.left, y);
-				ctx.lineTo(width - padding.right, y);
-				ctx.stroke();
-
-				const val = maxVal - ((maxVal - minVal) * i) / 4;
-				ctx.fillStyle = '#999';
-				ctx.font = '10px sans-serif';
-				ctx.textAlign = 'right';
-				ctx.fillText(val.toFixed(2), padding.left - 5, y + 3);
-			}
-
-			const xStep = data.length > 1 ? chartWidth / (data.length - 1) : 0;
-			const points = data.map((d, i) => {
-				const x = padding.left + (data.length > 1 ? i * xStep : chartWidth / 2);
-				const y = padding.top + chartHeight - ((d.usage - minVal) / (maxVal - minVal)) * chartHeight;
-				return { x, y, usage: d.usage, label: d[labelKey] || '' };
-			});
-
-			ctx.beginPath();
-			ctx.moveTo(points[0].x, points[0].y);
-			points.forEach((p, i) => {
-				if (i > 0) ctx.lineTo(p.x, p.y);
-			});
-			ctx.lineTo(points[points.length - 1].x, height - padding.bottom);
-			ctx.lineTo(points[0].x, height - padding.bottom);
-			ctx.closePath();
-			ctx.fillStyle = 'rgba(0, 123, 255, 0.1)';
-			ctx.fill();
-
-			ctx.beginPath();
-			ctx.moveTo(points[0].x, points[0].y);
-			points.forEach((p, i) => {
-				if (i > 0) ctx.lineTo(p.x, p.y);
-			});
-			ctx.strokeStyle = '#007bff';
-			ctx.lineWidth = 2;
-			ctx.stroke();
-
-			points.forEach(p => {
-				ctx.beginPath();
-				ctx.arc(p.x, p.y, 3, 0, 2 * Math.PI);
-				ctx.fillStyle = '#007bff';
-				ctx.fill();
-				ctx.strokeStyle = '#fff';
-				ctx.lineWidth = 1.5;
-				ctx.stroke();
-			});
-
-			const labelStep = Math.ceil(data.length / 5);
-			ctx.fillStyle = '#666';
-			ctx.font = '9px sans-serif';
-			ctx.textAlign = 'center';
-			data.forEach((d, i) => {
-				if (i % labelStep === 0 || i === data.length - 1) {
-					const x = padding.left + (data.length > 1 ? i * xStep : chartWidth / 2);
-					let label = d[labelKey] || '';
-					if (labelKey === 'time' && label.length > 11) {
-						label = label.substring(5, 16);
-					} else if (labelKey === 'date' && label.length > 5) {
-						label = label.substring(5);
-					}
-					ctx.fillText(label, x, height - padding.bottom + 15);
-				}
-			});
-
-			if (legacy && ctx.draw) ctx.draw();
 		},
 
 		async aiAnalyze() {
@@ -1127,6 +1147,13 @@ page {
 	color: #48416f;
 }
 
+.stats-header-period {
+	margin-left: auto;
+	padding-left: 16rpx;
+	font-size: 22rpx;
+	color: #948eb3;
+}
+
 .stats-cards {
 	display: flex;
 	flex-wrap: wrap;
@@ -1185,6 +1212,10 @@ page {
 
 .stat-card.estimated .stat-icon-wrapper {
 	background: rgba(0, 123, 255, 0.1);
+}
+
+.stat-card.hourly .stat-icon-wrapper {
+	background: rgba(19, 194, 194, 0.12);
 }
 
 .stat-icon {
@@ -1268,11 +1299,6 @@ page {
 	border-radius: 20rpx;
 }
 
-.chart-canvas {
-	width: 100%;
-	height: 200px;
-}
-
 .chart-footer {
 	display: flex;
 	justify-content: center;
@@ -1299,6 +1325,248 @@ page {
 	font-weight: 500;
 }
 
+/* 图表下方口径说明（如「近24小时」「06:00 为整晚合计」） */
+.chart-note {
+	margin-top: 12rpx;
+	font-size: 22rpx;
+	color: #948eb3;
+	line-height: 1.6;
+	text-align: center;
+}
+
+/* ==================== 趣味账单 ==================== */
+/* 与上方卡片（.chart-section）一致的白色卡片样式 */
+.fun-bill {
+	background: white;
+	border-radius: 20rpx;
+	padding: 24rpx;
+	margin-bottom: 20rpx;
+	box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.05);
+}
+
+/* 账单类型：周 / 半月 / 月 */
+.fun-tabs {
+	display: flex;
+	margin-top: 20rpx;
+	padding: 6rpx;
+	background: #f7f8fc;
+	border-radius: 16rpx;
+}
+
+.fun-tab {
+	flex: 1;
+	text-align: center;
+	padding: 12rpx 0;
+	font-size: 24rpx;
+	color: #6b6485;
+	border-radius: 12rpx;
+}
+
+.fun-tab.active {
+	color: #ffffff;
+	background: linear-gradient(135deg, #13c2c2 0%, #0ea5a5 100%);
+	font-weight: 600;
+}
+
+/* 周期选择：◀ 周期 ▶（左右箭头往中间收，不贴卡片两侧） */
+.fun-nav {
+	display: flex;
+	align-items: center;
+	margin-top: 16rpx;
+	padding: 0 60rpx;
+}
+
+.fun-nav-btn {
+	width: 56rpx;
+	height: 56rpx;
+	line-height: 56rpx;
+	text-align: center;
+	font-size: 22rpx;
+	color: #13c2c2;
+	background: #f7f8fc;
+	border-radius: 50%;
+}
+
+.fun-nav-btn.disabled {
+	color: #c8c4d6;
+}
+
+.fun-nav-mid {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+}
+
+.fun-nav-period {
+	font-size: 26rpx;
+	font-weight: 600;
+	color: #1f1a33;
+}
+
+.fun-nav-tag {
+	margin-top: 2rpx;
+	font-size: 22rpx;
+	color: #948eb3;
+}
+
+.fun-empty {
+	margin-top: 20rpx;
+	padding: 30rpx 0;
+	text-align: center;
+	font-size: 24rpx;
+	color: #948eb3;
+	background: #f7f8fc;
+	border-radius: 16rpx;
+}
+
+.fun-badge {
+	padding: 6rpx 18rpx;
+	font-size: 22rpx;
+	color: #ffffff;
+	background: linear-gradient(135deg, #13c2c2 0%, #0ea5a5 100%);
+	border-radius: 24rpx;
+}
+
+.fun-totals {
+	display: flex;
+	align-items: center;
+	margin-top: 24rpx;
+	padding: 20rpx 0;
+	background: #f7f8fc;
+	border-radius: 16rpx;
+}
+
+.fun-total {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+}
+
+.fun-total-divider {
+	width: 2rpx;
+	height: 56rpx;
+	background: #f0f0f5;
+}
+
+.fun-total-value {
+	font-size: 40rpx;
+	font-weight: bold;
+	color: #13c2c2;
+}
+
+.fun-total-unit {
+	margin-left: 4rpx;
+	font-size: 22rpx;
+	font-weight: normal;
+}
+
+.fun-total-label {
+	margin-top: 6rpx;
+	font-size: 22rpx;
+	color: #948eb3;
+}
+
+.fun-block {
+	margin-top: 24rpx;
+}
+
+.fun-block-title {
+	font-size: 24rpx;
+	font-weight: 600;
+	color: #48416f;
+}
+
+.fun-row {
+	display: flex;
+	align-items: center;
+	margin-top: 14rpx;
+}
+
+.fun-row-icon {
+	font-size: 30rpx;
+}
+
+.fun-row-label {
+	flex: 1;
+	margin-left: 14rpx;
+	font-size: 26rpx;
+	color: #48416f;
+}
+
+.fun-row-value {
+	font-size: 26rpx;
+	font-weight: 600;
+	color: #13c2c2;
+}
+
+.fun-extreme {
+	display: flex;
+	align-items: center;
+	margin-top: 14rpx;
+}
+
+.fun-extreme-tag {
+	padding: 2rpx 14rpx;
+	font-size: 22rpx;
+	border-radius: 8rpx;
+}
+
+.fun-extreme-tag.high {
+	color: #ff4d4f;
+	background: #fff1f0;
+}
+
+.fun-extreme-tag.low {
+	color: #52c41a;
+	background: #f6ffed;
+}
+
+.fun-extreme-date {
+	flex: 1;
+	margin-left: 14rpx;
+	font-size: 26rpx;
+	color: #48416f;
+}
+
+.fun-extreme-value {
+	font-size: 26rpx;
+	font-weight: 600;
+	color: #1f1a33;
+}
+
+.fun-night-bar {
+	margin-top: 16rpx;
+	height: 16rpx;
+	background: #edf2f7;
+	border-radius: 8rpx;
+	overflow: hidden;
+}
+
+.fun-night-fill {
+	height: 100%;
+	background: linear-gradient(90deg, #13c2c2 0%, #52c41a 100%);
+	border-radius: 8rpx;
+}
+
+.fun-night-text {
+	display: block;
+	margin-top: 12rpx;
+	font-size: 22rpx;
+	color: #948eb3;
+	line-height: 1.6;
+}
+
+.fun-comment {
+	margin-top: 24rpx;
+	padding-top: 20rpx;
+	border-top: 2rpx solid #eef2f6;
+	font-size: 24rpx;
+	color: #6b6485;
+	line-height: 1.7;
+}
+
 .no-data {
 	display: flex;
 	flex-direction: column;
@@ -1318,7 +1586,7 @@ page {
 	background: white;
 	border-radius: 20rpx;
 	padding: 24rpx;
-	margin-bottom: 10rpx;
+	margin-bottom: 20rpx;
 	box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.05);
 }
 
@@ -1583,7 +1851,7 @@ page {
 }
 
 /* AI 分析按钮与浮动按钮样式已统一到 App.vue 全局（.ai-analyze-wrap / .ai-analyze-btn / .ai-fab） */
-/* 本页需与下方「用电量趋势」区块保持间距 */
+/* 本页需与下方「近24小时用电量趋势」区块保持间距 */
 .ai-analyze-wrap {
 	margin-bottom: 30rpx;
 }

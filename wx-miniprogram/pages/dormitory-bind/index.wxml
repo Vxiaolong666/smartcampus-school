@@ -1,3 +1,4 @@
+<wxs src="../../utils/date.wxs" module="dt" />
 <view class="container">
   <top-menu showBack="{{true}}">
     <view class="nav-title">宿舍绑定</view>
@@ -43,7 +44,7 @@
             <text wx:if="{{item.is_default == 1}}" class="default-tag">默认</text>
           </view>
           <view class="dorm-detail">{{item.school_area}} · {{item.room_num}}</view>
-          <view class="dorm-time">绑定于 {{item.bind_time}}</view>
+          <view class="dorm-time">绑定于 {{dt.formatDateTime(item.bind_time)}}</view>
         </view>
         <view class="dorm-actions">
           <button class="action-btn default-btn {{item.is_default == 1 ? 'is-default' : ''}}" data-id="{{item.id}}" bindtap="onSetDefault">

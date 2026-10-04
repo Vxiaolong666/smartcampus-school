@@ -1,4 +1,5 @@
 <page-meta page-style="{{splashVisible ? 'overflow:hidden;' : ''}}"></page-meta>
+<wxs src="../../utils/date.wxs" module="dt" />
 <view>
   <view class="background-wrapper">
    
@@ -48,7 +49,7 @@
       </view>
       <view class="content-menus-item" bind:tap="handleStudentInfo">
         <image class="content-menus-item-logo" src="/assets/icon-one/jwbd.svg" mode="aspectFit" />
-        <view class="content-menus-item-text">教务绑定</view>
+        <view class="content-menus-item-text">学籍信息</view>
       </view>
       <view class="content-menus-item" bind:tap="handlePowerStatistics">
         <image class="content-menus-item-logo" src="/assets/icon-one/tssz.svg" mode="aspectFit" />
@@ -181,7 +182,7 @@
               <text wx:if="{{item.is_top == 1}}" class="top-badge">置顶</text>
               {{item.title}}
             </view>
-            <view class="content-notice-date">{{item.create_time}}</view>
+            <view class="content-notice-date">{{dt.formatDateTime(item.create_time)}}</view>
           </view>
         </view>
         <view class="content-notice-more" bind:tap="handleNotices">查看更多</view>

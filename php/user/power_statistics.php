@@ -68,7 +68,7 @@ $pricePerKwh = floatval($config['price_per_kwh'] ?? 0.61);
                         <select class="form-select" id="timeRange">
                             <option value="all">全部</option>
                             <option value="7">近7天</option>
-                            <option value="30">近30天</option>
+                            <option value="30" selected>近30天</option>
                             <option value="custom">自定义</option>
                         </select>
                     </div>
@@ -92,16 +92,19 @@ $pricePerKwh = floatval($config['price_per_kwh'] ?? 0.61);
                     </div>
                 </div>
                 
-                <div id="statsContent">
-                    <div class="text-center py-5">
-                        <i class="fa fa-spinner fa-spin fa-2x text-muted"></i>
-                        <p class="text-muted mt-2">加载中...</p>
-                    </div>
-                </div>
-                
                 <?php endif; ?>
             </div>
         </div>
+        
+        <?php if(!empty($bindings)): ?>
+        <!-- 以下各区块（统计卡片 / 近24小时趋势 / 每日趋势 / 历史记录 / 趣味账单）均为独立卡片 -->
+        <div id="statsContent">
+            <div class="text-center py-5">
+                <i class="fa fa-spinner fa-spin fa-2x text-muted"></i>
+                <p class="text-muted mt-2">加载中...</p>
+            </div>
+        </div>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -170,6 +173,143 @@ function loadStatistics() {
     });
 }
 
+// ===== 趣味账单（周账单 / 半月账单 / 月账单，支持往前翻看历史周期）=====
+// 账单数据由 api.php 的 get_power_bill 按周期独立返回，不受页面上方筛选条件影响
+var funBillState = { range: 'week', offset: 0, room: '' };
+
+// 卡片外壳：账单类型 + 周期选择 + 内容容器（内容由 loadFunBill 填充）
+function funBillShell() {
+    var tabs = [
+        { value: 'week', label: '周账单' },
+        { value: 'half', label: '半月账单' },
+        { value: 'month', label: '月账单' }
+    ].map(function(t) {
+        var active = (t.value === funBillState.range);
+        return '<button type="button" class="btn btn-sm ' + (active ? 'btn-info' : 'btn-alt-secondary')
+            + '" data-range="' + t.value + '">' + t.label + '</button>';
+    }).join(' ');
+
+    return '<div class="row mb-4">'
+        + '<div class="col-12">'
+        + '<div class="block block-rounded mb-0">'
+        + '<div class="block-header"><h3 class="block-title"><i class="fa fa-gift me-2"></i>趣味账单</h3>'
+        + '<div class="block-options"><span id="funBillBadge" class="badge bg-info d-none"></span></div></div>'
+        + '<div class="block-content">'
+        + '<div class="d-flex flex-wrap gap-2 mb-3" id="funBillTabs">' + tabs + '</div>'
+        + '<div class="d-flex align-items-center justify-content-between mb-3">'
+        + '<button type="button" class="btn btn-sm btn-alt-secondary" id="funBillPrev"><i class="fa fa-chevron-left"></i></button>'
+        + '<div class="text-center"><div class="fw-semibold" id="funBillPeriod">加载中…</div>'
+        + '<div class="text-muted small" id="funBillTag"></div></div>'
+        + '<button type="button" class="btn btn-sm btn-alt-secondary" id="funBillNext"><i class="fa fa-chevron-right"></i></button>'
+        + '</div>'
+        + '<div id="funBillBody"></div>'
+        + '</div></div></div></div>';
+}
+
+// 账单内容：总用电/电费 + 生活化换算 + 用电之最 + 夜猫子指数 + 评语
+function funBillBodyHtml(fb) {
+    var eqHtml = (fb.equivalents || []).map(function(eq) {
+        return '<div class="d-flex justify-content-between small py-1">'
+            + '<span>' + eq.icon + ' ' + eq.label + '</span>'
+            + '<span class="fw-semibold text-info">' + eq.value + eq.unit + '</span></div>';
+    }).join('');
+    if (fb.cost_fun) {
+        eqHtml += '<div class="d-flex justify-content-between small py-1">'
+            + '<span>' + fb.cost_fun.icon + ' ' + fb.cost_fun.label + '</span>'
+            + '<span class="fw-semibold text-info">' + fb.cost_fun.value + fb.cost_fun.unit + '</span></div>';
+    }
+
+    var extremeHtml = '';
+    if (fb.max_day) {
+        extremeHtml += '<div class="fw-semibold mt-3 mb-2">用电之最</div>'
+            + '<div class="d-flex align-items-center small py-1"><span class="badge bg-danger me-2">最猛</span>'
+            + '<span class="flex-grow-1">' + fb.max_day.date + '</span>'
+            + '<span class="fw-semibold">' + fb.max_day.usage + ' 度</span></div>';
+        if (fb.min_day) {
+            extremeHtml += '<div class="d-flex align-items-center small py-1"><span class="badge bg-success me-2">最省</span>'
+                + '<span class="flex-grow-1">' + fb.min_day.date + '</span>'
+                + '<span class="fw-semibold">' + fb.min_day.usage + ' 度</span></div>';
+        }
+    }
+
+    var nightHtml = '';
+    if (fb.night) {
+        nightHtml = '<div class="fw-semibold mt-3 mb-2">夜猫子指数 · ' + fb.night.level + '</div>'
+            + '<div class="progress" style="height:8px;"><div class="progress-bar bg-info" style="width:' + fb.night.ratio + '%;"></div></div>'
+            + '<div class="text-muted small mt-1">最近 24 小时里，夜间（23:00-06:00）用了 ' + fb.night.usage
+            + ' 度，占全部用电的 ' + fb.night.ratio + '%</div>';
+    }
+
+    return '<div class="text-muted small mb-3">' + fb.period_text + ' · 共 ' + fb.days + ' 天</div>'
+        + '<div class="row text-center mb-4">'
+        + '<div class="col-6"><div class="fs-3 fw-bold text-info">' + fb.total_usage
+        + '<span class="fs-sm fw-normal ms-1">度</span></div><div class="text-muted small">周期用电</div></div>'
+        + '<div class="col-6"><div class="fs-3 fw-bold text-info">' + fb.total_cost
+        + '<span class="fs-sm fw-normal ms-1">元</span></div><div class="text-muted small">周期电费</div></div>'
+        + '</div>'
+        + '<div class="fw-semibold mb-2">这些电都够干什么</div>'
+        + eqHtml
+        + extremeHtml
+        + nightHtml
+        + '<div class="text-muted small mt-3 pt-3 border-top">' + fb.comment + '</div>';
+}
+
+// 按当前 range/offset 拉取账单并渲染
+function loadFunBill() {
+    $('#funBillBody').html('<div class="text-center text-muted small py-4"><i class="fa fa-spinner fa-spin me-1"></i>加载中…</div>');
+    $.ajax({
+        url: '../api.php',
+        method: 'GET',
+        data: {
+            act: 'get_power_bill',
+            room_num: funBillState.room,
+            bill_range: funBillState.range,
+            bill_offset: funBillState.offset
+        },
+        dataType: 'json',
+        success: function(res) {
+            if (res.code != 0) {
+                $('#funBillBody').html('<div class="alert alert-danger mb-0">' + (res.msg || '账单加载失败') + '</div>');
+                return;
+            }
+            var d = res.data || {};
+            $('#funBillPeriod').text(d.period_text || '');
+            $('#funBillTag').text(d.tag || '');
+            $('#funBillBadge').toggleClass('d-none', !d.bill).text(d.bill ? d.bill.title : '');
+            $('#funBillPrev').prop('disabled', d.can_prev === false);
+            $('#funBillNext').prop('disabled', !d.can_next);
+            $('#funBillBody').html(d.bill
+                ? funBillBodyHtml(d.bill)
+                : '<div class="text-center text-muted small py-4">该周期暂无用电数据，可切换周期查看</div>');
+        },
+        error: function() {
+            $('#funBillBody').html('<div class="alert alert-danger mb-0">网络错误，请稍后重试</div>');
+        }
+    });
+}
+
+// 绑定账单交互（元素由 funBillShell 动态插入，故用事件委托）
+function bindFunBill() {
+    $(document).off('click', '#funBillTabs button').on('click', '#funBillTabs button', function() {
+        var range = $(this).data('range');
+        if (funBillState.range === range) return;
+        funBillState.range = range;
+        funBillState.offset = 0;
+        $('#funBillTabs button').removeClass('btn-info').addClass('btn-alt-secondary');
+        $(this).removeClass('btn-alt-secondary').addClass('btn-info');
+        loadFunBill();
+    });
+    $(document).off('click', '#funBillPrev').on('click', '#funBillPrev', function() {
+        funBillState.offset += 1;
+        loadFunBill();
+    });
+    $(document).off('click', '#funBillNext').on('click', '#funBillNext', function() {
+        if (funBillState.offset <= 0) return;
+        funBillState.offset -= 1;
+        loadFunBill();
+    });
+}
+
 function renderStatistics(data) {
     // 供 AI 智能分析使用
     window.__powerStatsData = data;
@@ -228,13 +368,13 @@ function renderStatistics(data) {
             <div class="col-12">
                 <div class="block block-rounded mb-0">
                     <div class="block-header">
-                        <h3 class="block-title"><i class="fa fa-clock me-2"></i>用电量趋势</h3>
+                        <h3 class="block-title"><i class="fa fa-clock me-2"></i>近24小时用电量趋势</h3>
                     </div>
                     <div class="block-content">
                         <div style="position: relative; height: 250px;">
                             <canvas id="recentChart"></canvas>
                         </div>
-                        ${data.recent_trend.length > 0 ? `<div class="text-muted small mt-2"><i class="fa fa-info-circle me-1"></i>共 ${data.recent_trend.length} 个数据点，电价: ${data.price_per_kwh} 元/度</div>` : ''}
+                        ${data.recent_trend.length > 0 ? `<div class="text-muted small mt-2"><i class="fa fa-info-circle me-1"></i>最近 24 小时共 ${data.recent_trend.length} 个采集点（固定取最近 24 小时，不受上方筛选条件影响；其中 06:00 一条为前一晚 23:00-06:00 的整晚合计），电价: ${data.price_per_kwh} 元/度</div>` : ''}
                     </div>
                 </div>
             </div>
@@ -256,7 +396,7 @@ function renderStatistics(data) {
             </div>
         </div>
         
-        <div class="row">
+        <div class="row mb-4">
             <div class="col-12">
                 <div class="block block-rounded mb-0">
                     <div class="block-header">
@@ -314,9 +454,16 @@ function renderStatistics(data) {
                 </div>
             </div>
         </div>
+
+        ${funBillShell()}
     `;
     
     $('#statsContent').html(html);
+
+    // 趣味账单：默认周账单（当前周期），按周期独立取数（不受上方筛选条件影响）
+    funBillState.room = data.room_num || funBillState.room;
+    bindFunBill();
+    loadFunBill();
 
     // 历史电费记录：筛选 / 排序 / 分页（客户端处理）
     window.__powerAllRecords = data.records || [];
@@ -458,8 +605,10 @@ function renderRecentChart(data) {
         return;
     }
     
-    var labels = data.map(d => d.time ? d.time.substring(5, 16) : '');
-    var values = data.map(d => d.usage);
+    // 日期已是 2026/9/21 12:30 展示格式：去掉年份前缀即可（兼容旧的 YYYY-MM-DD 数据）
+    var labels = data.map(d => d.time ? String(d.time).replace(/^\d{4}[-\/]/, '').substring(0, 11) : '');
+    // 用电量为负（电费充值）时按 0 展示，避免折线跌破 0 轴溢出
+    var values = data.map(d => Math.max(0, parseFloat(d.usage) || 0));
     
     recentChart = new Chart(ctx, {
         type: 'line',
@@ -547,8 +696,10 @@ function renderDailyChart(data) {
         return;
     }
     
-    var labels = data.map(d => d.date ? d.date.substring(5) : '');
-    var values = data.map(d => d.usage);
+    // 日期已是 2026/9/21 展示格式：去掉年份前缀即可（兼容旧的 YYYY-MM-DD 数据）
+    var labels = data.map(d => d.date ? String(d.date).replace(/^\d{4}[-\/]/, '') : '');
+    // 用电量为负（电费充值）时按 0 展示，避免折线跌破 0 轴溢出
+    var values = data.map(d => Math.max(0, parseFloat(d.usage) || 0));
     
     dailyChart = new Chart(ctx, {
         type: 'line',

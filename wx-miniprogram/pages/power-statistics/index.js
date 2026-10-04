@@ -5,6 +5,8 @@
 const api = require('../../utils/api.js');
 const feature = require('../../utils/feature.js');
 const markdownToHtml = require('../../utils/markdown.js');
+// 日期展示格式化（别名：小程序的 formatDate 方法用于把 Date 转为查询参数，避免重名）
+const { formatDate: formatDateText } = require('../../utils/common.js');
 
 Page({
     data: {
@@ -13,12 +15,21 @@ Page({
         dormitories: [],       // 宿舍列表
         selectedIndex: 0,      // 选中的宿舍索引
         stats: null,           // 统计数据对象
-        recentTrend: [],       // 近期趋势数据（用于折线图）
+        recentTrend: [],       // 近24小时趋势数据（用于折线图）
         dailyTrend: [],        // 每日趋势数据（用于折线图）
+        // 趣味账单：支持周/半月/月账单 + 周期前后翻看（由 get_power_bill 独立取数）
+        billData: null,        // 账单接口返回：bill / period_text / tag / can_prev / can_next / has_data
+        billRange: 'week',     // week=周账单, half=半月账单, month=月账单
+        billOffset: 0,         // 0=当前周期, 1=上一个周期…
+        billRangeOptions: [
+            { value: 'week', label: '周账单' },
+            { value: 'half', label: '半月账单' },
+            { value: 'month', label: '月账单' }
+        ],
         records: [],           // 用电记录列表
         pricePerKwh: 0.61,     // 每度电价格（元）
         loading: true,         // 加载状态
-        timeRange: 'all',      // 时间筛选：all=全部, 7=近7天, 30=近30天, custom=自定义
+        timeRange: '30',      // 时间筛选：all=全部, 7=近7天, 30=近30天, custom=自定义（默认近30天）
         customStart: '',       // 自定义开始日期
         customEnd: '',         // 自定义结束日期
         showAiResult: false,   // AI 分析结果浮层
@@ -44,7 +55,13 @@ Page({
         recordSortIndex: 0,    // 排序下拉当前选中项
         recordsLoading: false, // 切换记录筛选时的局部加载状态
         balanceLive: false,    // 当前余额是否已通过实时电费查询接口刷新
-        balanceKwhText: ''     // 当前余额按电价换算的电量文本
+        balanceKwhText: '',    // 当前余额按电价换算的电量文本
+        trendColor: '#007bff', // 图表主色（随健康度：节能=绿 / 正常=橙 / 偏高=红）
+        recentChartData: [],   // 折线图数据（近期趋势，{label, value}）
+        dailyChartData: [],    // 折线图数据（每日趋势，{label, value}）
+        periodText: '',        // 统计周期文案（如 2026/9/20-2026/12/1）
+        hourlyAvgUsage: '-',   // 平均每小时用电量（按日均 ÷ 24 估算）
+        hourlyAvgCost: '-'     // 平均每小时电费（按日均费用 ÷ 24 估算）
     },
 
     //页面加载
@@ -106,6 +123,7 @@ Page({
                     loading: false
                 });
                 this.loadStatistics();
+                this.loadBill();
             } else {
                 // 无宿舍数据，仅更新状态
                 this.setData({ 
@@ -126,6 +144,54 @@ Page({
         this.setData({ selectedIndex: e.detail.value });
         // 切换宿舍后重新加载统计数据
         this.loadStatistics();
+        this.loadBill();
+    },
+
+    // ===== 趣味账单：按账单周期独立取数（不受页面筛选条件影响）=====
+    loadBill() {
+        const dorm = this.data.dormitories[this.data.selectedIndex];
+        if (!dorm) {
+            this.setData({ billData: null });
+            return;
+        }
+        api.request({
+            act: 'get_power_bill',
+            method: 'GET',
+            data: {
+                room_num: dorm.room_num,
+                bill_range: this.data.billRange,
+                bill_offset: this.data.billOffset
+            }
+        })
+            .then(res => {
+                this.setData({ billData: (res && res.data) || null });
+            })
+            .catch(err => {
+                wx.showToast({ title: err.msg || '账单加载失败', icon: 'none' });
+            });
+    },
+
+    //切换账单类型（周/半月/月）：回到当前周期
+    setBillRange(e) {
+        const range = e.currentTarget.dataset.range;
+        if (this.data.billRange === range) return;
+        this.setData({ billRange: range, billOffset: 0 });
+        this.loadBill();
+    },
+
+    //查看更早的周期
+    billPrev() {
+        const billData = this.data.billData;
+        if (billData && billData.can_prev === false) return;
+        this.setData({ billOffset: this.data.billOffset + 1 });
+        this.loadBill();
+    },
+
+    //回到较新的周期（最多到当前周期）
+    billNext() {
+        if (this.data.billOffset <= 0) return;
+        this.setData({ billOffset: this.data.billOffset - 1 });
+        this.loadBill();
     },
 
     //时间筛选切换
@@ -204,10 +270,11 @@ Page({
 
         try {
             // 调用API获取用电统计数据，传入房间编号
+            const query = this.buildQuery(dorm.room_num);
             const res = await api.request({
                 act: 'get_power_statistics',
                 method: 'GET',
-                data: this.buildQuery(dorm.room_num)
+                data: query
             });
 
             // 取出响应数据
@@ -230,8 +297,14 @@ Page({
                     thresholds: data.thresholds,            // 阈值设置（低余额/危险余额）
                     estimatedDays: data.estimated_days      // 预计可用天数
                 },
-                recentTrend: data.recent_trend || [],       // 近期趋势数据
+                recentTrend: data.recent_trend || [],       // 近24小时趋势数据
                 dailyTrend: data.daily_trend || [],         // 每日趋势数据
+                recentChartData: (data.recent_trend || []).map(d => ({ label: d.time || d.date || '', value: Number(d.usage) || 0 })),
+                dailyChartData: (data.daily_trend || []).map(d => ({ label: d.date || d.time || '', value: Number(d.usage) || 0 })),
+                trendColor: this.trendColorOf(data.health_status),      // 图表主色（健康度）
+                periodText: this.resolvePeriod(query, data),            // 统计周期
+                hourlyAvgUsage: this.hourlyOf(data.daily_avg_usage),    // 平均每小时用电量
+                hourlyAvgCost: this.hourlyOf(data.daily_avg_cost),      // 平均每小时电费
                 records: processedRecords,                   // 处理后的用电记录
                 pricePerKwh: data.price_per_kwh || 0.61,    // 每度电价格
                 loading: false,                              // 取消加载状态
@@ -243,14 +316,6 @@ Page({
 
             // 当前余额改用实时电费查询接口获取（统计接口返回的是最后一条记录的余额，非实时）
             this.loadRealtimeBalance(dorm.room_num);
-            
-            // 延迟200ms绘制图表，等待DOM渲染完成
-            setTimeout(() => {
-                // 绘制近期趋势图（X轴标签为time字段）
-                this.drawChart('recentChart', data.recent_trend || [], 'time');
-                // 绘制每日趋势图（X轴标签为date字段）
-                this.drawChart('dailyChart', data.daily_trend || [], 'date');
-            }, 200);
         } catch (err) {
             // 获取统计数据失败
             this.setData({ loading: false });
@@ -354,140 +419,54 @@ Page({
         this.setData({ balanceKwhText: (balance / price).toFixed(2) });
     },
 
-    //绘制折线图表
-    drawChart(canvasId, data, labelKey) {
-        // 无数据则不绘制
-        if (!data || data.length === 0) return;
-        
-        // 获取Canvas节点（微信小程序Canvas 2D API）
-        const query = wx.createSelectorQuery().in(this);
-        query.select('#' + canvasId).fields({ node: true, size: true }).exec((res) => {
-            // 节点不存在则返回
-            if (!res || !res[0] || !res[0].node) return;
-            
-            // 获取Canvas节点和2D绘图上下文
-            const canvas = res[0].node;
-            const ctx = canvas.getContext('2d');
-            // 获取Canvas的CSS尺寸
-            const width = res[0].width;
-            const height = res[0].height;
-            
-            // 根据设备像素比设置Canvas实际分辨率，确保高清显示
-            const dpr = wx.getSystemInfoSync().pixelRatio;
-            canvas.width = width * dpr;
-            canvas.height = height * dpr;
-            // 缩放绘图上下文以匹配设备像素比
-            ctx.scale(dpr, dpr);
-            
-            // 定义图表边距（上、右、下、左）
-            const padding = { top: 20, right: 15, bottom: 35, left: 45 };
-            // 计算图表绘制区域的宽高
-            const chartWidth = width - padding.left - padding.right;
-            const chartHeight = height - padding.top - padding.bottom;
-            
-            // 绘制白色背景
-            ctx.fillStyle = '#fff';
-            ctx.fillRect(0, 0, width, height);
-            
-            // 提取所有数据点的usage值，计算Y轴范围
-            const values = data.map(d => d.usage);
-            let maxVal = Math.max(...values);
-            let minVal = Math.min(...values);
-            // 所有值相同时，扩展范围避免除零
-            if (maxVal === minVal) {
-                maxVal = minVal + 1;
-                minVal = Math.max(0, minVal - 1);
+    // 健康度 → 图表主色：节能=绿，正常=橙，偏高=红
+    trendColorOf(status) {
+        if (status === 'saving') return '#52c41a';
+        if (status === 'normal') return '#fa8c16';
+        return '#ff4d4f';
+    },
+
+    // 平均每小时数值（按日均 ÷ 24 估算，去多余 0）
+    hourlyOf(v) {
+        const n = parseFloat(v);
+        if (isNaN(n) || n <= 0) return '-';
+        return String(Number((n / 24).toFixed(3)));
+    },
+
+    // 统计周期文案：优先用查询区间；「全部」时从返回数据取最早/最晚日期
+    resolvePeriod(params, data) {
+        let start = (params && params.start) || '';
+        let end = (params && params.end) || '';
+        if (!start || !end) {
+            // 趋势日期为展示格式（2026/9/21），排序改用补零 ISO 键，避免字典序错乱
+            const dates = [];
+            (data.daily_trend || []).forEach(d => {
+                if (d && d.date) dates.push(String(d.date));
+            });
+            if (!dates.length) {
+                (data.records || []).forEach(r => {
+                    if (r && r.record_time) dates.push(String(r.record_time));
+                });
             }
-            // 上下各留10%的边距，使数据点不贴边
-            const range = maxVal - minVal;
-            maxVal = maxVal + range * 0.1;
-            minVal = Math.max(0, minVal - range * 0.1);
-            
-            // 绘制4条水平网格线和对应的Y轴标签
-            ctx.strokeStyle = '#f0f0f0';
-            ctx.lineWidth = 1;
-            for (let i = 0; i <= 4; i++) {
-                // 计算网格线Y坐标
-                const y = padding.top + chartHeight * i / 4;
-                ctx.beginPath();
-                ctx.moveTo(padding.left, y);
-                ctx.lineTo(width - padding.right, y);
-                ctx.stroke();
-                
-                // 计算Y轴标签值（从上到下递减）
-                const val = maxVal - (maxVal - minVal) * i / 4;
-                ctx.fillStyle = '#999';
-                ctx.font = '10px sans-serif';
-                ctx.textAlign = 'right';
-                // 在Y轴左侧绘制标签值，保留2位小数
-                ctx.fillText(val.toFixed(2), padding.left - 5, y + 3);
+            const valid = dates
+                .filter(d => this.isoKey(d))
+                .sort((a, b) => (this.isoKey(a) < this.isoKey(b) ? -1 : (this.isoKey(a) > this.isoKey(b) ? 1 : 0)));
+            if (valid.length) {
+                if (!start) start = valid[0];
+                if (!end) end = valid[valid.length - 1];
             }
-            
-            // 计算X轴步长（数据点之间的水平间距）
-            const xStep = data.length > 1 ? chartWidth / (data.length - 1) : 0;
-            // 计算每个数据点的像素坐标
-            const points = data.map((d, i) => {
-                // X坐标：只有一个数据点时居中，多个时等间距分布
-                const x = padding.left + (data.length > 1 ? i * xStep : chartWidth / 2);
-                // Y坐标：将usage值映射到图表高度范围内
-                const y = padding.top + chartHeight - ((d.usage - minVal) / (maxVal - minVal)) * chartHeight;
-                return { x, y, usage: d.usage, label: d[labelKey] || '' };
-            });
-            
-            // 绘制折线下方的填充区域（半透明蓝色）
-            ctx.beginPath();
-            ctx.moveTo(points[0].x, points[0].y);
-            points.forEach((p, i) => {
-                if (i > 0) ctx.lineTo(p.x, p.y);
-            });
-            // 连线到右下角和左下角，形成封闭区域
-            ctx.lineTo(points[points.length - 1].x, height - padding.bottom);
-            ctx.lineTo(points[0].x, height - padding.bottom);
-            ctx.closePath();
-            ctx.fillStyle = 'rgba(0, 123, 255, 0.1)';
-            ctx.fill();
-            
-            // 绘制折线（蓝色实线）
-            ctx.beginPath();
-            ctx.moveTo(points[0].x, points[0].y);
-            points.forEach((p, i) => {
-                if (i > 0) ctx.lineTo(p.x, p.y);
-            });
-            ctx.strokeStyle = '#007bff';
-            ctx.lineWidth = 2;
-            ctx.stroke();
-            
-            // 绘制数据点（蓝色圆点+白色描边）
-            points.forEach(p => {
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, 3, 0, 2 * Math.PI);
-                ctx.fillStyle = '#007bff';
-                ctx.fill();
-                ctx.strokeStyle = '#fff';
-                ctx.lineWidth = 1.5;
-                ctx.stroke();
-            });
-            
-            // 绘制X轴标签（间隔显示，避免重叠）
-            const labelStep = Math.ceil(data.length / 5);
-            ctx.fillStyle = '#666';
-            ctx.font = '9px sans-serif';
-            ctx.textAlign = 'center';
-            data.forEach((d, i) => {
-                // 每隔labelStep个点显示一个标签，最后一个点也显示
-                if (i % labelStep === 0 || i === data.length - 1) {
-                    const x = padding.left + (data.length > 1 ? i * xStep : chartWidth / 2);
-                    let label = d[labelKey] || '';
-                    // 截断过长的标签：time类型保留月日时分，date类型保留月日
-                    if (labelKey === 'time' && label.length > 11) {
-                        label = label.substring(5, 16);
-                    } else if (labelKey === 'date' && label.length > 5) {
-                        label = label.substring(5);
-                    }
-                    ctx.fillText(label, x, height - padding.bottom + 15);
-                }
-            });
-        });
+        }
+        const a = formatDateText(start);
+        const b = formatDateText(end);
+        if (!a && !b) return '';
+        return (a || '?') + '-' + (b || '?');
+    },
+
+    // 排序键：2026-9-5 / 2026/9/5 / 2026-09-05 12:00 → 2026-09-05
+    isoKey(s) {
+        const m = /^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/.exec(String(s || ''));
+        if (!m) return '';
+        return m[1] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[3]).slice(-2);
     },
 
     // ===== AI 智能分析用电 =====

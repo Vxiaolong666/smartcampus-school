@@ -6,6 +6,7 @@
  */
 const api = require('../../utils/api.js');
 const agreements = require('../../utils/agreements.js');
+const { formatDate } = require('../../utils/common.js');
 
 Page({
   data: {
@@ -34,7 +35,7 @@ Page({
         list: rows.map(r => ({
           key: r.key,
           title: r.title,
-          desc: descMap[r.key] || (r.updated_at ? ('最近更新：' + String(r.updated_at).slice(0, 10)) : ''),
+          desc: descMap[r.key] || (r.updated_at ? ('最近更新：' + formatDate(r.updated_at)) : ''),
           route: agreements.resolvePath(r.key)
         }))
       });

@@ -50,12 +50,38 @@ const getCourseColor = (courseName) => {
  */
 const formatTimeRange = (timeRange) => {
     if (!timeRange || !timeRange.start || !timeRange.end) return '';
-    const startDate = timeRange.start.substring(0, 10);
-    const endDate = timeRange.end.substring(0, 10);
+    const startDate = formatDate(timeRange.start);
+    const endDate = formatDate(timeRange.end);
     if (startDate === endDate) {
-        return `${startDate} ${timeRange.start.substring(11, 16)}-${timeRange.end.substring(11, 16)}`;
+        return `${startDate} ${String(timeRange.start).substring(11, 16)}-${String(timeRange.end).substring(11, 16)}`;
     }
-    return `${timeRange.start.substring(5, 16)} - ${timeRange.end.substring(5, 16)}`;
+    return `${formatDateTime(timeRange.start)} - ${formatDateTime(timeRange.end)}`;
+};
+
+/**
+ * 日期展示（仅日期）：2026-9-21 12:30:00 / 2026/9/21 → 2026/9/21
+ * 仅处理 YYYY-M-D 或 YYYY/M/D（可带时间）形式，其余原样返回
+ */
+const formatDate = (v) => {
+    if (v === null || v === undefined || v === '') return '';
+    const s = String(v).trim();
+    const m = /^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::\d{2})?)?$/.exec(s);
+    if (!m) return s;
+    return m[1] + '/' + parseInt(m[2], 10) + '/' + parseInt(m[3], 10);
+};
+
+/**
+ * 日期时间展示：2026-9-21 8:05:30 / 2026/9/21 08:05 → 2026/9/21 08:05
+ * 无时间部分时等同 formatDate，其余原样返回
+ */
+const formatDateTime = (v) => {
+    if (v === null || v === undefined || v === '') return '';
+    const s = String(v).trim();
+    const m = /^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::\d{2})?)?$/.exec(s);
+    if (!m) return s;
+    const date = m[1] + '/' + parseInt(m[2], 10) + '/' + parseInt(m[3], 10);
+    if (m[4] === undefined) return date;
+    return date + ' ' + (m[4].length < 2 ? '0' + m[4] : m[4]) + ':' + m[5];
 };
 
 // 时间段配置
@@ -139,6 +165,8 @@ export {
     COURSE_COLORS,
     getCourseColor,
     formatTimeRange,
+    formatDate,
+    formatDateTime,
     timeSlots,
     applyTimeSlots,
     weekDays,
@@ -149,6 +177,8 @@ export default {
     COURSE_COLORS,
     getCourseColor,
     formatTimeRange,
+    formatDate,
+    formatDateTime,
     timeSlots,
     applyTimeSlots,
     weekDays,

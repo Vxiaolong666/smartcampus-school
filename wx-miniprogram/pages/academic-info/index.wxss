@@ -95,6 +95,11 @@ page {
     padding: 100rpx 0;
 }
 
+/* 未绑定教务账号空态：位于卡片头部（含分割线）下方，减小与上方的间距 */
+.empty-bind {
+    padding-top: 20rpx;
+}
+
 .empty-icon {
     width: 120rpx;
     height: 120rpx;

@@ -102,6 +102,139 @@ function jsonResponse($code, $msg, $data = null) {
 }
 
 /**
+ * 趣味账单：把某个周期的每日用电/电费汇总换算成生活化的趣味数据
+ *
+ * @param array $dailyStats  每日统计（ISO 日期 => ['usage' => 度, 'cost' => 元]）
+ * @param array $recentTrend 近24小时采集点（用于夜猫子指数；非当前周期传空数组）
+ * @param float $pricePerKwh 电价（元/度）
+ * @param float $savingLine  节能线（日均用电，度）
+ * @param float $normalLine  正常线（日均用电，度）
+ * @return array|null 周期内无数据时返回 null
+ */
+function powerFunBill(array $dailyStats, array $recentTrend, $pricePerKwh, $savingLine = 0.5, $normalLine = 1.0) {
+    $days = 0;
+    $totalUsage = 0;
+    $totalCost = 0;
+    $maxDay = null;
+    $minDay = null;
+    foreach ($dailyStats as $dateKey => $dayStat) {
+        // 充值当日的用电量可能为负，按 0 计入，避免账单出现「负用电」这种反常识数字
+        $dayUsage = max(0, floatval($dayStat['usage']));
+        $dayCost = max(0, floatval($dayStat['cost']));
+        $days++;
+        $totalUsage += $dayUsage;
+        $totalCost += $dayCost;
+        if ($maxDay === null || $dayUsage > $maxDay['usage']) {
+            $maxDay = ['date' => $dateKey, 'usage' => $dayUsage];
+        }
+        if ($minDay === null || $dayUsage < $minDay['usage']) {
+            $minDay = ['date' => $dateKey, 'usage' => $dayUsage];
+        }
+    }
+    if ($days === 0) {
+        return null;
+    }
+    
+    $avgUsage = $totalUsage / $days;
+    $avgCost = $totalCost / $days;
+    
+    // 生活化换算：按「1 度电 ≈ 手机满充 100 次 / 台灯亮 100 小时 / 电风扇 20 小时 / 笔记本 16 小时」估算
+    $equivalents = [
+        ['icon' => '📱', 'label' => '给手机充满电', 'value' => round($totalUsage * 100), 'unit' => '次'],
+        ['icon' => '💡', 'label' => '台灯一直亮着', 'value' => round($totalUsage * 100), 'unit' => '小时'],
+        ['icon' => '🌀', 'label' => '电风扇一直吹', 'value' => round($totalUsage * 20), 'unit' => '小时'],
+        ['icon' => '💻', 'label' => '笔记本办公', 'value' => round($totalUsage * 16), 'unit' => '小时']
+    ];
+    
+    // 夜猫子指数：近 24 小时里 06:00 的采集点覆盖前一晚 23:00-06:00（整晚）
+    $nightUsage = 0;
+    $trendTotal = 0;
+    foreach ($recentTrend as $point) {
+        $pointUsage = max(0, floatval($point['usage']));
+        $trendTotal += $pointUsage;
+        if (preg_match('/\s0?6:00$/', strval($point['time']))) {
+            $nightUsage += $pointUsage;
+        }
+    }
+    $night = null;
+    if ($trendTotal > 0 && $nightUsage > 0) {
+        $nightRatio = $nightUsage / $trendTotal * 100;
+        if ($nightRatio >= 45) {
+            $nightLevel = '熬夜冠军';
+        } elseif ($nightRatio >= 30) {
+            $nightLevel = '夜型青年';
+        } elseif ($nightRatio >= 15) {
+            $nightLevel = '作息规律';
+        } else {
+            $nightLevel = '早睡标兵';
+        }
+        $night = [
+            'ratio' => round($nightRatio, 1),
+            'level' => $nightLevel,
+            'usage' => round($nightUsage, 2)
+        ];
+    }
+    
+    // 称号：按日均用电分档
+    if ($avgUsage <= 0.5) {
+        $title = '省电小能手';
+    } elseif ($avgUsage <= 1.5) {
+        $title = '用电正常户';
+    } elseif ($avgUsage <= 3) {
+        $title = '用电小大户';
+    } else {
+        $title = '用电大户';
+    }
+    
+    // 评语：一句话总结，优先提示「用电最猛的一天」
+    $comment = sprintf(
+        '本周期共 %d 天，日均用电 %s 度（约 ¥%s），合计花了 ¥%s。',
+        $days,
+        round($avgUsage, 2),
+        round($avgCost, 2),
+        round($totalCost, 2)
+    );
+    if ($maxDay !== null && $avgUsage > 0 && $maxDay['usage'] >= $avgUsage * 2.5) {
+        $comment .= sprintf(
+            '其中 %s 用电最猛（%s 度，约日均的 %.1f 倍），是不是有大功率电器开了一整天？',
+            date('n月j日', strtotime($maxDay['date'])),
+            round($maxDay['usage'], 2),
+            $maxDay['usage'] / $avgUsage
+        );
+    } elseif ($avgUsage <= $savingLine) {
+        $comment .= '日均用电低于节能线，省电做得不错！';
+    } elseif ($avgUsage > $normalLine) {
+        $comment .= '日均用电高于正常线，留意一下长时间运行的大功率电器。';
+    }
+    
+    return [
+        'days' => $days,
+        'total_usage' => round($totalUsage, 2),
+        'total_cost' => round($totalCost, 2),
+        'avg_usage' => round($avgUsage, 2),
+        'avg_cost' => round($avgCost, 2),
+        'max_day' => $maxDay ? [
+            'date' => date('n月j日', strtotime($maxDay['date'])),
+            'usage' => round($maxDay['usage'], 2)
+        ] : null,
+        'min_day' => $minDay ? [
+            'date' => date('n月j日', strtotime($minDay['date'])),
+            'usage' => round($minDay['usage'], 2)
+        ] : null,
+        'equivalents' => $equivalents,
+        'cost_fun' => [
+            'icon' => '🧋',
+            'label' => '这笔电费约等于',
+            'value' => round($totalCost / 15, 1),
+            'unit' => '杯奶茶'
+        ],
+        'night' => $night,
+        'title' => $title,
+        'comment' => $comment
+    ];
+}
+
+/**
  * 全局开关：App 版本更新是否开启（后台「版本管理」）
  */
 function appUpdateEnabled($DB) {
@@ -1457,11 +1590,6 @@ switch($act) {
                 'usage_cost' => round($usageCost, 2)
             ];
             
-            $recentTrend[] = [
-                'time' => $record['record_time'],
-                'usage' => round($usageKwh, 4)
-            ];
-            
             $date = $record['record_date'] ?? substr($record['record_time'], 0, 10);
             if (!isset($dailyStats[$date])) {
                 $dailyStats[$date] = ['date' => $date, 'usage' => 0, 'cost' => 0, 'count' => 0];
@@ -1480,12 +1608,41 @@ switch($act) {
             }
         }
         
+        // ===== 近24小时用电量趋势：固定取最近 24 小时的采集点，不受页面筛选条件影响 =====
+        // 用于「近24小时用电量趋势」图表与 AI 小时级分析；
+        // 注：每天 06:00 的采集点覆盖前一晚 23:00-06:00（整晚），其用电量为整晚合计
+        $hourlyStart = date('Y-m-d H:i:s', strtotime('-24 hours'));
+        $hourlyRecords = $DB->getAll("SELECT * FROM nteam_power_daily_records 
+            WHERE room_num = '$roomNum' AND record_time >= '$hourlyStart' ORDER BY record_time ASC");
+        // 窗口前的一条记录作为首个点的余额参照，避免首个点用电量恒为 0
+        $prevHourly = $DB->getRow("SELECT * FROM nteam_power_daily_records 
+            WHERE room_num = '$roomNum' AND record_time < '$hourlyStart' ORDER BY record_time DESC LIMIT 1");
+        
+        $recentTrend = [];
+        $prevHourlyBalance = $prevHourly ? floatval($prevHourly['balance']) : null;
+        foreach ($hourlyRecords as $hourly) {
+            $hourlyBalance = floatval($hourly['balance']);
+            $hourlyUsage = 0;
+            if ($prevHourlyBalance !== null && $pricePerKwh > 0) {
+                // 相邻两次采集的余额差即该小时用电量（与筛选区间无关独立计算）
+                $hourlyUsage = ($prevHourlyBalance - $hourlyBalance) / $pricePerKwh;
+            }
+            $prevHourlyBalance = $hourlyBalance;
+            $hourlyTs = strtotime($hourly['record_time']);
+            $recentTrend[] = [
+                'time' => $hourlyTs ? date('Y/n/j H:i', $hourlyTs) : $hourly['record_time'],
+                'usage' => round($hourlyUsage, 4)
+            ];
+        }
+        
         $dailyTrend = [];
         $sortedDates = array_keys($dailyStats);
         sort($sortedDates);
         foreach ($sortedDates as $date) {
+            // 每日趋势日期统一为 2026/9/21 展示格式（排序仍基于上方 ISO 键，不受影响）
+            $dateTs = strtotime($date);
             $dailyTrend[] = [
-                'date' => $date,
+                'date' => $dateTs ? date('Y/n/j', $dateTs) : $date,
                 'usage' => round($dailyStats[$date]['usage'], 4),
                 'cost' => round($dailyStats[$date]['cost'], 2),
                 'count' => $dailyStats[$date]['count']
@@ -1598,6 +1755,164 @@ switch($act) {
             'records' => $filteredRecords,
             'latest_balance' => $latestBalance,
             'estimated_days' => $estimatedDays
+        ]);
+    break;
+    
+    case 'get_power_bill':
+        $user = authenticateUser($DB);
+        if (!$user) {
+            jsonResponse(-2, '请先登录');
+        }
+        
+        $roomNum = isset($_REQUEST['room_num']) ? addslashes($_REQUEST['room_num']) : '';
+        if (empty($roomNum)) {
+            $binding = $DB->getRow("SELECT room_num FROM nteam_dormitory_bindings WHERE user_id='{$user['user_id']}' AND status=1 ORDER BY id DESC LIMIT 1");
+            if ($binding) {
+                $roomNum = $binding['room_num'];
+            } else {
+                jsonResponse(-1, '请先绑定宿舍');
+            }
+        }
+        
+        $config = $DB->getRow("SELECT * FROM nteam_power_config WHERE id = 1");
+        $pricePerKwh = floatval($config['price_per_kwh'] ?? 0.61);
+        $savingThreshold = floatval($config['usage_saving_threshold'] ?? 0.5);
+        $normalThreshold = floatval($config['usage_normal_threshold'] ?? 1.0);
+        
+        // 账单周期：week=周账单（周一~周日）、half=半月账单（1-15 / 16-月末）、month=月账单；
+        // bill_offset：0=当前周期，1=上一个周期，依次往前
+        $range = isset($_REQUEST['bill_range']) ? trim($_REQUEST['bill_range']) : 'week';
+        if (!in_array($range, ['week', 'half', 'month'], true)) {
+            $range = 'week';
+        }
+        $offset = isset($_REQUEST['bill_offset']) ? max(0, intval($_REQUEST['bill_offset'])) : 0;
+        
+        $todayDt = new DateTime('today');
+        $tag = '';
+        if ($range === 'week') {
+            $startDt = new DateTime('monday this week');
+            if ($offset > 0) {
+                $startDt->modify('-' . $offset . ' week');
+            }
+            $endDt = (clone $startDt)->modify('+6 day');
+            if ($offset === 0) {
+                $tag = '本周';
+            } elseif ($offset === 1) {
+                $tag = '上周';
+            } else {
+                $tag = $offset . '周前';
+            }
+        } elseif ($range === 'half') {
+            // 半月：上半月 1-15 日 / 下半月 16 日-月末
+            $startDt = new DateTime('first day of this month');
+            if (intval($todayDt->format('j')) > 15) {
+                $startDt->modify('+15 day');
+            }
+            for ($i = 0; $i < $offset; $i++) {
+                if (intval($startDt->format('j')) === 1) {
+                    // 上半月 → 上一个半月是上月的下半月
+                    $startDt->modify('first day of last month')->modify('+15 day');
+                } else {
+                    // 下半月 → 上一个半月是本月的上半月
+                    $startDt->modify('first day of this month');
+                }
+            }
+            if (intval($startDt->format('j')) === 1) {
+                $endDt = (clone $startDt)->modify('+14 day');
+                $tag = $startDt->format('n') . '月上半月';
+            } else {
+                $endDt = (clone $startDt)->modify('last day of this month');
+                $tag = $startDt->format('n') . '月下半月';
+            }
+        } else {
+            $startDt = new DateTime('first day of this month');
+            if ($offset > 0) {
+                $startDt->modify('-' . $offset . ' month');
+            }
+            $endDt = (clone $startDt)->modify('last day of this month');
+            $tag = $startDt->format('Y') . '年' . $startDt->format('n') . '月';
+        }
+        
+        $startDate = $startDt->format('Y-m-d');
+        $endDate = $endDt->format('Y-m-d');
+        $isCurrent = ($offset === 0);
+        $periodText = date('Y/n/j', strtotime($startDate)) . ' - ' . date('Y/n/j', strtotime($endDate));
+        
+        // 周期内采集点（升序）；周期前一条记录作为首个点的余额参照，避免首个点用电量恒为 0
+        $startTime = $startDate . ' 00:00:00';
+        $endTime = $endDate . ' 23:59:59';
+        $periodRecords = $DB->getAll("SELECT * FROM nteam_power_daily_records 
+            WHERE room_num = '$roomNum' AND record_time >= '$startTime' AND record_time <= '$endTime' 
+            ORDER BY record_time ASC");
+        $prevPeriodRecord = $DB->getRow("SELECT * FROM nteam_power_daily_records 
+            WHERE room_num = '$roomNum' AND record_time < '$startTime' ORDER BY record_time DESC LIMIT 1");
+        
+        $periodDaily = [];
+        $refBalance = $prevPeriodRecord ? floatval($prevPeriodRecord['balance']) : null;
+        foreach ($periodRecords as $rec) {
+            $curBalance = floatval($rec['balance']);
+            $usageKwh = 0;
+            $usageCost = 0;
+            if ($refBalance !== null) {
+                $balanceDiff = $refBalance - $curBalance;
+                if ($balanceDiff != 0 && $pricePerKwh > 0) {
+                    $usageCost = $balanceDiff;
+                    $usageKwh = $balanceDiff / $pricePerKwh;
+                }
+            }
+            $refBalance = $curBalance;
+            $dayKey = !empty($rec['record_date']) ? $rec['record_date'] : substr($rec['record_time'], 0, 10);
+            if (!isset($periodDaily[$dayKey])) {
+                $periodDaily[$dayKey] = ['usage' => 0, 'cost' => 0];
+            }
+            $periodDaily[$dayKey]['usage'] += $usageKwh;
+            $periodDaily[$dayKey]['cost'] += $usageCost;
+        }
+        
+        // 夜猫子指数只在「当前周期」展示：依赖最近 24 小时采集点（06:00 覆盖前一晚 23:00-06:00）
+        $nightTrend = [];
+        if ($isCurrent) {
+            $hourlyStart = date('Y-m-d H:i:s', strtotime('-24 hours'));
+            $hourlyRecords = $DB->getAll("SELECT * FROM nteam_power_daily_records 
+                WHERE room_num = '$roomNum' AND record_time >= '$hourlyStart' ORDER BY record_time ASC");
+            $prevHourly = $DB->getRow("SELECT * FROM nteam_power_daily_records 
+                WHERE room_num = '$roomNum' AND record_time < '$hourlyStart' ORDER BY record_time DESC LIMIT 1");
+            $prevHourlyBalance = $prevHourly ? floatval($prevHourly['balance']) : null;
+            foreach ($hourlyRecords as $hourly) {
+                $hourlyBalance = floatval($hourly['balance']);
+                $hourlyUsage = 0;
+                if ($prevHourlyBalance !== null && $pricePerKwh > 0) {
+                    $hourlyUsage = ($prevHourlyBalance - $hourlyBalance) / $pricePerKwh;
+                }
+                $prevHourlyBalance = $hourlyBalance;
+                $hourlyTs = strtotime($hourly['record_time']);
+                $nightTrend[] = [
+                    'time' => $hourlyTs ? date('Y/n/j H:i', $hourlyTs) : $hourly['record_time'],
+                    'usage' => round($hourlyUsage, 4)
+                ];
+            }
+        }
+        
+        $bill = powerFunBill($periodDaily, $nightTrend, $pricePerKwh, $savingThreshold, $normalThreshold);
+        if ($bill !== null) {
+            $bill['period_text'] = $periodText;
+            $bill['tag'] = $tag;
+        }
+        
+        // 更早是否还有数据（决定「上一个周期」按钮是否可点）
+        $earliest = $DB->getRow("SELECT MIN(record_time) AS first_time FROM nteam_power_daily_records WHERE room_num = '$roomNum'");
+        $canPrev = ($earliest && !empty($earliest['first_time']) && strtotime($earliest['first_time']) < strtotime($startTime));
+        
+        jsonResponse(0, 'success', [
+            'range' => $range,
+            'offset' => $offset,
+            'period_text' => $periodText,
+            'tag' => $tag,
+            'is_current' => $isCurrent,
+            'can_prev' => $canPrev,
+            'can_next' => ($offset > 0),
+            'has_data' => ($bill !== null),
+            'bill' => $bill
         ]);
     break;
     
@@ -2161,10 +2476,17 @@ switch($act) {
             $recent = $data['recentTrend'] ?? [];
             $records = $data['records'] ?? [];
             $recentLines = [];
-            foreach (array_slice($recent, -15) as $p) {
+            // 近24小时小时级数据全量给到 AI；06:00 的采集点覆盖前一晚 23:00-06:00，需明确标注
+            foreach (array_slice($recent, -24) as $p) {
+                $label = (string) ($p['label'] ?? $p['time'] ?? '');
+                $hm = '';
+                if (preg_match('/(\d{1,2}):(\d{2})\s*$/', $label, $mm)) {
+                    $hm = sprintf('%02d:%02d', intval($mm[1]), intval($mm[2]));
+                }
                 $recentLines[] = sprintf(
-                    "- %s：用电量 %s 度",
-                    $p['label'] ?? $p['time'] ?? '',
+                    "- %s%s：用电量 %s 度",
+                    $label,
+                    $hm === '06:00' ? '（23:00-06:00 整晚合计）' : '',
                     $p['usage'] ?? ''
                 );
             }
@@ -2183,7 +2505,8 @@ switch($act) {
                 . "日均用电量：{$stats['dailyAvgUsage']} 度（约 ¥{$stats['dailyAvgCost']}/天）；"
                 . "当前余额：{$stats['latestBalance']} 元；预计可用：{$stats['estimatedDays']} 天。\n";
             if ($recentLines) {
-                $prompt .= "\n近期用电量趋势：\n" . implode("\n", $recentLines) . "\n";
+                $prompt .= "\n近24小时用电量趋势（按小时采集；其中 06:00 一条为前一晚 23:00-06:00 的整晚合计用电量，"
+                    . "并非单小时用电量，请勿按单小时强度解读）：\n" . implode("\n", $recentLines) . "\n";
             }
             if ($recordLines) {
                 $prompt .= "\n部分电费记录：\n" . implode("\n", $recordLines) . "\n";

@@ -22,6 +22,12 @@
 					<view class="loading-text">加载中...</view>
 				</view>
 
+				<view v-else-if="needBind" class="empty-wrapper empty-bind">
+					<image class="empty-icon" src="/static/assets/wxmp-about.svg" mode="widthFix"></image>
+					<view class="empty-text">请先绑定教务账号后再查询学籍</view>
+					<button class="bind-btn" @click="goToBind">前往绑定</button>
+				</view>
+
 				<view v-else-if="!studentInfo" class="empty-wrapper">
 					<image class="empty-icon" src="/static/assets/wxmp-about.svg" mode="widthFix"></image>
 					<view class="empty-text">暂无学籍信息</view>
@@ -82,7 +88,7 @@
 					</view>
 				</view>
 
-				<button v-if="!loading" class="refresh-btn" @click="onRefresh">
+				<button v-if="!loading && !needBind" class="refresh-btn" @click="onRefresh">
 					<image class="btn-icon" src="/static/assets/wxmp-refresh.svg" mode="widthFix"></image>
 					<text>刷新数据</text>
 				</button>
@@ -105,6 +111,7 @@ export default {
 			featureEnabled: true,
 			announcement: null,
 			loading: false,
+			needBind: false,
 			studentInfo: null
 		};
 	},
@@ -139,6 +146,7 @@ export default {
 
 		loadStudentInfo() {
 			this.loading = true;
+			this.needBind = false;
 
 			api.queryStudentInfo()
 				.then(res => {
@@ -167,6 +175,10 @@ export default {
 				})
 				.catch(err => {
 					this.loading = false;
+					if (feature.isAcademicNotBound(err)) {
+						this.needBind = true;
+						return;
+					}
 					uni.showToast({ title: err.msg || '查询失败', icon: 'none' });
 				});
 		},
@@ -182,6 +194,11 @@ export default {
 
 		onRefresh() {
 			this.loadStudentInfo();
+		},
+
+		// 跳转教务账号绑定页
+		goToBind() {
+			uni.navigateTo({ url: '/pages/academic-bind/index' });
 		}
 	}
 };
@@ -285,6 +302,11 @@ page {
 	flex-direction: column;
 	align-items: center;
 	padding: 100rpx 0;
+}
+
+/* 未绑定教务账号空态：位于卡片头部（含分割线）下方，减小与上方的间距 */
+.empty-bind {
+	padding-top: 20rpx;
 }
 
 .empty-icon {

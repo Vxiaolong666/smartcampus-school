@@ -70,7 +70,7 @@
 						</view>
 						<view class="bound-item">
 							<view class="bound-label">绑定时间</view>
-							<view class="bound-value">{{ academicInfo.bind_time }}</view>
+							<view class="bound-value">{{ fmtDateTime(academicInfo.bind_time) }}</view>
 						</view>
 					</view>
 

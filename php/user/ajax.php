@@ -1246,8 +1246,19 @@ switch($act){
             $recent = $data['recentTrend'] ?? [];
             $records = $data['records'] ?? [];
             $recentLines = [];
-            foreach (array_slice($recent, -15) as $p) {
-                $recentLines[] = sprintf("- %s：用电量 %s 度", $p['label'] ?? $p['time'] ?? '', $p['usage'] ?? '');
+            // 近24小时小时级数据全量给到 AI；06:00 的采集点覆盖前一晚 23:00-06:00，需明确标注
+            foreach (array_slice($recent, -24) as $p) {
+                $label = (string) ($p['label'] ?? $p['time'] ?? '');
+                $hm = '';
+                if (preg_match('/(\d{1,2}):(\d{2})\s*$/', $label, $mm)) {
+                    $hm = sprintf('%02d:%02d', intval($mm[1]), intval($mm[2]));
+                }
+                $recentLines[] = sprintf(
+                    "- %s%s：用电量 %s 度",
+                    $label,
+                    $hm === '06:00' ? '（23:00-06:00 整晚合计）' : '',
+                    $p['usage'] ?? ''
+                );
             }
             $recordLines = [];
             foreach (array_slice($records, 0, 15) as $r) {
@@ -1264,7 +1275,8 @@ switch($act){
                 . "日均用电量：{$stats['dailyAvgUsage']} 度（约 ¥{$stats['dailyAvgCost']}/天）；"
                 . "当前余额：{$stats['latestBalance']} 元；预计可用：{$stats['estimatedDays']} 天。\n";
             if ($recentLines) {
-                $prompt .= "\n近期用电量趋势：\n" . implode("\n", $recentLines) . "\n";
+                $prompt .= "\n近24小时用电量趋势（按小时采集；其中 06:00 一条为前一晚 23:00-06:00 的整晚合计用电量，"
+                    . "并非单小时用电量，请勿按单小时强度解读）：\n" . implode("\n", $recentLines) . "\n";
             }
             if ($recordLines) {
                 $prompt .= "\n部分电费记录：\n" . implode("\n", $recordLines) . "\n";

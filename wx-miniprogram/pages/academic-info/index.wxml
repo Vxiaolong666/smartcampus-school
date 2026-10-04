@@ -9,7 +9,7 @@
   </view>
 
   <view class="content-wrapper">
-    <announcement wx:if="{{announcement}}" content="{{announcement}}" type="info" />
+    <announcement wx:if="{{announcement}}" content="{{announcement.content}}" type="{{announcement.type}}" closable="{{true}}" />
 
     <view class="info-card">
       <view class="card-header">
@@ -19,6 +19,12 @@
 
       <view wx:if="{{loading}}" class="loading-wrapper">
         <view class="loading-text">加载中...</view>
+      </view>
+
+      <view wx:elif="{{needBind}}" class="empty-wrapper empty-bind">
+        <image class="empty-icon" src="/assets/wxmp-about.svg" mode="widthFix"></image>
+        <view class="empty-text">请先绑定教务账号后再查询学籍</view>
+        <button class="bind-btn" bindtap="goToBind">前往绑定</button>
       </view>
 
       <view wx:elif="{{!studentInfo}}" class="empty-wrapper">
@@ -81,7 +87,7 @@
         </view>
       </view>
 
-      <button wx:if="{{!loading}}" class="refresh-btn" bindtap="onRefresh">
+      <button wx:if="{{!loading && !needBind}}" class="refresh-btn" bindtap="onRefresh">
         <image class="btn-icon" src="/assets/wxmp-refresh.svg" mode="widthFix"></image>
         <text>刷新数据</text>
       </button>

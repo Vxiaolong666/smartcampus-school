@@ -124,7 +124,7 @@ export default {
 				const d = (res && res.data) || {};
 				if (!d.content) return;
 				this.title = d.title || this.title;
-				this.updatedAt = d.updated_at ? String(d.updated_at).slice(0, 10) : '';
+				this.updatedAt = d.updated_at ? this.fmtDate(d.updated_at) : '';
 				this.blocks = this.toBlocks(d.content);
 				this.notPublished = false;
 			} catch (e) {

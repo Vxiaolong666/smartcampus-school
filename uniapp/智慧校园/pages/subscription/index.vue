@@ -82,7 +82,7 @@
 						</view>
 					</view>
 
-					<view v-if="item.subscribe_time" class="subscription-time">最后订阅: {{ item.subscribe_time }}</view>
+					<view v-if="item.subscribe_time" class="subscription-time">最后订阅: {{ fmtDateTime(item.subscribe_time) }}</view>
 				</view>
 			</view>
 

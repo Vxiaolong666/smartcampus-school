@@ -166,6 +166,13 @@ page {
     color: #48416f;
 }
 
+.stats-header-period {
+    margin-left: auto;
+    padding-left: 16rpx;
+    font-size: 22rpx;
+    color: #948eb3;
+}
+
 .stats-cards {
     display: flex;
     flex-wrap: wrap;
@@ -224,6 +231,10 @@ page {
 
 .stat-card.estimated .stat-icon-wrapper {
     background: rgba(0, 123, 255, 0.1);
+}
+
+.stat-card.hourly .stat-icon-wrapper {
+    background: rgba(19, 194, 194, 0.12);
 }
 
 .stat-icon {
@@ -296,11 +307,6 @@ page {
     border-radius: 20rpx;
 }
 
-.chart-canvas {
-    width: 100%;
-    height: 200px;
-}
-
 .chart-footer {
     display: flex;
     justify-content: center;
@@ -327,6 +333,248 @@ page {
     font-weight: 500;
 }
 
+/* 图表下方口径说明（如「近24小时」「06:00 为整晚合计」） */
+.chart-note {
+    margin-top: 12rpx;
+    font-size: 22rpx;
+    color: #948eb3;
+    line-height: 1.6;
+    text-align: center;
+}
+
+/* ==================== 趣味账单 ==================== */
+/* 与上方卡片（.chart-section）一致的白色卡片样式 */
+.fun-bill {
+    background: white;
+    border-radius: 20rpx;
+    padding: 24rpx;
+    margin-bottom: 20rpx;
+    box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.05);
+}
+
+/* 账单类型：周 / 半月 / 月 */
+.fun-tabs {
+    display: flex;
+    margin-top: 20rpx;
+    padding: 6rpx;
+    background: #f7f8fc;
+    border-radius: 16rpx;
+}
+
+.fun-tab {
+    flex: 1;
+    text-align: center;
+    padding: 12rpx 0;
+    font-size: 24rpx;
+    color: #6b6485;
+    border-radius: 12rpx;
+}
+
+.fun-tab.active {
+    color: #ffffff;
+    background: linear-gradient(135deg, #13c2c2 0%, #0ea5a5 100%);
+    font-weight: 600;
+}
+
+/* 周期选择：◀ 周期 ▶（左右箭头往中间收，不贴卡片两侧） */
+.fun-nav {
+    display: flex;
+    align-items: center;
+    margin-top: 16rpx;
+    padding: 0 60rpx;
+}
+
+.fun-nav-btn {
+    width: 56rpx;
+    height: 56rpx;
+    line-height: 56rpx;
+    text-align: center;
+    font-size: 22rpx;
+    color: #13c2c2;
+    background: #f7f8fc;
+    border-radius: 50%;
+}
+
+.fun-nav-btn.disabled {
+    color: #c8c4d6;
+}
+
+.fun-nav-mid {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.fun-nav-period {
+    font-size: 26rpx;
+    font-weight: 600;
+    color: #1f1a33;
+}
+
+.fun-nav-tag {
+    margin-top: 2rpx;
+    font-size: 22rpx;
+    color: #948eb3;
+}
+
+.fun-empty {
+    margin-top: 20rpx;
+    padding: 30rpx 0;
+    text-align: center;
+    font-size: 24rpx;
+    color: #948eb3;
+    background: #f7f8fc;
+    border-radius: 16rpx;
+}
+
+.fun-badge {
+    padding: 6rpx 18rpx;
+    font-size: 22rpx;
+    color: #ffffff;
+    background: linear-gradient(135deg, #13c2c2 0%, #0ea5a5 100%);
+    border-radius: 24rpx;
+}
+
+.fun-totals {
+    display: flex;
+    align-items: center;
+    margin-top: 24rpx;
+    padding: 20rpx 0;
+    background: #f7f8fc;
+    border-radius: 16rpx;
+}
+
+.fun-total {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.fun-total-divider {
+    width: 2rpx;
+    height: 56rpx;
+    background: #f0f0f5;
+}
+
+.fun-total-value {
+    font-size: 40rpx;
+    font-weight: bold;
+    color: #13c2c2;
+}
+
+.fun-total-unit {
+    margin-left: 4rpx;
+    font-size: 22rpx;
+    font-weight: normal;
+}
+
+.fun-total-label {
+    margin-top: 6rpx;
+    font-size: 22rpx;
+    color: #948eb3;
+}
+
+.fun-block {
+    margin-top: 24rpx;
+}
+
+.fun-block-title {
+    font-size: 24rpx;
+    font-weight: 600;
+    color: #48416f;
+}
+
+.fun-row {
+    display: flex;
+    align-items: center;
+    margin-top: 14rpx;
+}
+
+.fun-row-icon {
+    font-size: 30rpx;
+}
+
+.fun-row-label {
+    flex: 1;
+    margin-left: 14rpx;
+    font-size: 26rpx;
+    color: #48416f;
+}
+
+.fun-row-value {
+    font-size: 26rpx;
+    font-weight: 600;
+    color: #13c2c2;
+}
+
+.fun-extreme {
+    display: flex;
+    align-items: center;
+    margin-top: 14rpx;
+}
+
+.fun-extreme-tag {
+    padding: 2rpx 14rpx;
+    font-size: 22rpx;
+    border-radius: 8rpx;
+}
+
+.fun-extreme-tag.high {
+    color: #ff4d4f;
+    background: #fff1f0;
+}
+
+.fun-extreme-tag.low {
+    color: #52c41a;
+    background: #f6ffed;
+}
+
+.fun-extreme-date {
+    flex: 1;
+    margin-left: 14rpx;
+    font-size: 26rpx;
+    color: #48416f;
+}
+
+.fun-extreme-value {
+    font-size: 26rpx;
+    font-weight: 600;
+    color: #1f1a33;
+}
+
+.fun-night-bar {
+    margin-top: 16rpx;
+    height: 16rpx;
+    background: #edf2f7;
+    border-radius: 8rpx;
+    overflow: hidden;
+}
+
+.fun-night-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #13c2c2 0%, #52c41a 100%);
+    border-radius: 8rpx;
+}
+
+.fun-night-text {
+    display: block;
+    margin-top: 12rpx;
+    font-size: 22rpx;
+    color: #948eb3;
+    line-height: 1.6;
+}
+
+.fun-comment {
+    margin-top: 24rpx;
+    padding-top: 20rpx;
+    border-top: 2rpx solid #eef2f6;
+    font-size: 24rpx;
+    color: #6b6485;
+    line-height: 1.7;
+}
+
 .no-data {
     display: flex;
     flex-direction: column;
@@ -346,7 +594,7 @@ page {
     background: white;
     border-radius: 20rpx;
     padding: 24rpx;
-    margin-bottom: 10rpx;
+    margin-bottom: 20rpx;
     box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.05);
 }
 

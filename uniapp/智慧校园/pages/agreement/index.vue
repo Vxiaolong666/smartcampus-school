@@ -111,7 +111,7 @@ export default {
 				this.list = rows.map(r => ({
 					key: r.key,
 					title: r.title,
-					desc: descMap[r.key] || (r.updated_at ? ('最近更新：' + String(r.updated_at).slice(0, 10)) : ''),
+					desc: descMap[r.key] || (r.updated_at ? ('最近更新：' + this.fmtDate(r.updated_at)) : ''),
 					route: agreements.resolvePath(r.key)
 				}));
 			} catch (e) {

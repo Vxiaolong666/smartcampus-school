@@ -57,7 +57,7 @@
 						<view class="history-title">{{ item.title }}</view>
 						<view v-if="item.content" class="history-content">{{ item.content }}</view>
 						<view v-if="item.status === 2 && item.error_msg" class="history-error">失败原因：{{ item.error_msg }}</view>
-						<view class="history-time">{{ item.time }}</view>
+						<view class="history-time">{{ fmtDateTime(item.time) }}</view>
 					</view>
 				</view>
 			</view>

@@ -14,7 +14,7 @@
 				<announcement :content="announcement.content" :type="announcement.type" :closable="true" />
 			</view>
 
-			<view class="filter-card">
+			<view class="filter-card" v-if="!needBind">
 				<view class="filter-row">
 					<view class="filter-item">
 						<view class="filter-label">学期</view>
@@ -52,6 +52,12 @@
 
 			<view v-if="loading" class="loading-wrapper">
 				<view class="loading-text">加载中...</view>
+			</view>
+
+			<view v-else-if="needBind" class="empty-wrapper">
+				<image class="empty-icon" src="/static/assets/wxmp-read.svg" mode="widthFix"></image>
+				<view class="empty-text">请先绑定教务账号后再查询成绩</view>
+				<button class="bind-btn" @click="goToBind">前往绑定</button>
 			</view>
 
 			<view v-else-if="grades.length === 0" class="empty-wrapper">
@@ -171,6 +177,7 @@ export default {
 			semesterIndex: 0,
 			currentSemester: '',
 			loading: false,
+			needBind: false,
 			grades: [],
 			summary: {
 				totalCourses: 0,
@@ -248,6 +255,7 @@ export default {
 
 		loadSemesters() {
 			this.loading = true;
+			this.needBind = false;
 
 			api.getSemesterList()
 				.then(res => {
@@ -270,6 +278,10 @@ export default {
 				})
 				.catch(err => {
 					this.loading = false;
+					if (feature.isAcademicNotBound(err)) {
+						this.needBind = true;
+						return;
+					}
 					uni.showToast({ title: err.msg || '获取学期列表失败', icon: 'none' });
 				});
 		},
@@ -344,6 +356,11 @@ export default {
 		closeDetail() {
 			this.showDetail = false;
 			this.detailItem = {};
+		},
+
+		// 跳转教务账号绑定页
+		goToBind() {
+			uni.navigateTo({ url: '/pages/academic-bind/index' });
 		},
 
 		// 成绩颜色：60 以下红；85 及以上绿；其它（含非数字）蓝（主题色）

@@ -9,6 +9,8 @@
  * 新增协议：后台「协议管理」直接新增即可（可选在 list / docs 登记内置兜底内容）。
  */
 
+const { formatDate } = require('./common.js');
+
 const LIST = [
   { key: 'service', title: '用户服务协议', desc: '使用本服务前请先阅读并同意本协议' },
   { key: 'privacy', title: '隐私政策', desc: '了解我们如何收集、使用与保护您的信息' },
@@ -31,7 +33,7 @@ function resolvePath(key) {
 const DOCS = {
   service: {
     title: '用户服务协议',
-    updatedAt: '2026年9月21日',
+    updatedAt: '2026/9/21',
     content: [
       '# 用户服务协议',
       '',
@@ -107,7 +109,7 @@ const DOCS = {
   },
   cancel: {
     title: '用户注销协议',
-    updatedAt: '2026年9月21日',
+    updatedAt: '2026/9/21',
     content: [
       '# 用户注销协议',
       '',
@@ -141,7 +143,7 @@ const DOCS = {
   },
   disclaimer: {
     title: '免责声明',
-    updatedAt: '2026年9月21日',
+    updatedAt: '2026/9/21',
     content: [
       '# 免责声明',
       '',
@@ -224,7 +226,7 @@ function agreementPageConfig(key, defaultTitle) {
         if (!d.content) return;
         that.setData({
           title: d.title || that.data.title,
-          updatedAt: d.updated_at ? String(d.updated_at).slice(0, 10) : '',
+          updatedAt: d.updated_at ? formatDate(d.updated_at) : '',
           blocks: that.toBlocks(d.content),
           notPublished: false
         });

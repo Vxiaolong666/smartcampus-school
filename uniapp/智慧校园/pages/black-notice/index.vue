@@ -36,7 +36,7 @@
 							<text v-if="item.is_top == 1" class="top-badge">置顶</text>
 							{{ item.title }}
 						</view>
-						<view class="notice-date">{{ item.create_time }}</view>
+						<view class="notice-date">{{ fmtDateTime(item.create_time) }}</view>
 					</view>
 				</view>
 			</view>

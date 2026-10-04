@@ -1,3 +1,4 @@
+<wxs src="../../utils/date.wxs" module="dt" />
 <view class="container">
   <top-menu showBack="{{true}}">
     <view class="nav-title">订阅历史记录</view>
@@ -48,7 +49,7 @@
           <view class="history-title">{{item.title}}</view>
           <text wx:if="{{item.content}}" class="history-content">{{item.content}}</text>
           <view wx:if="{{item.status === 2 && item.error_msg}}" class="history-error">失败原因：{{item.error_msg}}</view>
-          <view class="history-time">{{item.time}}</view>
+          <view class="history-time">{{dt.formatDateTime(item.time)}}</view>
         </view>
       </view>
     </view>

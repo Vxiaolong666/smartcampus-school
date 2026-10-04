@@ -1,0 +1,87 @@
+/**
+ * 日期展示格式化（WXS）
+ * 与 uniapp 端 utils/common.js 的 formatDate / formatDateTime 保持一致：
+ *   2026-9-21 8:05:30 → 2026/9/21 08:05
+ *   2026-9-21        → 2026/9/21
+ * 无法识别为「YYYY-M-D[ HH:mm[:ss]]」的值原样返回（空值返回空串）
+ *
+ * 用法：wxml 顶部 <wxs src="../../utils/date.wxs" module="dt" />
+ *       {{dt.formatDateTime(item.create_time)}}
+ */
+
+// 是否全为数字
+var digits = function (s) {
+    if (s.length === 0) return false;
+    for (var i = 0; i < s.length; i++) {
+        var c = s.charAt(i);
+        if (c < '0' || c > '9') return false;
+    }
+    return true;
+};
+
+// 去掉前导零（至少保留一位）
+var trimZero = function (s) {
+    var i = 0;
+    while (i < s.length - 1 && s.charAt(i) === '0') {
+        i++;
+    }
+    return s.substring(i);
+};
+
+// 解析「YYYY-M-D[ HH:mm[:ss]]」（横杠或斜杠均可），失败返回 null
+var parse = function (v) {
+    if (v === null || v === undefined || v === '') return null;
+    var s = ('' + v).split('-').join('/');
+    var parts = s.split('/');
+    if (parts.length < 3) return null;
+
+    var y = parts[0];
+    var mo = parts[1];
+    var rest = parts[2];
+    var d = rest;
+    var t = '';
+
+    var sp = rest.indexOf(' ');
+    if (sp < 0) sp = rest.indexOf('T');
+    if (sp >= 0) {
+        d = rest.substring(0, sp);
+        t = rest.substring(sp + 1);
+    }
+
+    if (y.length !== 4 || !digits(y) || !digits(mo) || !digits(d)) return null;
+
+    var time = '';
+    if (t.length >= 5 && t.charAt(2) === ':') {
+        time = t.substring(0, 2) + ':' + t.substring(3, 5);
+    }
+
+    return {
+        date: y + '/' + trimZero(mo) + '/' + trimZero(d),
+        time: time
+    };
+};
+
+// 仅日期：2026-9-21 12:30:00 → 2026/9/21
+var formatDate = function (v) {
+    var p = parse(v);
+    if (p === null) {
+        if (v === null || v === undefined) return '';
+        return '' + v;
+    }
+    return p.date;
+};
+
+// 日期时间：2026-9-21 8:05:30 → 2026/9/21 08:05
+var formatDateTime = function (v) {
+    var p = parse(v);
+    if (p === null) {
+        if (v === null || v === undefined) return '';
+        return '' + v;
+    }
+    return p.time ? p.date + ' ' + p.time : p.date;
+};
+
+module.exports = {
+    formatDate: formatDate,
+    formatDateTime: formatDateTime
+};

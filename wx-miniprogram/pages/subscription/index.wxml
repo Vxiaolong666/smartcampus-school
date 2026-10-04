@@ -1,3 +1,4 @@
+<wxs src="../../utils/date.wxs" module="dt" />
 <view class="container">
     <top-menu showBack="{{true}}">
         <view class="nav-title">订阅消息管理</view>
@@ -68,7 +69,7 @@
                 </view>
                 
                 <view wx:if="{{item.subscribe_time}}" class="subscription-time">
-                    最后订阅: {{item.subscribe_time}}
+                    最后订阅: {{dt.formatDateTime(item.subscribe_time)}}
                 </view>
             </view>
         </view>

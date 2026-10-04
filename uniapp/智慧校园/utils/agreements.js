@@ -30,7 +30,7 @@ function resolvePath(key) {
 const DOCS = {
 	service: {
 		title: '用户服务协议',
-		updatedAt: '2026年9月21日',
+		updatedAt: '2026/9/21',
 		content: [
 			'# 用户服务协议',
 			'',
@@ -106,7 +106,7 @@ const DOCS = {
 	},
 	cancel: {
 		title: '用户注销协议',
-		updatedAt: '2026年9月21日',
+		updatedAt: '2026/9/21',
 		content: [
 			'# 用户注销协议',
 			'',
@@ -140,7 +140,7 @@ const DOCS = {
 	},
 	disclaimer: {
 		title: '免责声明',
-		updatedAt: '2026年9月21日',
+		updatedAt: '2026/9/21',
 		content: [
 			'# 免责声明',
 			'',

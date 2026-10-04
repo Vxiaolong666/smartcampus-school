@@ -1,0 +1,128 @@
+.line-chart {
+    position: relative;
+    width: 100%;
+}
+
+.line-chart-canvas {
+    width: 100%;
+    display: block;
+}
+
+/* ===== 触摸交互层 ===== */
+.lc-overlay {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 5;
+}
+
+/* 垂直指示线（虚线，颜色由内联 border-color 指定） */
+.lc-guide {
+    position: absolute;
+    width: 0;
+    border-left: 1px dashed;
+    opacity: 0.55;
+}
+
+/* 水平指示线（与垂直指示线组成十字准星） */
+.lc-guide-x {
+    position: absolute;
+    height: 0;
+    border-top: 1px dashed;
+    opacity: 0.55;
+}
+
+/* 高亮数据点：白色内芯 + 主题色描边 */
+.lc-dot {
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background-color: #ffffff;
+    border: 3px solid #007bff;
+    box-sizing: border-box;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+}
+
+/* 数值卡片（宽度自适应内容，最大 220px） */
+.lc-card {
+    position: absolute;
+    box-sizing: border-box;
+    max-width: 220px;
+    padding: 11px 14px;
+    background-color: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 6px 20px rgba(50, 44, 84, 0.16);
+    animation: lcCardIn 0.16s ease-out;
+}
+
+@keyframes lcCardIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.lc-card-head {
+    display: flex;
+    align-items: center;
+}
+
+.lc-card-marker {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    margin-right: 6px;
+    flex-shrink: 0;
+}
+
+.lc-card-label {
+    flex: 1;
+    min-width: 0;
+    font-size: 11px;
+    line-height: 1.4;
+    color: #8a86a0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.lc-card-value-row {
+    display: flex;
+    align-items: baseline;
+    margin-top: 4px;
+}
+
+.lc-card-value {
+    font-size: 18px;
+    font-weight: bold;
+    line-height: 1.2;
+}
+
+.lc-card-unit {
+    margin-left: 3px;
+    font-size: 11px;
+    color: #8a86a0;
+}
+
+/* 卡片箭头 */
+.lc-card-caret {
+    position: absolute;
+    left: 50%;
+    bottom: -4px;
+    width: 10px;
+    height: 10px;
+    background-color: #ffffff;
+    border-radius: 2px;
+    transform: translateX(-50%) rotate(45deg);
+}
+
+.lc-card-caret.is-below {
+    bottom: auto;
+    top: -4px;
+}

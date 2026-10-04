@@ -44,7 +44,7 @@
 							<text v-if="item.is_default == 1" class="default-tag">默认</text>
 						</view>
 						<view class="dorm-detail">{{ item.school_area }} · {{ item.room_num }}</view>
-						<view class="dorm-time">绑定于 {{ item.bind_time }}</view>
+						<view class="dorm-time">绑定于 {{ fmtDateTime(item.bind_time) }}</view>
 					</view>
 					<view class="dorm-actions">
 						<button class="action-btn default-btn" :class="{ 'is-default': item.is_default == 1 }" :data-id="item.id" @click="onSetDefault">

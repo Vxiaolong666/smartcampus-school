@@ -50,7 +50,7 @@
 							<text v-if="idx === 0" class="log-badge">最新</text>
 							<text v-if="isCurrentVersion(item)" class="log-badge-current">当前版本</text>
 						</view>
-						<text class="log-date">{{ item.created_at }}</text>
+						<text class="log-date">{{ fmtDateTime(item.created_at) }}</text>
 					</view>
 					<view class="log-list">
 						<view class="log-list-item" v-for="(line, i) in splitChangelog(item.changelog)" :key="i">
@@ -89,7 +89,7 @@
 				<view class="detail-modal-body">
 					<view class="detail-date-row">
 						<text class="detail-date-label">更新时间</text>
-						<text class="detail-date-value">{{ detailItem.created_at }}</text>
+						<text class="detail-date-value">{{ fmtDateTime(detailItem.created_at) }}</text>
 					</view>
 					<!-- 下载密码（后台按「链接末尾追加 &pwd=密码」配置时由服务端解析返回，展示与复制同更新弹窗） -->
 					<view v-if="detailPwd" class="detail-pwd">
@@ -150,9 +150,7 @@ export default {
 		// 最近更新时间（仅取日期部分，避免过长）
 		latestDate() {
 			if (!this.logs.length) return '暂无';
-			const raw = String(this.logs[0].created_at || '');
-			const date = raw.split(' ')[0];
-			return date || raw || '暂无';
+			return this.fmtDate(this.logs[0].created_at) || '暂无';
 		},
 		// 当前详情是否为最新版本
 		isLatestDetail() {

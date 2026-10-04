@@ -151,7 +151,67 @@ const checkMaintenanceSwitch = async () => {
 };
 
 /**
+ * 判断接口错误是否为「未绑定教务账号」
+ * 教务相关接口（成绩 / 课程表 / 学籍等）在未绑定时返回 code -1 且提示包含「绑定」；
+ * 各页面据此展示「请先绑定教务账号」而非「无数据」。
+ * @param {Object} err - 请求错误对象 { code, msg }
+ * @returns {boolean}
+ */
+const isAcademicNotBound = (err) => {
+    return !!(err && Number(err.code) === -1 && /绑定/.test(String(err.msg || '')));
+};
+
+/**
+ * 打开「联系客服」：拉取后台维护的联系方式并以弹窗展示
+ * （功能禁用弹窗的联系客服入口，与公告 / 维护页联系方式同源）
+ */
+const openContactInfo = () => {
+    uni.showLoading({ title: '加载中...' });
+    api.getContactInfo()
+        .then(res => {
+            const info = (res && res.data) || null;
+            uni.hideLoading();
+            const lines = [];
+            if (info) {
+                if (info.phone) lines.push('联系电话：' + info.phone);
+                if (info.email) lines.push('电子邮箱：' + info.email);
+                if (info.qq) lines.push('QQ：' + info.qq);
+                if (info.worktime) lines.push('工作时间：' + info.worktime);
+                if (info.address) lines.push('联系地址：' + info.address);
+                if (info.desc) lines.push('说明：' + info.desc);
+            }
+            if (!lines.length) {
+                lines.push('暂未配置联系方式，请在「我的」页面通过「联系客服」与我们取得联系。');
+            }
+            uni.showModal({
+                title: '联系客服',
+                content: lines.join('\n'),
+                showCancel: false,
+                confirmText: '我知道了'
+            });
+        })
+        .catch(() => {
+            uni.hideLoading();
+            uni.showToast({ title: '联系方式获取失败', icon: 'none' });
+        });
+};
+
+/**
+ * 离开当前功能页（与 goLoginWithTip 的回退逻辑一致）
+ * 页面栈里有上一页则返回，无上一页（如标签页）则回到可免登录浏览的首页
+ */
+const leaveCurrentPage = () => {
+    const pages = typeof getCurrentPages === 'function' ? getCurrentPages() : [];
+    if (pages.length > 1) {
+        uni.navigateBack({ delta: 1 });
+    } else {
+        uni.switchTab({ url: '/pages/white-home/index' });
+    }
+};
+
+/**
  * 显示功能禁用提示弹窗
+ * 提供「联系客服」（打开联系方式）与「我知道了」（关闭并回退页面）两个入口
  * @param {string} featureName - 功能名称
  * @param {Object|null} [announcement=null] - 公告对象
  */
@@ -163,8 +223,20 @@ const showDisabledAlert = (featureName, announcement = null) => {
     uni.showModal({
         title: '功能暂未开放',
         content: content,
-        showCancel: false,
-        confirmText: '我知道了'
+        showCancel: true,
+        cancelText: '联系客服',
+        confirmText: '我知道了',
+        success: (res) => {
+            // 点击「联系客服」：拉取后台联系方式后展示
+            if (res.cancel) {
+                openContactInfo();
+                return;
+            }
+            // 点击「我知道了」：关闭弹窗并回退页面
+            if (res.confirm) {
+                leaveCurrentPage();
+            }
+        }
     });
 };
 
@@ -205,6 +277,7 @@ export {
     getFeatureAnnouncement,
     checkFeature,
     checkMaintenanceSwitch,
+    isAcademicNotBound,
     showDisabledAlert,
     getAnnouncementClass,
     getAnnouncementIcon
@@ -217,6 +290,7 @@ export default {
     getFeatureAnnouncement,
     checkFeature,
     checkMaintenanceSwitch,
+    isAcademicNotBound,
     showDisabledAlert,
     getAnnouncementClass,
     getAnnouncementIcon

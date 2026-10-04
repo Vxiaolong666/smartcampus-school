@@ -12,7 +12,7 @@
 		<view class="content-wrapper">
 			<announcement v-if="announcement" :content="announcement.content" type="info" />
 
-			<view class="filter-card">
+			<view class="filter-card" v-if="!needBind">
 				<view class="filter-row">
 					<view class="filter-item">
 						<view class="filter-label">类别</view>
@@ -38,6 +38,13 @@
 
 			<view v-if="loading" class="loading-wrapper">
 				<view class="loading-text">加载中...</view>
+			</view>
+
+			<view v-else-if="needBind" class="empty-wrapper empty-bind">
+				<image class="empty-icon" src="/static/assets/wxmp-book-gray.svg" mode="widthFix"></image>
+				<view class="empty-title">请先绑定教务账号</view>
+				<view class="empty-text">绑定后可查看本周课程表安排</view>
+				<button class="bind-btn" @click="goToBind">前往绑定</button>
 			</view>
 
 			<view v-else-if="schedule.length === 0" class="empty-wrapper">
@@ -279,6 +286,7 @@ export default {
 			],
 			weekIndex: 0,
 			loading: false,
+			needBind: false,
 			schedule: [],
 			courses: [],
 			currentWeek: 1,
@@ -356,6 +364,7 @@ export default {
 
 		loadScheduleModes() {
 			this.loading = true;
+			this.needBind = false;
 
 			api.getScheduleMode()
 				.then(res => {
@@ -371,6 +380,10 @@ export default {
 				})
 				.catch(err => {
 					this.loading = false;
+					if (feature.isAcademicNotBound(err)) {
+						this.needBind = true;
+						return;
+					}
 					uni.showToast({ title: err.msg || '获取课程表类别失败', icon: 'none' });
 				});
 		},
@@ -789,6 +802,11 @@ export default {
 		closeDetail() {
 			this.showDetail = false;
 			this.detailCourse = null;
+		},
+
+		// 跳转教务账号绑定页
+		goToBind() {
+			uni.navigateTo({ url: '/pages/academic-bind/index' });
 		}
 	}
 };
@@ -923,9 +941,27 @@ page {
 	margin-bottom: 20rpx;
 }
 
+.empty-title {
+	font-size: 32rpx;
+	font-weight: bold;
+	color: #48416f;
+	margin-bottom: 12rpx;
+}
+
 .empty-text {
 	font-size: 28rpx;
 	color: #948eb3;
+}
+
+/* 未绑定教务账号提示：参考「今日课程」页（图标更清晰、标题 + 说明两行、间距一致） */
+.empty-bind {
+	padding: 80rpx 0;
+}
+
+.empty-bind .empty-icon {
+	width: 100rpx;
+	height: 100rpx;
+	opacity: 1;
 }
 
 .schedule-wrapper {

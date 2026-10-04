@@ -13,7 +13,7 @@
       <announcement content="{{announcement.content}}" type="{{announcement.type}}" closable="{{true}}" />
     </view>
 
-    <view class="filter-card">
+    <view class="filter-card" wx:if="{{!needBind}}">
       <view class="filter-row">
         <view class="filter-item">
           <view class="filter-label">学期</view>
@@ -45,6 +45,12 @@
 
     <view wx:if="{{loading}}" class="loading-wrapper">
       <view class="loading-text">加载中...</view>
+    </view>
+
+    <view wx:elif="{{needBind}}" class="empty-wrapper">
+      <image class="empty-icon" src="/assets/wxmp-read.svg" mode="widthFix"></image>
+      <view class="empty-text">请先绑定教务账号后再查询成绩</view>
+      <button class="bind-btn" bindtap="goToBind">前往绑定</button>
     </view>
 
     <view wx:elif="{{grades.length === 0}}" class="empty-wrapper">

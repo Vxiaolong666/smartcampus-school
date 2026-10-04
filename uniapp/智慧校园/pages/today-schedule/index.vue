@@ -17,7 +17,7 @@
 				<announcement :content="announcement.content" :type="announcement.type" :closable="true" />
 			</view>
 
-			<view class="day-selector">
+			<view class="day-selector" v-if="!needBind">
 				<view
 					class="day-item"
 					:class="{ active: selectedDay === index, today: todayDayOfWeek === index }"
@@ -32,7 +32,7 @@
 				</view>
 			</view>
 
-			<view class="info-cards">
+			<view class="info-cards" v-if="!needBind">
 				<view class="info-card date-card">
 					<image class="info-icon" src="/static/assets/wxmp-calendar.svg" mode="widthFix"></image>
 					<view class="info-content">
@@ -323,6 +323,13 @@
 				</view>
 			</view>
 
+			<view v-else-if="needBind" class="empty-wrapper">
+				<image class="empty-icon" src="/static/assets/wxmp-book-gray.svg" mode="widthFix"></image>
+				<view class="empty-title">请先绑定教务账号</view>
+				<view class="empty-text">绑定后可查看今日与本周课程安排</view>
+				<button class="bind-btn" @click="goToBind">前往绑定</button>
+			</view>
+
 			<view v-else class="empty-wrapper">
 				<image class="empty-icon" src="/static/assets/wxmp-book-gray.svg" mode="widthFix"></image>
 				<view class="empty-title">{{ fullDayNames[selectedDay] }}没有课程</view>
@@ -466,6 +473,7 @@ export default {
 	data() {
 		return {
 			loading: true,
+			needBind: false,
 			featureEnabled: true,
 			announcement: null,
 			currentWeek: 1,
@@ -835,10 +843,15 @@ export default {
 
 		loadSchedule() {
 			this.loading = true;
+			this.needBind = false;
 			api.querySchedule('', '')
 				.then(res => this.processScheduleData(res.data || []))
 				.catch(err => {
 					this.loading = false;
+					if (feature.isAcademicNotBound(err)) {
+						this.needBind = true;
+						return;
+					}
 					uni.showToast({ title: err.msg || '查询失败', icon: 'none' });
 				});
 		},
@@ -992,6 +1005,11 @@ export default {
 
 		goToFullSchedule() {
 			uni.navigateTo({ url: '/pages/academic-schedule/index' });
+		},
+
+		// 跳转教务账号绑定页
+		goToBind() {
+			uni.navigateTo({ url: '/pages/academic-bind/index' });
 		},
 
 		async aiAnalyze() {

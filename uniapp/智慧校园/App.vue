@@ -212,6 +212,27 @@
 		opacity: 0.7;
 	}
 
+	/* ===== 教务功能：未绑定教务账号空态的「前往绑定」按钮（各教务页通用） ===== */
+	.bind-btn {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		margin-top: 30rpx;
+		width: 320rpx;
+		height: 80rpx;
+		padding: 0;
+		background: #13c2c2;
+		color: #ffffff;
+		font-size: 28rpx;
+		border-radius: 40rpx;
+		line-height: 1.2;
+		box-shadow: 0 10rpx 30rpx rgba(19, 194, 194, 0.3);
+	}
+
+	.bind-btn::after {
+		border: none;
+	}
+
 	/* ===== AI 智能分析：右侧浮动圆形触发按钮（各 AI 页面通用） ===== */
 	.ai-fab {
 		position: fixed;

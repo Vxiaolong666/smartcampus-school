@@ -85,8 +85,8 @@
 							<text class="fb-item-remark-text">{{ item.remark }}</text>
 						</view>
 						<view class="fb-item-foot">
-							<text>提交于 {{ item.create_time }}</text>
-							<text v-if="item.update_time">更新于 {{ item.update_time }}</text>
+							<text>提交于 {{ fmtDateTime(item.create_time) }}</text>
+							<text v-if="item.update_time">更新于 {{ fmtDateTime(item.update_time) }}</text>
 						</view>
 						<view class="fb-item-more">查看详情 ›</view>
 					</view>
@@ -123,11 +123,11 @@
 					<view class="fb-modal-meta">
 						<view class="fb-modal-row">
 							<text class="fb-modal-label">提交时间</text>
-							<text class="fb-modal-value">{{ detail.create_time }}</text>
+							<text class="fb-modal-value">{{ fmtDateTime(detail.create_time) }}</text>
 						</view>
 						<view v-if="detail.update_time && detail.update_time !== detail.create_time" class="fb-modal-row">
 							<text class="fb-modal-label">更新时间</text>
-							<text class="fb-modal-value">{{ detail.update_time }}</text>
+							<text class="fb-modal-value">{{ fmtDateTime(detail.update_time) }}</text>
 						</view>
 					</view>
 				</scroll-view>

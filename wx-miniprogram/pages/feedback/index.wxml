@@ -1,3 +1,4 @@
+<wxs src="../../utils/date.wxs" module="dt" />
 <view class="fb-page">
   <top-menu showBack="{{true}}">
     <view class="nav-title">意见反馈</view>
@@ -84,8 +85,8 @@
             <text class="fb-item-remark-text">{{item.remark}}</text>
           </view>
           <view class="fb-item-foot">
-            <text>提交于 {{item.create_time}}</text>
-            <text wx:if="{{item.update_time}}">更新于 {{item.update_time}}</text>
+            <text>提交于 {{dt.formatDateTime(item.create_time)}}</text>
+            <text wx:if="{{item.update_time}}">更新于 {{dt.formatDateTime(item.update_time)}}</text>
           </view>
           <view class="fb-item-more">查看详情 ›</view>
         </view>
@@ -122,11 +123,11 @@
         <view class="fb-modal-meta">
           <view class="fb-modal-row">
             <text class="fb-modal-label">提交时间</text>
-            <text class="fb-modal-value">{{detail.create_time}}</text>
+            <text class="fb-modal-value">{{dt.formatDateTime(detail.create_time)}}</text>
           </view>
           <view class="fb-modal-row" wx:if="{{detail.update_time && detail.update_time !== detail.create_time}}">
             <text class="fb-modal-label">更新时间</text>
-            <text class="fb-modal-value">{{detail.update_time}}</text>
+            <text class="fb-modal-value">{{dt.formatDateTime(detail.update_time)}}</text>
           </view>
         </view>
       </scroll-view>

@@ -12,6 +12,7 @@ Page({
     semesterIndex: 0,        // 当前选中的学期索引
     currentSemester: '',     // 当前学期ID
     loading: false,          // 加载状态
+    needBind: false,         // 是否未绑定教务账号
     grades: [],              // 成绩列表
     summary: {               // 成绩统计
       totalCourses: 0,       // 总课程数
@@ -72,7 +73,7 @@ Page({
   //加载学期列表
   loadSemesters() {
     // 设置加载状态
-    this.setData({ loading: true });
+    this.setData({ loading: true, needBind: false });
 
     // 调用API获取学期列表
     api.getSemesterList()
@@ -98,6 +99,11 @@ Page({
         this.loadGrades();
       })
       .catch(err => {
+        // 未绑定教务账号：展示「请先绑定」空态，不弹「无数据」提示
+        if (feature.isAcademicNotBound(err)) {
+          this.setData({ loading: false, needBind: true });
+          return;
+        }
         // 获取学期列表失败，取消加载状态并提示
         this.setData({ loading: false });
         wx.showToast({ title: err.msg || '获取学期列表失败', icon: 'none' });
@@ -227,6 +233,11 @@ Page({
   //关闭成绩详情
   closeDetail() {
     this.setData({ showDetail: false, detailItem: {} });
+  },
+
+  // 跳转教务账号绑定页
+  goToBind() {
+    wx.navigateTo({ url: '/pages/academic-bind/index' });
   },
 
   // ===== AI 智能分析成绩 =====

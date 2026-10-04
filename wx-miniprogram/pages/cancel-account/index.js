@@ -6,6 +6,7 @@
 const api = require('../../utils/api.js');
 const markdownToHtml = require('../../utils/markdown.js');
 const validate = require('../../utils/validate.js');
+const { formatDate } = require('../../utils/common.js');
 
 const STEP_LABELS = ['阅读协议', '风险告知', '身份核验', '确认提交'];
 const TOTAL_STEPS = 4;
@@ -159,7 +160,7 @@ Page({
           hasAgreement: hasAgreement,
           confirmPhrase: d.confirm_phrase ? d.confirm_phrase : CONFIRM_PHRASE_DEFAULT,
           isCancelling: parseInt(d.is_cancelling, 10) === 1,
-          expireTimeText: d.expire_time ? String(d.expire_time).substring(0, 10) : '',
+          expireTimeText: d.expire_time ? formatDate(d.expire_time) : '',
           summary: summary,
           loading: false
         });

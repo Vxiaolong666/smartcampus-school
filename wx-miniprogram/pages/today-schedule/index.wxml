@@ -16,7 +16,7 @@
       <announcement content="{{announcement.content}}" type="{{announcement.type}}" closable="{{true}}" />
     </view>
 
-    <view class="day-selector">
+    <view class="day-selector" wx:if="{{!needBind}}">
       <view 
         class="day-item {{selectedDay === index ? 'active' : ''}} {{todayDayOfWeek === index ? 'today' : ''}}" 
         wx:for="{{weekDates}}" 
@@ -30,7 +30,7 @@
       </view>
     </view>
 
-    <view class="info-cards">
+    <view class="info-cards" wx:if="{{!needBind}}">
       <view class="info-card date-card">
         <image class="info-icon" src="/assets/wxmp-calendar.svg" mode="widthFix"></image>
         <view class="info-content">
@@ -294,6 +294,13 @@
           </view>
         </view>
       </view>
+    </view>
+
+    <view wx:elif="{{needBind}}" class="empty-wrapper">
+      <image class="empty-icon" src="/assets/wxmp-book-gray.svg" mode="widthFix"></image>
+      <view class="empty-title">请先绑定教务账号</view>
+      <view class="empty-text">绑定后可查看今日与本周课程安排</view>
+      <button class="bind-btn" bindtap="goToBind">前往绑定</button>
     </view>
 
     <view wx:else class="empty-wrapper">

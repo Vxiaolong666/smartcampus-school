@@ -1,0 +1,28 @@
+<view
+    class="line-chart"
+    style="height: {{height}}px;"
+    bindtouchstart="onTouch"
+    bindtouchmove="onTouch"
+    bindtouchend="onTouchEnd"
+    bindtouchcancel="onTouchEnd"
+>
+    <canvas type="2d" id="{{canvasId}}" class="line-chart-canvas" style="width: 100%; height: {{height}}px;"></canvas>
+
+    <!-- 触摸交互层：十字指示虚线 + 高亮数据点 + 数值卡片 -->
+    <view wx:if="{{active}}" class="lc-overlay">
+        <view class="lc-guide" style="{{active.guideVStyle}}"></view>
+        <view class="lc-guide-x" style="{{active.guideHStyle}}"></view>
+        <view class="lc-dot" style="{{active.dotStyle}}"></view>
+        <view class="lc-card {{active.above ? '' : 'is-below'}}" style="{{active.cardStyle}}">
+            <view class="lc-card-head">
+                <view class="lc-card-marker" style="background-color: {{color}};"></view>
+                <text class="lc-card-label">{{active.label}}</text>
+            </view>
+            <view class="lc-card-value-row">
+                <text class="lc-card-value" style="color: {{color}};">{{active.valueText}}</text>
+                <text wx:if="{{unit}}" class="lc-card-unit">{{unit}}</text>
+            </view>
+            <view class="lc-card-caret {{active.above ? '' : 'is-below'}}" style="{{active.caretStyle}}"></view>
+        </view>
+    </view>
+</view>

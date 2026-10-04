@@ -40,6 +40,7 @@ Page({
         weeks: ['当前周', '第1周', '第2周', '第3周', '第4周', '第5周', '第6周', '第7周', '第8周', '第9周', '第10周', '第11周', '第12周', '第13周', '第14周', '第15周', '第16周', '第17周', '第18周', '第19周', '第20周'],
         weekIndex: 0,           // 选中的周次索引
         loading: false,         // 加载状态
+        needBind: false,         // 是否未绑定教务账号
         schedule: [],           // 课程表数据（二维数组，行数=节次上限，列数=7）
         courses: [],            // 课程列表（去重后）
         currentWeek: 1,         // 当前周次
@@ -99,7 +100,7 @@ Page({
     //加载课程表类别
     loadScheduleModes() {
         // 设置加载状态
-        this.setData({ loading: true });
+        this.setData({ loading: true, needBind: false });
 
         // 调用API获取课程表类别列表（如本学期、辅修等）
         api.getScheduleMode()
@@ -116,6 +117,11 @@ Page({
                 if (currentMode) this.loadSchedule();
             })
             .catch(err => {
+                // 未绑定教务账号：展示「请先绑定」空态，不弹「无数据」提示
+                if (feature.isAcademicNotBound(err)) {
+                    this.setData({ loading: false, needBind: true });
+                    return;
+                }
                 // 获取类别失败，取消加载状态并提示
                 this.setData({ loading: false });
                 wx.showToast({ title: err.msg || '获取课程表类别失败', icon: 'none' });
@@ -482,6 +488,11 @@ Page({
     //关闭课程详情弹窗
     closeDetail() {
         this.setData({ showDetail: false, detailCourse: null });
+    },
+
+    // 跳转教务账号绑定页
+    goToBind() {
+        wx.navigateTo({ url: '/pages/academic-bind/index' });
     },
 
     // ===== AI 智能分析课表 =====

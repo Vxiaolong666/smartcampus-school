@@ -1,3 +1,4 @@
+<wxs src="../../utils/date.wxs" module="dt" />
 <view class="container">
   <top-menu showBack="{{true}}">
     <view class="nav-title">通知详情</view>
@@ -24,7 +25,7 @@
         <view class="notice-meta">
           <text wx:if="{{notice.author}}">作者：{{notice.author}}</text>
           <text>浏览：{{notice.view_count}}</text>
-          <text>{{notice.create_time}}</text>
+          <text>{{dt.formatDateTime(notice.create_time)}}</text>
         </view>
         <view class="divider"></view>
 

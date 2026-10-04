@@ -1,3 +1,4 @@
+<wxs src="../../utils/date.wxs" module="dt" />
 <view class="container">
     <top-menu showBack="{{true}}">
         <view class="nav-title">用电统计</view>
@@ -47,11 +48,11 @@
                 </view>
                 <view wx:if="{{timeRange === 'custom'}}" class="time-custom">
                     <picker mode="date" class="custom-picker" value="{{customStart}}" bindchange="onCustomStart">
-                        <view>{{customStart || '开始日期'}}</view>
+                        <view>{{dt.formatDate(customStart) || '开始日期'}}</view>
                     </picker>
                     <text class="custom-sep">至</text>
                     <picker mode="date" class="custom-picker" value="{{customEnd}}" bindchange="onCustomEnd">
-                        <view>{{customEnd || '结束日期'}}</view>
+                        <view>{{dt.formatDate(customEnd) || '结束日期'}}</view>
                     </picker>
                 </view>
             </view>
@@ -60,6 +61,7 @@
                 <view class="stats-header">
                     <image class="stats-header-icon" src="/assets/wxmp-chart.svg" mode="widthFix"></image>
                     <text class="stats-header-title">用电概览</text>
+                    <text class="stats-header-period" wx:if="{{periodText}}">{{periodText}}</text>
                 </view>
                 
                 <view class="stats-cards">
@@ -114,6 +116,19 @@
                         </view>
                     </view>
                     
+                    <view class="stat-card hourly">
+                        <view class="stat-card-content">
+                            <view class="stat-icon-wrapper">
+                                <image class="stat-icon" src="/assets/wxmp-clock.svg" mode="widthFix"></image>
+                            </view>
+                            <view class="stat-info">
+                                <view class="stat-value">{{hourlyAvgUsage}}<text class="stat-unit">度</text></view>
+                                <view class="stat-label">平均每小时用电</view>
+                                <view class="stat-sub" wx:if="{{hourlyAvgCost !== '-'}}">约 ¥{{hourlyAvgCost}}/时</view>
+                            </view>
+                        </view>
+                    </view>
+                    
                     <view class="stat-card estimated" wx:if="{{stats.estimatedDays !== null && stats.estimatedDays !== undefined}}">
                         <view class="stat-card-content">
                             <view class="stat-icon-wrapper">
@@ -130,15 +145,14 @@
             
             <view class="chart-section">
                 <view class="section-header">
-                    <image class="section-icon" src="/assets/wxmp-activity.svg" mode="widthFix"></image>
-                    <text class="section-title">用电量趋势</text>
+                    <image class="section-icon" src="/assets/wxmp-activity-teal.svg" mode="widthFix"></image>
+                    <text class="section-title">近24小时用电量趋势</text>
                 </view>
                 <view wx:if="{{recentTrend.length === 0}}" class="no-data">
                     <image class="no-data-icon" src="/assets/wxmp-coffee.svg" mode="widthFix"></image>
                     <text>暂无数据</text>
                 </view>
-                <canvas wx:else type="2d" id="recentChart" class="chart-canvas" 
-                        style="width: 100%; height: 200px;"></canvas>
+                <line-chart wx:else chartData="{{recentChartData}}" color="{{trendColor}}" unit="度" />
                 <view class="chart-footer">
                     <view class="chart-footer-item">
                         <text class="chart-footer-label">数据点</text>
@@ -148,6 +162,9 @@
                         <text class="chart-footer-label">电价</text>
                         <text class="chart-footer-value">{{pricePerKwh}}元/度</text>
                     </view>
+                </view>
+                <view class="chart-note">
+                    固定展示最近 24 小时数据，不受上方筛选条件影响；其中 06:00 一条为前一晚 23:00-06:00 的整晚合计。
                 </view>
             </view>
             
@@ -160,8 +177,7 @@
                     <image class="no-data-icon" src="/assets/wxmp-coffee.svg" mode="widthFix"></image>
                     <text>暂无数据</text>
                 </view>
-                <canvas wx:else type="2d" id="dailyChart" class="chart-canvas" 
-                        style="width: 100%; height: 200px;"></canvas>
+                <line-chart wx:else chartData="{{dailyChartData}}" color="{{trendColor}}" unit="度" />
                 <view class="chart-footer">
                     <view class="chart-footer-item">
                         <text class="chart-footer-label">统计天数</text>
@@ -172,7 +188,7 @@
             
             <view class="records-section">
             <view class="section-header">
-                <image class="section-icon" src="/assets/wxmp-list.svg" mode="widthFix"></image>
+                <image class="section-icon" src="/assets/wxmp-list-teal.svg" mode="widthFix"></image>
                 <text class="section-title">历史电费记录</text>
                 <text class="section-count">共{{records.length}}条</text>
             </view>
@@ -207,7 +223,7 @@
                         </view>
                         <view class="record-content">
                             <view class="record-header">
-                                <text class="record-time">{{item.record_time || item.created_at}}</text>
+                                <text class="record-time">{{dt.formatDateTime(item.record_time || item.created_at)}}</text>
                             </view>
                             <view class="record-data">
                                 <view class="record-main">
@@ -232,6 +248,92 @@
                 </view>
                 <view class="records-footer">
                     用电量根据余额变化和电价({{pricePerKwh}}元/度)自动计算
+                </view>
+            </view>
+
+            <!-- 趣味账单：周/半月/月账单 + 周期前后翻看（数据由 get_power_bill 独立返回，不受页面筛选影响） -->
+            <view class="fun-bill">
+                <view class="section-header">
+                    <image class="section-icon" src="/assets/wxmp-star.svg" mode="widthFix"></image>
+                    <text class="section-title">趣味账单</text>
+                    <text wx:if="{{billData && billData.bill}}" class="fun-badge">{{billData.bill.title}}</text>
+                </view>
+
+                <!-- 账单类型 -->
+                <view class="fun-tabs">
+                    <view
+                        wx:for="{{billRangeOptions}}"
+                        wx:key="value"
+                        class="fun-tab {{billRange === item.value ? 'active' : ''}}"
+                        data-range="{{item.value}}"
+                        bindtap="setBillRange"
+                    >{{item.label}}</view>
+                </view>
+
+                <!-- 周期选择：◀ 看更早的周期，▶ 回到较新的周期 -->
+                <view class="fun-nav">
+                    <text class="fun-nav-btn {{!billData || billData.can_prev === false ? 'disabled' : ''}}" bindtap="billPrev">◀</text>
+                    <view class="fun-nav-mid">
+                        <text class="fun-nav-period">{{billData ? billData.period_text : '加载中…'}}</text>
+                        <text wx:if="{{billData && billData.tag}}" class="fun-nav-tag">{{billData.tag}}</text>
+                    </view>
+                    <text class="fun-nav-btn {{!billOffset ? 'disabled' : ''}}" bindtap="billNext">▶</text>
+                </view>
+
+                <view wx:if="{{billData && !billData.has_data}}" class="fun-empty">该周期暂无用电数据，可切换周期查看</view>
+
+                <view wx:if="{{billData && billData.bill}}">
+                <view class="fun-totals">
+                    <view class="fun-total">
+                        <text class="fun-total-value">{{billData.bill.total_usage}}<text class="fun-total-unit">度</text></text>
+                        <text class="fun-total-label">周期用电</text>
+                    </view>
+                    <view class="fun-total-divider"></view>
+                    <view class="fun-total">
+                        <text class="fun-total-value">{{billData.bill.total_cost}}<text class="fun-total-unit">元</text></text>
+                        <text class="fun-total-label">周期电费</text>
+                    </view>
+                </view>
+
+                <view class="fun-block">
+                    <text class="fun-block-title">这些电都够干什么</text>
+                    <view class="fun-row" wx:for="{{billData.bill.equivalents}}" wx:key="index">
+                        <text class="fun-row-icon">{{item.icon}}</text>
+                        <text class="fun-row-label">{{item.label}}</text>
+                        <text class="fun-row-value">{{item.value}}{{item.unit}}</text>
+                    </view>
+                    <view class="fun-row" wx:if="{{billData.bill.cost_fun}}">
+                        <text class="fun-row-icon">{{billData.bill.cost_fun.icon}}</text>
+                        <text class="fun-row-label">{{billData.bill.cost_fun.label}}</text>
+                        <text class="fun-row-value">{{billData.bill.cost_fun.value}}{{billData.bill.cost_fun.unit}}</text>
+                    </view>
+                </view>
+
+                <view class="fun-block" wx:if="{{billData.bill.max_day}}">
+                    <text class="fun-block-title">用电之最</text>
+                    <view class="fun-extreme">
+                        <text class="fun-extreme-tag high">最猛</text>
+                        <text class="fun-extreme-date">{{billData.bill.max_day.date}}</text>
+                        <text class="fun-extreme-value">{{billData.bill.max_day.usage}} 度</text>
+                    </view>
+                    <view class="fun-extreme" wx:if="{{billData.bill.min_day}}">
+                        <text class="fun-extreme-tag low">最省</text>
+                        <text class="fun-extreme-date">{{billData.bill.min_day.date}}</text>
+                        <text class="fun-extreme-value">{{billData.bill.min_day.usage}} 度</text>
+                    </view>
+                </view>
+
+                <view class="fun-block" wx:if="{{billData.bill.night}}">
+                    <text class="fun-block-title">夜猫子指数 · {{billData.bill.night.level}}</text>
+                    <view class="fun-night-bar">
+                        <view class="fun-night-fill" style="width: {{billData.bill.night.ratio}}%;"></view>
+                    </view>
+                    <text class="fun-night-text">
+                        最近 24 小时里，夜间（23:00-06:00）用了 {{billData.bill.night.usage}} 度，占全部用电的 {{billData.bill.night.ratio}}%
+                    </text>
+                </view>
+
+                <view class="fun-comment">{{billData.bill.comment}}</view>
                 </view>
             </view>
 

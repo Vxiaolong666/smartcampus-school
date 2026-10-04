@@ -56,7 +56,7 @@
 				</view>
 				<view class="content-menus-item" @click="handleStudentInfo">
 					<image class="content-menus-item-logo" src="/static/assets/icon-one/jwbd.svg" mode="aspectFit"></image>
-					<view class="content-menus-item-text">教务绑定</view>
+					<view class="content-menus-item-text">学籍信息</view>
 				</view>
 				<view class="content-menus-item" @click="handlePowerStatistics">
 					<image class="content-menus-item-logo" src="/static/assets/icon-one/tssz.svg" mode="aspectFit"></image>
@@ -199,7 +199,7 @@
 								<text v-if="item.is_top == 1" class="top-badge">置顶</text>
 								{{ item.title }}
 							</view>
-							<view class="content-notice-date">{{ item.create_time }}</view>
+							<view class="content-notice-date">{{ fmtDateTime(item.create_time) }}</view>
 						</view>
 					</view>
 					<view class="content-notice-more" @click="handleNotices">查看更多</view>

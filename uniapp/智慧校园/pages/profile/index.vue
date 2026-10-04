@@ -64,7 +64,7 @@
 
 				<view class="form-item">
 					<view class="form-label">注册时间</view>
-					<view class="form-value">{{ userInfo.register_time }}</view>
+					<view class="form-value">{{ fmtDateTime(userInfo.register_time) }}</view>
 				</view>
 
 				<button class="save-btn" @click="onSave">保存修改</button>

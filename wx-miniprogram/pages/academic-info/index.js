@@ -10,6 +10,7 @@ Page({
         featureEnabled: true,       // 功能是否启用
         announcement: null,          // 公告信息
         loading: false,              // 加载状态
+        needBind: false,             // 是否未绑定教务账号
         studentInfo: null            // 学生信息
     },
 
@@ -48,7 +49,7 @@ Page({
 
     //加载学生信息
     loadStudentInfo() {
-        this.setData({ loading: true });
+        this.setData({ loading: true, needBind: false });
 
         api.queryStudentInfo()
             .then(res => {
@@ -79,6 +80,11 @@ Page({
                 });
             })
             .catch(err => {
+                // 未绑定教务账号：展示「请先绑定」空态，不弹「无数据」提示
+                if (feature.isAcademicNotBound(err)) {
+                    this.setData({ loading: false, needBind: true });
+                    return;
+                }
                 this.setData({ loading: false });
                 wx.showToast({ title: err.msg || '查询失败', icon: 'none' });
             });
@@ -97,5 +103,10 @@ Page({
     //刷新学生信息
     onRefresh() {
         this.loadStudentInfo();
+    },
+
+    // 跳转教务账号绑定页
+    goToBind() {
+        wx.navigateTo({ url: '/pages/academic-bind/index' });
     }
 });

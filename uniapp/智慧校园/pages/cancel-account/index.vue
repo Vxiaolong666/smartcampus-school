@@ -190,7 +190,7 @@ export default {
 
 	computed: {
 		expireTimeText() {
-			return this.expireTime ? String(this.expireTime).substring(0, 10) : '';
+			return this.fmtDate(this.expireTime);
 		},
 		agreementHtml() {
 			// 协议正文支持图片：相对路径补全为完整地址

@@ -35,6 +35,7 @@ const ICON_CALENDAR_PATHS = [
 Page({
     data: {
         loading: true,              // 加载状态
+        needBind: false,            // 是否未绑定教务账号
         featureEnabled: true,       // 功能是否启用
         announcement: null,         // 公告信息
         currentWeek: 1,             // 当前周次
@@ -303,11 +304,16 @@ Page({
     //加载课程表
     loadSchedule() {
         // 设置加载状态
-        this.setData({ loading: true });
+        this.setData({ loading: true, needBind: false });
         // 调用API查询课程表，传入空参数获取当前学期数据
         api.querySchedule('', '')
             .then(res => this.processScheduleData(res.data || []))
             .catch(err => {
+                // 未绑定教务账号：展示「请先绑定」空态，不弹「无数据」提示
+                if (feature.isAcademicNotBound(err)) {
+                    this.setData({ loading: false, needBind: true });
+                    return;
+                }
                 this.setData({ loading: false });
                 wx.showToast({ title: err.msg || '查询失败', icon: 'none' });
             });
@@ -596,5 +602,10 @@ Page({
     //跳转到完整课程表页面
     goToFullSchedule() {
         wx.navigateTo({ url: '/pages/academic-schedule/index' });
+    },
+
+    // 跳转教务账号绑定页
+    goToBind() {
+        wx.navigateTo({ url: '/pages/academic-bind/index' });
     }
 });

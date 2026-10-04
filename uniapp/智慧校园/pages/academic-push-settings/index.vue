@@ -109,7 +109,7 @@
 							</view>
 						</view>
 						<view class="log-title">{{ item.title }}</view>
-						<view class="log-time">{{ item.sent_at }}</view>
+						<view class="log-time">{{ fmtDateTime(item.sent_at) }}</view>
 					</view>
 				</view>
 			</block>

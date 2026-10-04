@@ -1,3 +1,4 @@
+<wxs src="../../utils/date.wxs" module="dt" />
 <view class="container">
   <top-menu showBack="{{true}}">
     <view class="nav-title">教务账号</view>
@@ -69,7 +70,7 @@
           </view>
           <view class="bound-item">
             <view class="bound-label">绑定时间</view>
-            <view class="bound-value">{{academicInfo.bind_time}}</view>
+            <view class="bound-value">{{dt.formatDateTime(academicInfo.bind_time)}}</view>
           </view>
         </view>
 
