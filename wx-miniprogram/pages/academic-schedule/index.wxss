@@ -103,22 +103,29 @@ page {
     color: #948eb3;
 }
 
+/* 空态 / 未绑定教务账号提示：与 pages/today-schedule 保持一致 */
 .empty-wrapper {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 100rpx 0;
+    padding: 80rpx 0;
 }
 
 .empty-icon {
-    width: 120rpx;
-    height: 120rpx;
-    opacity: 0.5;
+    width: 100rpx;
+    height: 100rpx;
     margin-bottom: 20rpx;
 }
 
+.empty-title {
+    font-size: 32rpx;
+    font-weight: bold;
+    color: #48416f;
+    margin-bottom: 12rpx;
+}
+
 .empty-text {
-    font-size: 28rpx;
+    font-size: 26rpx;
     color: #948eb3;
 }
 

@@ -35,13 +35,15 @@
 
     <view wx:elif="{{needBind}}" class="empty-wrapper">
       <image class="empty-icon" src="/assets/wxmp-book-gray.svg" mode="widthFix"></image>
-      <view class="empty-text">请先绑定教务账号后再查询课程</view>
+      <view class="empty-title">请先绑定教务账号</view>
+      <view class="empty-text">绑定后可查看与查询课程表</view>
       <button class="bind-btn" bindtap="goToBind">前往绑定</button>
     </view>
 
     <view wx:elif="{{schedule.length === 0}}" class="empty-wrapper">
       <image class="empty-icon" src="/assets/wxmp-book-gray.svg" mode="widthFix"></image>
-      <view class="empty-text">暂无课程数据</view>
+      <view class="empty-title">暂无课程数据</view>
+      <view class="empty-text">换个周次或点击查询试试~</view>
     </view>
 
     <view wx:else class="schedule-wrapper">
