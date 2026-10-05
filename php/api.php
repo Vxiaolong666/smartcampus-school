@@ -1433,8 +1433,11 @@ switch($act) {
             $powerConfig = $DB->getRow("SELECT * FROM nteam_power_config WHERE id = 1");
             $pricePerKwh = $powerConfig ? floatval($powerConfig['price_per_kwh']) : 0.61;
             
+            // 只有余额单位是「度」时才能按电价折算剩余电量；学生宿舍 10/11/12 区余额单位是「元」，
+            // 折算没有意义，返回 null 由客户端显示「-」
+            $balanceUnit = isset($result['data']['unit']) ? $result['data']['unit'] : '度';
             $remainingKwh = null;
-            if ($balance !== null && $balance >= 0 && $pricePerKwh > 0) {
+            if ($balanceUnit === '度' && $balance !== null && $balance >= 0 && $pricePerKwh > 0) {
                 $remainingKwh = round($balance / $pricePerKwh, 2);
             }
             
@@ -1479,8 +1482,10 @@ switch($act) {
                 }
             }
             
+            // 状态文案按余额单位区分：单位是「度」说电量，单位是「元」说余额
+            $isKwh = ($balanceUnit === '度');
             $status = 'normal';
-            $statusText = '电量充足';
+            $statusText = $isKwh ? '电量充足' : '余额充足';
             if ($balance === null) {
                 $status = 'unknown';
                 $statusText = '无法查询';
@@ -1489,15 +1494,16 @@ switch($act) {
                 $statusText = '已欠费';
             } elseif ($balance < 10) {
                 $status = 'low';
-                $statusText = '电量不足';
+                $statusText = $isKwh ? '电量不足' : '余额不足';
             } elseif ($balance < 30) {
                 $status = 'warning';
-                $statusText = '电量偏低';
+                $statusText = $isKwh ? '电量偏低' : '余额偏低';
             }
             
             jsonResponse(0, '查询成功', [
                 'room_num' => $roomNum,
                 'balance' => $balance,
+                'balance_unit' => $balanceUnit,
                 'remaining_kwh' => $remainingKwh,
                 'price_per_kwh' => $pricePerKwh,
                 'estimated_days' => $estimatedDays,
@@ -2296,7 +2302,9 @@ switch($act) {
                             $extra = '';
                             if (isset($pd['waterBalance'])) $extra .= '，冷水 ' . $pd['waterBalance'];
                             if (isset($pd['hotWaterBalance'])) $extra .= '，热水 ' . $pd['hotWaterBalance'];
-                            $dormLines[] = "- {$dormName}{$tag}：剩余电量 {$pd['balance']} {$pd['unit']}（{$pd['msg']}）{$extra}";
+                            // 单位是「元」的区域（学生宿舍 10/11/12 区）余额是金额，不能当成电量告诉 AI
+                            $balanceLabel = (isset($pd['unit']) && $pd['unit'] === '度') ? '剩余电量' : '电费余额';
+                            $dormLines[] = "- {$dormName}{$tag}：{$balanceLabel} {$pd['balance']} {$pd['unit']}（{$pd['msg']}）{$extra}";
                         } else {
                             $dormLines[] = "- {$dormName}{$tag}：用电查询失败（" . ($pf['msg'] ?? '未知错误') . '）';
                         }
@@ -3808,6 +3816,10 @@ switch($act) {
     break;
     
     case 'get_feature_settings':
+        require_once 'funsion/feature_settings.php';
+        // 总公告：开启时所有功能的公告统一替换为总公告内容（未开启返回 null，各走各自公告）
+        $globalAnnouncement = getGlobalAnnouncement($DB);
+
         $keys = isset($_GET['keys']) ? trim($_GET['keys']) : '';
         
         if (!empty($keys)) {
@@ -3820,11 +3832,21 @@ switch($act) {
         
         $result = [];
         foreach ($features as $feature) {
+            // 总标识是后台的全局开关，不作为一种功能下发给客户端
+            if ($feature['feature_key'] === GLOBAL_ANNOUNCEMENT_KEY) {
+                continue;
+            }
+            $announcement = $feature['announcement'];
+            $announcementType = $feature['announcement_type'] ?: 'info';
+            if ($globalAnnouncement !== null) {
+                $announcement = $globalAnnouncement['content'];
+                $announcementType = $globalAnnouncement['type'];
+            }
             $result[$feature['feature_key']] = [
                 'feature_name' => $feature['feature_name'],
                 'is_enabled' => (int)$feature['is_enabled'],
-                'announcement' => $feature['announcement'],
-                'announcement_type' => $feature['announcement_type'] ?: 'info'
+                'announcement' => $announcement,
+                'announcement_type' => $announcementType
             ];
         }
         

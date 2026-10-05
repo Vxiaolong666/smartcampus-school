@@ -827,8 +827,11 @@ switch($act){
             $powerConfig = $DB->getRow("SELECT * FROM nteam_power_config WHERE id = 1");
             $pricePerKwh = $powerConfig ? floatval($powerConfig['price_per_kwh']) : 0.61;
             
+            // 只有余额单位是「度」时才能按电价折算剩余电量；学生宿舍 10/11/12 区余额单位是「元」，
+            // 折算没有意义，返回 null 由前端显示「-」
+            $balanceUnit = isset($result['data']['unit']) ? $result['data']['unit'] : '度';
             $remainingKwh = null;
-            if ($balance !== null && $balance >= 0 && $pricePerKwh > 0) {
+            if ($balanceUnit === '度' && $balance !== null && $balance >= 0 && $pricePerKwh > 0) {
                 $remainingKwh = round($balance / $pricePerKwh, 2);
             }
             

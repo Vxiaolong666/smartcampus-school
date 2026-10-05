@@ -10,7 +10,9 @@
 		</view>
 
 		<view class="content-wrapper">
-			<announcement v-if="announcement" :content="announcement.content" type="info" />
+			<view v-if="announcement">
+				<announcement :content="announcement.content" :type="announcement.type" :closable="true" />
+			</view>
 
 			<view class="info-card">
 				<view class="card-header">

@@ -1,5 +1,5 @@
 
-const API_BASE_URL = 'https://mc.xzwmc.com/csgocs/api.php';
+const API_BASE_URL = 'http://127.0.0.12/api.php';
 //https://mc.xzwmc.com/csgocs/api.php
 //http://127.0.0.12/api.php
 /**

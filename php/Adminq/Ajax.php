@@ -736,6 +736,10 @@ switch($act){
             if (!preg_match('/^[A-Za-z0-9_-]{1,50}$/', $featureKey)) {
                 exit('{"code":-1,"msg":"功能标识只能包含字母、数字、下划线或短横线（不超过 50 个字符）"}');
             }
+            // 保留标识：总公告由「功能设置」页顶部卡片单独维护，禁止作为普通功能添加
+            if (strtolower($featureKey) === 'global_announcement') {
+                exit('{"code":-1,"msg":"「global_announcement」为总公告保留标识，请换一个"}');
+            }
             if (mb_strlen($featureName, 'UTF-8') > 100) exit('{"code":-1,"msg":"功能名称过长（最多 100 个字符）"}');
             if (mb_strlen($announcement, 'UTF-8') > 1000) exit('{"code":-1,"msg":"公告内容过长（最多 1000 个字符）"}');
             if (!in_array($announcementType, array('info', 'success', 'warning', 'danger'), true)) {
@@ -784,6 +788,50 @@ switch($act){
             exit('{"code":0,"msg":"已'.$statusText.'"}');
         } else {
             exit('{"code":-1,"msg":"操作失败"}');
+        }
+    break;
+    
+    // ===== 功能设置：保存「总公告」（全局统一公告）=====
+    // 以保留标识 global_announcement 存储一行：is_enabled 为总开关，announcement/announcement_type 为统一公告内容。
+    // 开启后所有页面（三端接口 + 网页端渲染）统一替换为该公告，关闭后各功能按各自的公告显示。
+    case 'save_global_announcement':
+        if(!$isLogin)exit('{"code":-1,"msg":"未登录"}');
+        if($adminData['adminRank']!=1){exit('{"code":-1,"msg":"您的账号没有权限使用此功能！"}');}
+        {
+            $isEnabled = (isset($_POST['is_enabled']) && intval($_POST['is_enabled']) === 1) ? 1 : 0;
+            $announcement = isset($_POST['announcement']) ? trim($_POST['announcement']) : '';
+            $announcementType = isset($_POST['announcement_type']) ? trim($_POST['announcement_type']) : 'info';
+
+            if (!in_array($announcementType, array('info', 'success', 'warning', 'danger'), true)) {
+                $announcementType = 'info';
+            }
+            if (mb_strlen($announcement, 'UTF-8') > 1000) {
+                exit('{"code":-1,"msg":"公告内容过长（最多 1000 个字符）"}');
+            }
+            if ($isEnabled === 1 && $announcement === '') {
+                exit('{"code":-1,"msg":"开启总公告时请填写公告内容"}');
+            }
+
+            $existing = $DB->getRow("SELECT id FROM nteam_feature_settings WHERE feature_key='global_announcement'");
+            if ($existing) {
+                $sql = "UPDATE nteam_feature_settings SET
+                        is_enabled='$isEnabled',
+                        announcement='" . addslashes($announcement) . "',
+                        announcement_type='" . addslashes($announcementType) . "',
+                        updated_at=NOW()
+                        WHERE feature_key='global_announcement'";
+            } else {
+                $sql = "INSERT INTO nteam_feature_settings
+                        (`feature_key`,`feature_name`,`is_enabled`,`announcement`,`announcement_type`,`updated_at`)
+                        VALUES ('global_announcement','总公告（全局）','$isEnabled','" . addslashes($announcement) . "','" . addslashes($announcementType) . "', NOW())";
+            }
+
+            if ($DB->exec($sql) !== false) {
+                $statusText = $isEnabled === 1 ? '开启' : '关闭';
+                $DB->query("insert into `nteam_log` (`adminUser`,`type`,`data`,`ip`,`city`) values ('" . $_SESSION['adminUser'] . "','保存总公告（" . $statusText . "）', NOW(), '".$ip."', '')");
+                exit('{"code":0,"msg":"保存成功"}');
+            }
+            exit('{"code":-1,"msg":"保存失败['.$DB->error().']"}');
         }
     break;
     

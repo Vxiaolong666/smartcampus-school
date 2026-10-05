@@ -163,13 +163,139 @@ class DormitorySystem {
         }
     }
     
+    /** 用电查询参数配置缓存（php/Common/dormitory_power.json） */
+    private static $powerConfig = null;
+
+    /**
+     * 读取用电查询参数配置，文件缺失/损坏时回退内置默认值
+     */
+    private static function powerConfig() {
+        if (self::$powerConfig !== null) {
+            return self::$powerConfig;
+        }
+        $config = [
+            'default' => [
+                'implType' => 'CGCOMMON0001',
+                'buildingNoField' => 'building_no',
+                'roomNumField' => 'room_num',
+                'balanceUnit' => ''
+            ],
+            'rules' => []
+        ];
+        $file = dirname(__DIR__) . '/Common/dormitory_power.json';
+        if (is_file($file)) {
+            $parsed = json_decode(@file_get_contents($file), true);
+            if (is_array($parsed)) {
+                if (!empty($parsed['default']) && is_array($parsed['default'])) {
+                    $config['default'] = array_merge($config['default'], $parsed['default']);
+                }
+                if (!empty($parsed['rules']) && is_array($parsed['rules'])) {
+                    $config['rules'] = $parsed['rules'];
+                }
+            }
+        }
+        self::$powerConfig = $config;
+        return self::$powerConfig;
+    }
+
+    /**
+     * 取房间对应的查询规则：按 school_area_no / school_area 名称匹配规则，未命中用 default
+     *
+     * @param string $schoolAreaNo 本地 dorm_room.school_area_no
+     * @param string $schoolArea   本地 dorm_room.school_area（如「学生宿舍10区」）
+     * @return array
+     */
+    private static function powerRule($schoolAreaNo, $schoolArea) {
+        $config = self::powerConfig();
+        foreach ($config['rules'] as $rule) {
+            if (empty($rule['match']) || !is_array($rule['match'])) {
+                continue;
+            }
+            $match = $rule['match'];
+            $areaNos = [];
+            if (isset($match['schoolAreaNo'])) {
+                $areaNos = is_array($match['schoolAreaNo']) ? $match['schoolAreaNo'] : [$match['schoolAreaNo']];
+            }
+            $noMatched = false;
+            foreach ($areaNos as $no) {
+                if ((string) $no === (string) $schoolAreaNo) {
+                    $noMatched = true;
+                    break;
+                }
+            }
+            $nameMatched = false;
+            if (!empty($match['schoolAreaPattern']) && $schoolArea !== '' && $schoolArea !== null) {
+                $nameMatched = (bool) @preg_match('~' . str_replace('~', '\~', $match['schoolAreaPattern']) . '~u', $schoolArea);
+            }
+            //两个条件都配置时任一命中即可，便于区域编号变化后仍按名称匹配
+            if ($noMatched || $nameMatched) {
+                return array_merge($config['default'], $rule);
+            }
+        }
+        return $config['default'];
+    }
+
+    /**
+     * 按房号读本地宿舍记录（失败返回 null，不影响后续请求）
+     */
+    private static function lookupRoom($roomNum) {
+        try {
+            global $dbconfig;
+            if (empty($dbconfig) || empty($dbconfig['host'])) {
+                return null;
+            }
+            $pdo = new PDO(
+                "mysql:host={$dbconfig['host']};port={$dbconfig['port']};dbname={$dbconfig['dbname']};charset=utf8mb4",
+                $dbconfig['user'],
+                $dbconfig['pwd']
+            );
+            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $info = self::getRoomInfo($pdo, $roomNum);
+            return ($info['code'] == 1 && !empty($info['data'])) ? $info['data'] : null;
+        } catch (PDOException $e) {
+            return null;
+        }
+    }
+
+    /**
+     * 查询宿舍电费余额
+     *
+     * 本校一卡通接口按区域分平台：茂名/高州校区走 CGCOMMON0001（余额单位：度），
+     * 学生宿舍 10/11 区走 YEMA、12 区走 RUIMIN（余额单位：元），楼栋与房号取值字段也不同，
+     * 具体见 php/Common/dormitory_power.json。调用方只传房号也可用（会自动查本地宿舍表补齐）。
+     *
+     * @param string $roomNum      本地 room_num
+     * @param string $schoolAreaNo 区域编号（可选，缺省从本地宿舍表取）
+     * @param string $buildingNo   楼栋（可选，缺省从本地宿舍表按配置取）
+     */
     public static function getPowerFee($roomNum, $schoolAreaNo = '', $buildingNo = '') {
         $apiUrl = 'https://ykt.gdpnc.cn/user/powerfee/getBalance';
-        $implType = 'CGCOMMON0001';
+        
+        $room = self::lookupRoom($roomNum);
+        $schoolArea = ($room !== null && isset($room['school_area'])) ? $room['school_area'] : '';
+        if ($room !== null && isset($room['school_area_no'])) {
+            $schoolAreaNo = $room['school_area_no'];
+        }
+        
+        $rule = self::powerRule($schoolAreaNo, $schoolArea);
+        $implType = !empty($rule['implType']) ? $rule['implType'] : 'CGCOMMON0001';
+        $buildField = !empty($rule['buildingNoField']) ? $rule['buildingNoField'] : 'building_no';
+        $roomField = !empty($rule['roomNumField']) ? $rule['roomNumField'] : 'room_num';
+        
+        //楼栋与房号按配置取本地字段（学生宿舍 10/11 区房号用 room，12 区楼栋用楼层字段 building）
+        $queryRoomNum = $roomNum;
+        if ($room !== null) {
+            if (isset($room[$buildField]) && $room[$buildField] !== '' && $room[$buildField] !== null) {
+                $buildingNo = $room[$buildField];
+            }
+            if (isset($room[$roomField]) && $room[$roomField] !== '' && $room[$roomField] !== null) {
+                $queryRoomNum = $room[$roomField];
+            }
+        }
         
         $postData = [
             'implType' => $implType,
-            'roomNum' => $roomNum,
+            'roomNum' => $queryRoomNum,
             'from' => 'wxminiprogram',
             'token' => DORM_POWER_TOKEN
         ];
@@ -195,20 +321,40 @@ class DormitorySystem {
         
         if (isset($data['ret']) && $data['ret'] === true && isset($data['obj'])) {
             $obj = $data['obj'];
-            $balance = $obj['powerBalance'] ?? $obj['balance'] ?? null;
+            //余额字段各平台不同：YEMA / CGCOMMON0001 用 powerBalance，CHENGTA（高州校区 101 栋）用 leftMoney
+            $balance = null;
+            foreach (['powerBalance', 'balance', 'leftMoney'] as $balanceKey) {
+                if (isset($obj[$balanceKey]) && $obj[$balanceKey] !== '' && $obj[$balanceKey] !== null) {
+                    $balance = $obj[$balanceKey];
+                    break;
+                }
+            }
             
             if ($balance !== null && is_numeric($balance)) {
                 $balance = floatval($balance);
                 
+                //余额单位：优先用接口返回的 du（YEMA=元、CGCOMMON0001=度），
+                //接口没给时用配置里的 balanceUnit，最后兜底「度」
+                $unit = '度';
+                if (!empty($obj['du'])) {
+                    $unit = $obj['du'];
+                } elseif (!empty($obj['yuan'])) {
+                    //CHENGTA 平台用 yuan 字段表示单位（元）
+                    $unit = $obj['yuan'];
+                } elseif (!empty($rule['balanceUnit'])) {
+                    $unit = $rule['balanceUnit'];
+                }
+                $isKwh = ($unit === '度');
+                
                 if ($balance < 10) {
                     $status = 'low';
-                    $msg = '电量不足，请及时充值';
+                    $msg = $isKwh ? '电量不足，请及时充值' : '余额不足，请及时充值';
                 } elseif ($balance < 30) {
                     $status = 'warning';
-                    $msg = '电量偏低';
+                    $msg = $isKwh ? '电量偏低' : '余额偏低';
                 } else {
                     $status = 'normal';
-                    $msg = '电量充足';
+                    $msg = $isKwh ? '电量充足' : '余额充足';
                 }
                 
                 $result = [
@@ -216,7 +362,8 @@ class DormitorySystem {
                     'data' => [
                         'roomNum' => $roomNum,
                         'balance' => round($balance, 2),
-                        'unit' => '度',
+                        'unit' => $unit,
+                        'implType' => $implType,
                         'status' => $status,
                         'msg' => $msg
                     ]

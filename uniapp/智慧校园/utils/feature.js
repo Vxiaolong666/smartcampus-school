@@ -164,6 +164,7 @@ const isAcademicNotBound = (err) => {
 /**
  * 打开「联系客服」：拉取后台维护的联系方式并以弹窗展示
  * （功能禁用弹窗的联系客服入口，与公告 / 维护页联系方式同源）
+ * 关闭（点击「我知道了」）后同样离开当前功能页，与功能禁用弹窗的确认行为保持一致
  */
 const openContactInfo = () => {
     uni.showLoading({ title: '加载中...' });
@@ -187,7 +188,11 @@ const openContactInfo = () => {
                 title: '联系客服',
                 content: lines.join('\n'),
                 showCancel: false,
-                confirmText: '我知道了'
+                confirmText: '我知道了',
+                success: () => {
+                    // 与功能禁用弹窗点「我知道了」一致：查看完联系方式后离开当前功能页
+                    leaveCurrentPage();
+                }
             });
         })
         .catch(() => {

@@ -9,7 +9,10 @@ if($adminData['adminRank']== 2) {
 }
 include './head.php';
 
-$features = $DB->query("SELECT * FROM nteam_feature_settings ORDER BY id ASC")->fetchAll();
+// 总公告（全局统一公告）：作为「总标识」在顶部卡片单独维护，不在下方功能列表中展示
+$globalAnnouncement = $DB->getRow("SELECT * FROM nteam_feature_settings WHERE feature_key='global_announcement'");
+$globalEnabled = $globalAnnouncement && intval($globalAnnouncement['is_enabled']) === 1;
+$features = $DB->query("SELECT * FROM nteam_feature_settings WHERE feature_key <> 'global_announcement' ORDER BY id ASC")->fetchAll();
 ?>
 
 <div id="pjax-container">
@@ -35,6 +38,56 @@ $features = $DB->query("SELECT * FROM nteam_feature_settings ORDER BY id ASC")->
         </div>
     </div>
     <div class="content animated fadeIn">
+        <!-- ===== 总公告（全局统一公告）总标识：开启后所有页面统一显示该公告 ===== -->
+        <div class="block block-rounded block-bordered">
+            <div class="block-header block-header-default">
+                <h3 class="block-title"><i class="fa fa-bullhorn me-1"></i>总公告（全局统一）</h3>
+                <div class="block-options">
+                    <?php if($globalEnabled): ?>
+                    <span class="badge bg-success">已开启</span>
+                    <?php else: ?>
+                    <span class="badge bg-secondary">已关闭</span>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <div class="block-content">
+                <div class="alert alert-info fs-sm">
+                    <i class="fa fa-info-circle me-1"></i>
+                    开启总公告后，<b>所有功能页面统一显示</b>下方公告内容，忽略各功能自己的公告；关闭后各功能按各自的公告显示。
+                </div>
+                <form id="globalAnnouncementForm" onsubmit="return false;">
+                    <div class="mb-4">
+                        <label class="form-label"><b>总公告开关</b></label>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="global_enabled" <?php echo $globalEnabled ? 'checked' : ''; ?>>
+                            <label class="form-check-label" for="global_enabled">开启（全站统一公告）</label>
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label" for="global_announcement"><b>公告内容</b></label>
+                        <textarea class="form-control" id="global_announcement" rows="3" placeholder="开启后所有页面统一显示该公告"><?php echo htmlspecialchars(isset($globalAnnouncement['announcement']) ? $globalAnnouncement['announcement'] : ''); ?></textarea>
+                        <div class="form-text">开启状态下留空不会生效（读取时视为未启用总公告，各功能仍显示各自的公告）。</div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label" for="global_announcement_type"><b>公告类型</b></label>
+                        <select class="form-select" id="global_announcement_type">
+                            <?php
+                            $globalType = isset($globalAnnouncement['announcement_type']) ? $globalAnnouncement['announcement_type'] : 'info';
+                            foreach (['info' => '信息（蓝色）', 'success' => '成功（绿色）', 'warning' => '警告（黄色）', 'danger' => '危险（红色）'] as $gVal => $gLabel):
+                            ?>
+                            <option value="<?php echo $gVal; ?>" <?php echo $globalType === $gVal ? 'selected' : ''; ?>><?php echo $gLabel; ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <button type="button" class="btn btn-primary" onclick="saveGlobalAnnouncement()">
+                            <i class="fa fa-check me-1"></i>保存总公告
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         <div class="block block-rounded">
             <div class="block-header block-header-default">
                 <h3 class="block-title">功能开关与公告设置</h3>
@@ -439,6 +492,48 @@ function saveNewFeature() {
             feature_name: name,
             feature_key: key,
             is_enabled: enabledInput ? enabledInput.value : 1,
+            announcement: announcement,
+            announcement_type: announcementType
+        },
+        dataType: 'json',
+        success: function (data) {
+            layer.close(ii);
+            if (data.code == 0) {
+                layer.alert(data.msg, {
+                    icon: 1,
+                    closeBtn: false
+                }, function () {
+                    window.location.reload();
+                });
+            } else {
+                layer.alert(data.msg, {icon: 2});
+            }
+        },
+        error: function () {
+            layer.close(ii);
+            layer.msg('服务器错误');
+        }
+    });
+    return false;
+}
+
+// ===== 总公告（全局统一公告）=====
+function saveGlobalAnnouncement() {
+    var enabled = document.getElementById('global_enabled').checked ? 1 : 0;
+    var announcement = document.getElementById('global_announcement').value;
+    var announcementType = document.getElementById('global_announcement_type').value;
+
+    if (enabled == 1 && !announcement.trim()) {
+        layer.msg('开启总公告时请填写公告内容', {icon: 0});
+        return false;
+    }
+
+    var ii = layer.load(2, {shade: [0.1, '#fff']});
+    $.ajax({
+        type: 'POST',
+        url: 'Ajax.php?act=save_global_announcement',
+        data: {
+            is_enabled: enabled,
             announcement: announcement,
             announcement_type: announcementType
         },

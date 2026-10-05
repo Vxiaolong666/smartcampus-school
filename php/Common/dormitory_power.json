@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "_readme": "宿舍用电查询参数配置：一卡通接口 https://ykt.gdpnc.cn/user/powerfee/getBalance 会按房间所属区域选择不同的 implType，并决定 buildingNo / roomNum 取本地 dorm_room 表的哪个字段。程序在 php/funsion/DormitorySystem.php 里读取本文件（每次进程只读一次）；文件缺失或写坏时自动回退到下面的 default，不会影响功能。",
+  "_fieldNote": "buildingNoField / roomNumField 的取值：building_no=楼栋编号，building=楼层，room=房间号，room_num=房号或电表号。",
+  "default": {
+    "_note": "其余校区（茂名校区 school_area_no=1、高州校区 school_area_no=2）：楼栋用 building_no，房号用 room_num，余额单位由接口返回（度）",
+    "implType": "CGCOMMON0001",
+    "buildingNoField": "building_no",
+    "roomNumField": "room_num",
+    "balanceUnit": ""
+  },
+  "rules": [
+    {
+      "name": "学生宿舍10区/11区",
+      "_note": "YEMA 平台：楼栋名用 building_no（如「学生宿舍10区」），房号用 room（如「10-202」）。实测 room_num 与 room 相同，改用 room 以兼容后续导入差异",
+      "match": {
+        "schoolAreaNo": ["0"],
+        "schoolAreaPattern": "^学生宿舍(10|11)区$"
+      },
+      "implType": "YEMA",
+      "buildingNoField": "building_no",
+      "roomNumField": "room",
+      "balanceUnit": "元"
+    },
+    {
+      "name": "学生宿舍12区",
+      "_note": "RUIMIN 平台：楼栋名用楼层字段 building（如「五楼」），房号为电表号 room_num（如 241810008879）；school_area_no=181",
+      "match": {
+        "schoolAreaNo": ["181"],
+        "schoolAreaPattern": "^学生宿舍12区$"
+      },
+      "implType": "RUIMIN",
+      "buildingNoField": "building",
+      "roomNumField": "room_num",
+      "balanceUnit": "元"
+    },
+    {
+      "name": "高州校区 101 栋（新宿舍）",
+      "_note": "CHENGTA 平台：school_area_no=01、buildingNo=101（取 building_no），房号取 room——本站 room_num 带 CT- 前缀保证唯一，对端要的是 room 里的原始房号；余额在接口的 leftMoney 字段，单位为元。注意：只按区域号 01 匹配，老高州校区（区域号 2）不受影响",
+      "match": {
+        "schoolAreaNo": ["01"]
+      },
+      "implType": "CHENGTA",
+      "buildingNoField": "building_no",
+      "roomNumField": "room",
+      "balanceUnit": "元"
+    }
+  ]
+}
