@@ -198,7 +198,9 @@
   <!-- 开屏广告 -->
   <view class="splash-mask" wx:if="{{splashVisible}}" catch:touchmove="noop">
     <!-- 同图模糊背景：铺满整屏填充留白；前面仍完整展示广告原图（不裁切） -->
-    <image class="splash-bg" src="{{splashImage}}" mode="aspectFill"></image>
+    <view class="splash-bg">
+      <image class="splash-bg-img" src="{{splashImage}}" mode="aspectFill"></image>
+    </view>
     <image class="splash-image" src="{{splashImage}}" mode="aspectFit" bind:tap="handleSplashTap"></image>
     <view class="splash-skip" bind:tap="closeSplash">跳过 {{splashCountdown}}s</view>
     <view class="splash-footer" bind:tap="handleSplashTap">

@@ -4,6 +4,7 @@
  */
 
 const api = require('./api.js');
+const { getActiveContactModal } = require('./contact-modal.js');
 
 /**
  * 获取所有功能开关设置
@@ -160,6 +161,16 @@ const openContactInfo = () => {
             if (!lines.length) {
                 lines.push('暂未配置联系方式，请在「我的」页面通过「联系客服」与我们取得联系。');
             }
+
+            // 优先使用页面上的自定义「联系客服」弹窗（与「我的 - 联系客服」同款，
+            // 由 cb-nav-bar 统一挂载）；关闭后与原生弹窗一致，离开当前功能页
+            const customModal = getActiveContactModal();
+            if (customModal) {
+                customModal.open(() => leaveCurrentPage());
+                return;
+            }
+
+            // 兜底：页面未挂载自定义弹窗时用原生弹窗
             wx.showModal({
                 title: '联系客服',
                 content: lines.join('\n'),

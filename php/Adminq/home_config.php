@@ -246,6 +246,11 @@ if (!function_exists('homePager')) {
                         </div>
                     </div>
                     <div class="mb-4">
+                        <label class="form-label" for="contact_desc"><b>说明</b></label>
+                        <input type="text" class="form-control form-control-lg" id="contact_desc" name="contact_desc" maxlength="255" value="<?php echo h(cfgVal($cfg,'contact_desc')); ?>" placeholder="如：如遇紧急情况请优先电话联系">
+                        <small class="text-muted">展示在「联系客服」弹窗中</small>
+                    </div>
+                    <div class="mb-4">
                         <button type="submit" class="btn btn-primary">
                             <i class="fa fa-check opacity-50 me-1"></i> <b>保存设置</b>
                         </button>

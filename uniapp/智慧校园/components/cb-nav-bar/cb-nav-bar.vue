@@ -19,6 +19,10 @@
 				<slot name="right"></slot>
 			</view>
 		</view>
+
+		<!-- 全局「联系客服」弹窗宿主：挂在每个页面都有的导航里，
+		     让 utils/feature.js（功能暂未开放弹窗）等处能直接打开它，免逐页挂载 -->
+		<contact-modal />
 	</view>
 </template>
 

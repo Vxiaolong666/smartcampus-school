@@ -1,4 +1,5 @@
 const api = require('../../utils/api.js');
+const contactModalBus = require('../../utils/contact-modal.js');
 
 /**
  * 联系客服弹窗（小程序端）
@@ -15,9 +16,19 @@ Component({
     worktime: ''      // 客服在线时间（取自后台「官网配置」）
   },
 
+  // 挂载/卸载时登记到全局表：便于 utils/feature.js 打开「当前页面」的联系客服弹窗
+  attached() {
+    contactModalBus.registerContactModal(this);
+  },
+  detached() {
+    contactModalBus.unregisterContactModal(this);
+  },
+
   methods: {
     // 一级选择：微信原生 ActionSheet
-    open() {
+    // onClosed：联系方式弹窗关闭后的回调（如「功能暂未开放」流程里看完即离开当前页）
+    open(onClosed) {
+      this._onClosed = typeof onClosed === 'function' ? onClosed : null;
       wx.showActionSheet({
         itemList: ['联系在线客服', '查看其他联系方式'],
         success: (res) => {
@@ -28,7 +39,8 @@ Component({
           }
         },
         fail: () => {
-          // 用户取消，无需处理
+          // 用户直接关闭「在线客服 / 查看其他联系方式」选择器：与关闭联系方式弹窗一致，触发返回
+          this._fireClosed();
         }
       });
     },
@@ -77,6 +89,14 @@ Component({
     // 关闭弹窗
     close() {
       this.setData({ show: false });
+      this._fireClosed();
+    },
+
+    // 触发一次性关闭回调（关闭弹窗 / 直接关闭选择器时调用）
+    _fireClosed() {
+      const onClosed = this._onClosed;
+      this._onClosed = null;
+      if (onClosed) onClosed();
     },
 
     // 阻止事件冒泡/占位

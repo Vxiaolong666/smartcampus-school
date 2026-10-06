@@ -1,5 +1,5 @@
 <template>
-	<view v-if="show" class="contact-mask" @click="onMaskClick">
+	<view v-if="isShow" class="contact-mask" @click="onMaskClick">
 		<view class="contact-dialog" @click.stop>
 			<view class="contact-header">
 				<text class="contact-title">联系客服</text>
@@ -27,16 +27,39 @@
  * 联系客服弹窗（自定义样式，参考版本更新弹窗 update-modal）
  * 展示后台「官网配置」中维护的联系方式：每行按「标签：内容」解析为标签胶囊 + 内容，并附底部提示。
  */
+import { registerContactModal, unregisterContactModal } from '../../utils/contact-modal.js';
+
 export default {
 	name: 'contact-modal',
 	props: {
 		show: { type: Boolean, default: false },
 		lines: { type: Array, default: () => [] }
 	},
+	data() {
+		return {
+			// 命令式打开（open() 调用）时的内部状态：供 utils/feature.js 等非组件场景使用
+			innerShow: false,
+			innerLines: []
+		};
+	},
+	mounted() {
+		// 注册到全局表，便于 utils/feature.js 打开「当前页面」的联系客服弹窗
+		registerContactModal(this);
+	},
+	beforeDestroy() {
+		unregisterContactModal(this);
+	},
 	computed: {
+		isShow() {
+			return this.show || this.innerShow;
+		},
+		// 受控模式（show/lines 由父组件传入）与命令式模式二选一
+		activeLines() {
+			return this.show ? this.lines : this.innerLines;
+		},
 		// 将 "标签：内容" 的行拆分为 { label, value }，无冒号的行作为纯提示文本
 		items() {
-			return (this.lines || []).map((line) => {
+			return (this.activeLines || []).map((line) => {
 				const str = String(line == null ? '' : line);
 				let idx = str.indexOf('：');
 				if (idx === -1) idx = str.indexOf(':');
@@ -46,8 +69,20 @@ export default {
 		}
 	},
 	methods: {
+		// 命令式打开：供 utils/feature.js 等非组件场景调用（与「我的 - 联系客服」同款弹窗）
+		// onClosed：关闭后的回调（如「功能暂未开放」流程里看完联系方式即离开当前页）
+		open(lines, onClosed) {
+			this.innerLines = Array.isArray(lines) ? lines : [];
+			this._onClosed = typeof onClosed === 'function' ? onClosed : null;
+			this.innerShow = true;
+		},
 		onClose() {
+			// 命令式打开时同步收起，避免下次进入仍然显示
+			this.innerShow = false;
+			const onClosed = this._onClosed;
+			this._onClosed = null;
 			this.$emit('close');
+			if (onClosed) onClosed();
 		},
 		onMaskClick() {
 			this.onClose();
