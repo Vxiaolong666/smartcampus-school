@@ -286,6 +286,10 @@ Page({
                             api.clearAuth();
                             this.setData({ isLoggedIn: false, apiUserInfo: null, userAvatar: '' });
                             wx.showToast({ title: '已退出登录', icon: 'success' });
+                            // 用 reLaunch 重建所有页面，刷新各页面的登录态与公告
+                            setTimeout(() => {
+                                wx.reLaunch({ url: '/pages/black-mine/index' });
+                            }, 800);
                         });
                 }
             }

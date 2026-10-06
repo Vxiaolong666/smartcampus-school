@@ -66,9 +66,10 @@ Page({
 
                 wx.showToast({ title: '登录成功', icon: 'success' });
 
-                // 延迟1秒后跳转到首页
+                // 延迟1秒后回到首页：用 reLaunch 重建所有页面，
+                // 保证各页面拿到最新公告、且不残留「未登录」状态
                 setTimeout(() => {
-                    wx.switchTab({ url: '/pages/white-home/index' });
+                    wx.reLaunch({ url: '/pages/white-home/index' });
                 }, 1000);
             })
             .catch(err => {
@@ -108,9 +109,10 @@ Page({
 
             wx.showToast({ title: '登录成功', icon: 'success' });
 
-            // 延迟1秒后跳转到首页
+            // 延迟1秒后回到首页：用 reLaunch 重建所有页面，
+            // 保证各页面拿到最新公告、且不残留「未登录」状态
             setTimeout(() => {
-                wx.switchTab({ url: '/pages/white-home/index' });
+                wx.reLaunch({ url: '/pages/white-home/index' });
             }, 1000);
         } catch (err) {
             // 登录失败

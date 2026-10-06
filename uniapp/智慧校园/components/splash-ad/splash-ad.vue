@@ -1,6 +1,8 @@
 <template>
 	<view v-if="show" class="splash-mask" @touchmove.stop.prevent="noop">
-		<image class="splash-image" :src="image" mode="aspectFill" @click="onTap"></image>
+		<!-- 同图模糊背景：铺满整屏填充留白；前面仍完整展示广告原图（不裁切） -->
+		<image class="splash-bg" :src="image" mode="aspectFill"></image>
+		<image class="splash-image" :src="image" mode="aspectFit" @click="onTap"></image>
 		<view class="splash-skip" @click="close">跳过 {{ countdown }}s</view>
 		<view class="splash-footer" @click="onTap">
 			<view class="splash-brand">
@@ -137,9 +139,26 @@ export default {
 	bottom: 0;
 	z-index: 9998;
 	background: #000000;
+	overflow: hidden;
 }
 
+/* 同图模糊背景：铺满整屏填充留白（放大 1.2 倍避免模糊边缘露白） */
+.splash-bg {
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 100%;
+	height: 100%;
+	filter: blur(24px);
+	transform: scale(1.2);
+	opacity: 0.7;
+	z-index: 0;
+}
+
+/* 广告原图：完整展示（contain），叠在模糊背景之上 */
 .splash-image {
+	position: relative;
+	z-index: 1;
 	width: 100%;
 	height: 100%;
 	display: block;

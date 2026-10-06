@@ -73,11 +73,24 @@ Page({
 
     //页面加载
     onLoad() {
-        // 检查登录状态，未登录则先说明登录用途（合规）再跳转登录页（使用 redirectTo 避免页面栈累积）
+        // 页面初始化统一放在 onShow：tab 页只加载一次，未登录提示必须每次进入都执行
+    },
+
+    //页面显示（含从其它 Tab / 页面切回）：未登录每次都提示，已登录仅首次初始化
+    onShow() {
+        // 未登录：每次切到本页都提示。
+        // tab 页的 onLoad 只会执行一次，若只在 onLoad 提示，第二次点「课程」Tab 就不会再提示。
         if (!api.isLoggedIn()) {
             api.goLoginWithTip({ mode: 'redirect' });
             return;
         }
+
+        // 已登录：已初始化则只刷新一次时间（避免重复请求）
+        if (this.pageInited) {
+            this.updateTime();
+            return;
+        }
+        this.pageInited = true;
 
         // 检查功能开关
         this.checkFeature().then(canProceed => {
@@ -142,6 +155,8 @@ Page({
     //点击底部「课程」导航（含重复点击当前 Tab）：异步刷新课程表，不显示 loading
     onTabItemTap() {
         if (!api.isLoggedIn()) return;
+        // 首次进入尚未初始化时交给 onShow 处理，避免重复/未初始化请求
+        if (!this.pageInited) return;
         this.loadSchedule({ silent: true });
         this.updateTime();
     },

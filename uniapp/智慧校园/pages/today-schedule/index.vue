@@ -502,6 +502,7 @@ export default {
 			_lastMinute: -1,
 			_featureChecked: false,
 			_pageVisible: false,
+			_pageInited: false,
 			showAiResult: false,
 			aiResult: '',
 			aiLoading: false,
@@ -559,11 +560,26 @@ export default {
 		} catch (e) {
 			this.windowHeight = 0;
 		}
+		// 页面初始化统一放到 onShow：tab 页只加载一次，未登录提示必须每次进入都执行
+	},
+
+	onShow() {
+		this._pageVisible = true;
+
+		// 未登录：每次切到本页都要提示。tab 页的 onLoad 只会执行一次，
+		// 若只在 onLoad 提示，第二次点「课程」Tab 就不会再提示。
 		if (!api.isLoggedIn()) {
 			// 先说明登录用途（合规），再跳转登录页
 			api.goLoginWithTip({ mode: 'redirect' });
 			return;
 		}
+
+		// 已登录：首次进入初始化数据，之后每次回到本页仅恢复计时
+		if (this._pageInited) {
+			this.startTimer();
+			return;
+		}
+		this._pageInited = true;
 
 		this.checkFeature().then(canProceed => {
 			if (!canProceed) return;
@@ -586,15 +602,11 @@ export default {
 		});
 	},
 
-	onShow() {
-		// 从其它页面返回时恢复计时；首次进入由 onLoad 启动
-		this._pageVisible = true;
-		if (this._featureChecked) this.startTimer();
-	},
-
 	// 点击底部「课程」导航（含重复点击当前 Tab）：异步刷新课程表，不显示 loading
 	onTabItemTap() {
 		if (!api.isLoggedIn()) return;
+		// 首次进入尚未初始化时交给 onShow 处理，避免重复/未初始化请求
+		if (!this._pageInited) return;
 		this.loadSchedule({ silent: true });
 	},
 

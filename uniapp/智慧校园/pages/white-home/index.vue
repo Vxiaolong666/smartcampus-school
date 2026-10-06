@@ -476,6 +476,8 @@ export default {
 			if (this.pageRefreshing) return;
 			this.pageRefreshing = true;
 			try {
+				// 先清掉功能开关/公告缓存，确保「刷新」能拿到后台最新的公告内容
+				feature.clearFeatureCache();
 				await Promise.all([
 					this.loadFeatureSettings(),
 					this.loadBanners(),

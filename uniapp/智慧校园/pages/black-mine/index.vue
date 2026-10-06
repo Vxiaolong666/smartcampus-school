@@ -215,6 +215,7 @@
  * 展示用户信息和功能入口
  */
 import api from '../../utils/api.js';
+import feature from '../../utils/feature.js';
 
 export default {
 	data() {
@@ -577,11 +578,17 @@ export default {
 							.catch(() => {})
 							.finally(() => {
 								api.clearAuth();
+								// 退出登录：清功能开关/公告缓存，避免沿用上一个账号的公告
+								feature.clearFeatureCache();
 								this.isLoggedIn = false;
 								this.apiUserInfo = null;
 								this.userAvatar = '';
 								this._lastLoadAt = 0;
 								uni.showToast({ title: '已退出登录', icon: 'success' });
+								// 用 reLaunch 重建所有页面，刷新各页面的登录态与公告
+								setTimeout(() => {
+									uni.reLaunch({ url: '/pages/black-mine/index' });
+								}, 800);
 							});
 					}
 				}
@@ -595,6 +602,8 @@ export default {
 				success: res => {
 					if (res.confirm) {
 						api.clearAuth();
+						// 切换账号：清功能开关/公告缓存，避免沿用上一个账号的公告
+						feature.clearFeatureCache();
 						this.isLoggedIn = false;
 						this.apiUserInfo = null;
 						this.userAvatar = '';

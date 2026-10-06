@@ -105,6 +105,7 @@
  * 处理账号密码登录、微信一键登录与第三方账号（聚合登录）登录
  */
 import api from '../../utils/api.js';
+import feature from '../../utils/feature.js';
 
 // 渠道品牌图标（static/logo 下已提供 SVG 的渠道优先使用图标，其余回退为文字徽标）
 const CHANNEL_ICONS = {
@@ -191,6 +192,8 @@ export default {
 		handleLoginSuccess(data) {
 			api.setToken(data.token);
 			api.setUserInfoCache(data);
+			// 登录态变化：清掉功能开关/公告缓存，保证各页面拿到最新公告
+			feature.clearFeatureCache();
 
 			// 冷静期内登录已自动撤销注销，给出提示
 			if (data && parseInt(data.cancel_revoked) === 1) {
@@ -199,7 +202,8 @@ export default {
 					content: '您此前提交的账号注销申请已自动撤销，账号已恢复正常。',
 					showCancel: false,
 					success: () => {
-						uni.switchTab({ url: '/pages/white-home/index' });
+						// 用 reLaunch 重建所有页面，避免其它 Tab 残留「未登录」状态
+						uni.reLaunch({ url: '/pages/white-home/index' });
 					}
 				});
 				return;
@@ -207,7 +211,8 @@ export default {
 
 			uni.showToast({ title: '登录成功', icon: 'success' });
 			setTimeout(() => {
-				uni.switchTab({ url: '/pages/white-home/index' });
+				// 用 reLaunch 重建所有页面（含其它 Tab），确保不再出现「登录后仍提示未登录」
+				uni.reLaunch({ url: '/pages/white-home/index' });
 			}, 1000);
 		},
 

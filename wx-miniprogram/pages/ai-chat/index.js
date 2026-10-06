@@ -76,7 +76,14 @@ Page({
           featureTip: hasAnn ? ann.content : '微信小程序不支持该功能，请前往网页或APP端使用',
           featureIcon: hasAnn ? feature.getAnnouncementIcon(ann.type) : ''
         });
-        if (!disabled) this.loadModelsOnce();
+        if (disabled) return;
+        // 功能可用但未登录：与「课程」Tab 一致，先说明登录用途再跳登录页。
+        // tab 页 onLoad 只执行一次，这里每次进入都会校验，保证再次点「AI 助手」仍会提示。
+        if (!api.isLoggedIn()) {
+          api.goLoginWithTip({ mode: 'redirect' });
+          return;
+        }
+        this.loadModelsOnce();
       })
       .catch(() => {
         // 开关接口异常不阻断功能（与其它功能开关的默认行为一致）

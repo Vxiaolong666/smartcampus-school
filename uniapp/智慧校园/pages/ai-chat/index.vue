@@ -285,7 +285,14 @@ export default {
         this.featureDisabled = disabled;
         this.featureTip = hasAnn ? ann.content : 'AI 对话暂未开放，请稍后再试';
         this.featureIcon = hasAnn ? feature.getAnnouncementIcon(ann.type) : '';
-        if (!disabled && !this._modelsLoaded) {
+        if (disabled) return;
+        // 功能可用但未登录：与「课程」Tab 一致，先说明登录用途再跳登录页。
+        // tab 页 onLoad 只执行一次，这里每次进入都会校验，保证再次点「AI 助手」仍会提示。
+        if (!api.isLoggedIn()) {
+          api.goLoginWithTip({ mode: 'redirect' });
+          return;
+        }
+        if (!this._modelsLoaded) {
           this._modelsLoaded = true;
           this.loadModels();
         }
