@@ -1,8 +1,9 @@
 <template>
 	<view v-if="show" class="splash-mask" @touchmove.stop.prevent="noop">
-		<!-- 同图模糊背景：铺满整屏填充留白；前面仍完整展示广告原图（不裁切） -->
+		<!-- 同图模糊背景：铺满整屏填充留白 -->
 		<image class="splash-bg" :src="image" mode="aspectFill"></image>
-		<image class="splash-image" :src="image" mode="aspectFit" @click="onTap"></image>
+		<!-- 广告图：铺满整屏（cover，超出部分按屏幕比例裁切） -->
+		<image class="splash-image" :src="image" mode="aspectFill" @click="onTap"></image>
 		<view class="splash-skip" @click="close">跳过 {{ countdown }}s</view>
 		<view class="splash-footer" @click="onTap">
 			<view class="splash-brand">

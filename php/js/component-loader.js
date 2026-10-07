@@ -152,6 +152,11 @@
         }
     });
 
+    // 同步标记「组件已注入」：main.js 在本脚本之后执行时可直接据此初始化。
+    // 不能只依赖下面 setTimeout 派发的事件——若此刻 main.js 仍在下载，事件会在其注册监听之前
+    // 派发而丢失，导致整页不初始化（AOS 元素停在 opacity:0 → 内容空白）。
+    window.__componentsLoaded = true;
+
     setActiveNav();
     // 通知 main.js 等脚本：组件已注入完成
     // 注意：必须在其他脚本（main.js）注册监听器之后再派发，否则事件会丢失。

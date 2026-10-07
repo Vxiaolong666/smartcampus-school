@@ -176,6 +176,19 @@
 			}
 		},
 		{
+			"path": "pages/webview/index",
+			"style": {
+				"navigationBarTitleText": "网页",
+				"navigationStyle": "default",
+				"app-plus": {
+					"titleNView": {
+						"type": "default",
+						"titleText": "网页"
+					}
+				}
+			}
+		},
+		{
 			"path": "pages/power-fee-batch/index",
 			"style": {
 				"navigationBarTitleText": "批量查询"

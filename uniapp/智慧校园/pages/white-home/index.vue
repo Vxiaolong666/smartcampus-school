@@ -691,25 +691,18 @@ export default {
 		handleSwiperTap(e) {
 			const url = e.currentTarget.dataset.url;
 			if (!url) return;
-			// 站外链接：H5 直接新窗口打开，小程序端复制链接提示
+			// 站外链接（http/https）：H5 直接新窗口打开；App / 小程序走应用内「内置浏览器」页
 			if (/^https?:\/\//i.test(url)) {
 				// #ifdef H5
 				window.open(url, '_blank');
 				return;
 				// #endif
-				uni.setClipboardData({
-					data: url,
-					success: () => uni.showToast({ title: '链接已复制，请在浏览器打开', icon: 'none' }),
-					fail: (err) => {
-						const msg = (err && err.errMsg) || '';
-						if (msg.indexOf('privacy') > -1 || msg.indexOf('auth') > -1) {
-							uni.showToast({ title: '未授权，暂时无法复制链接', icon: 'none' });
-						} else {
-							uni.showToast({ title: '复制失败，请在浏览器中打开链接', icon: 'none' });
-						}
-					}
+				// #ifndef H5
+				uni.navigateTo({
+					url: '/pages/webview/index?url=' + encodeURIComponent(url)
 				});
 				return;
+				// #endif
 			}
 			uni.navigateTo({ url });
 		},
