@@ -45,7 +45,7 @@ $formCaptcha = intval(homeCfg('contact_form_captcha', 1));
         <link rel="stylesheet" href="./css/fancybox.min.css" type="text/css">
         <link rel="stylesheet" href="./css/style.css?v=15" type="text/css">
         <!-- custom css -->
-        <link rel="stylesheet" href="./css/custom.css?v=2" type="text/css">
+        <link rel="stylesheet" href="./css/custom.css?v=4" type="text/css">
         <!-- 腾讯滑块验证（与登录页一致） -->
         <script src="https://ssl.captcha.qq.com/TCaptcha.js"></script>
         <style>

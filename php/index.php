@@ -37,7 +37,7 @@ $siteTitle = htmlspecialchars(conf('SiteName') ?: conf('Name') ?: '智校通', E
         <link rel="stylesheet" href="./css/slick.css" type="text/css">
         <link rel="stylesheet" href="./css/style.css?v=25" type="text/css">
         <!-- custom css -->
-        <link rel="stylesheet" href="./css/custom.css?v=2" type="text/css">
+        <link rel="stylesheet" href="./css/custom.css?v=4" type="text/css">
 </head>
     <body>
         <!-- Preloader Start -->

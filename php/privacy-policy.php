@@ -34,7 +34,7 @@ $siteTitle = htmlspecialchars(conf('SiteName') ?: conf('Name') ?: '智校通', E
         <link rel="stylesheet" href="./css/fancybox.min.css" type="text/css">
         <link rel="stylesheet" href="./css/style.css?v=15" type="text/css">
         <!-- custom css -->
-        <link rel="stylesheet" href="./css/custom.css?v=2" type="text/css">
+        <link rel="stylesheet" href="./css/custom.css?v=4" type="text/css">
 </head>
     <body class="inner-page">
         <!-- Preloader Start -->

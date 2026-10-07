@@ -184,3 +184,50 @@
   border-radius: 6px;
   background: #0160e7;
 }
+
+/* ============================================================
+   官网顶栏：半透明毛玻璃 + 下沿渐隐，柔化与内容区的分界
+   ------------------------------------------------------------
+   原样式：首页透明、内页纯白实底，滚动时才加 backdrop-filter，
+   于是「顶栏内模糊区 / 顶栏外清晰区」在下沿形成硬切断。
+   这里改为把底色与模糊放在 ::before 上，并用 mask 让它在底部平滑淡出，
+   标题/导航文字在 ::before 之上，不受渐隐影响。
+   ============================================================ */
+.header,
+body.inner-page .header {
+  background-color: transparent; /* 交由 ::before 绘制，便于做下沿渐隐 */
+}
+
+.header::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 100%;
+  z-index: -1; /* 顶栏 z-index:999 已形成层叠上下文，-1 仍在页面内容之上 */
+  pointer-events: none;
+  background-color: rgba(255, 255, 255, 0.78);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  /* 下沿渐隐：模糊与底色在顶栏底部平滑淡出，消除硬边 */
+  -webkit-mask-image: linear-gradient(to bottom, #000 58%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 58%, transparent 100%);
+  transition: background-color 0.35s ease-in-out;
+}
+
+/* 滚动后：去掉原来过重的蓝色光晕，只留极淡投影；模糊略微加强 */
+body.scrolled .header {
+  box-shadow: 0 10px 30px rgba(30, 41, 59, 0.06);
+  /* 主题样式（style.css）在滚动态给 .header 自身加了 backdrop-filter，
+     它会对整个顶栏矩形做统一模糊、在下沿硬切断，从而盖掉 ::before 的渐隐，
+     导致"一滚动渐隐就失效"；这里关掉它，模糊统一由带渐隐的 ::before 提供 */
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+body.scrolled .header::before {
+  background-color: rgba(255, 255, 255, 0.86);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
