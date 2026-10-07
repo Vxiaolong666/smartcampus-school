@@ -2,6 +2,10 @@
 $title = '教务账号绑定';
 $requireLogin = true;
 include('./head.php');
+// 功能开关 / 公告相关函数（isFeatureEnabled、checkFeatureAccess、renderFeatureAnnouncement…）
+// 定义在 funsion/feature_settings.php，Core_brain.php 不会自动引入；
+// 漏掉本行会在下面调用时触发「Call to undefined function」，页面只剩框架、主内容空白
+require_once('../funsion/feature_settings.php');
 
 $userId = $_SESSION['userId'];
 

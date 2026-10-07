@@ -674,6 +674,8 @@ switch($act){
         $isEnabled = intval($_POST['is_enabled']);
         $announcement = addslashes(trim($_POST['announcement']));
         $announcementType = addslashes($_POST['announcement_type']);
+        // 公告是否跟随总开关：1=跟随（默认，总开关开启时被总公告统一替换），0=不跟随
+        $followGlobal = (isset($_POST['follow_global']) && intval($_POST['follow_global']) === 1) ? 1 : 0;
         
         if ($id <= 0) {
             exit('{"code":-1,"msg":"参数错误"}');
@@ -687,7 +689,8 @@ switch($act){
         $sql = "UPDATE nteam_feature_settings SET 
                 is_enabled='$isEnabled', 
                 announcement='$announcement', 
-                announcement_type='$announcementType' 
+                announcement_type='$announcementType',
+                follow_global='$followGlobal' 
                 WHERE id='$id'";
         
         if ($DB->exec($sql) !== false) {
@@ -729,6 +732,8 @@ switch($act){
             $isEnabled   = (isset($_POST['is_enabled']) && intval($_POST['is_enabled']) === 1) ? 1 : 0;
             $announcement     = isset($_POST['announcement']) ? trim($_POST['announcement']) : '';
             $announcementType = isset($_POST['announcement_type']) ? trim($_POST['announcement_type']) : 'info';
+            // 公告是否跟随总开关：1=跟随（默认），0=不跟随
+            $followGlobal = (isset($_POST['follow_global']) && intval($_POST['follow_global']) === 1) ? 1 : 0;
 
             if ($featureName === '') exit('{"code":-1,"msg":"请填写功能名称"}');
             if ($featureKey === '')  exit('{"code":-1,"msg":"请填写功能标识"}');
@@ -751,9 +756,9 @@ switch($act){
             if ($dup) exit('{"code":-1,"msg":"功能标识「' . $featureKey . '」已存在，请换一个"}');
 
             $sql = "INSERT INTO nteam_feature_settings
-                    (`feature_key`,`feature_name`,`is_enabled`,`announcement`,`announcement_type`,`updated_at`)
+                    (`feature_key`,`feature_name`,`is_enabled`,`announcement`,`announcement_type`,`follow_global`,`updated_at`)
                     VALUES ('" . addslashes($featureKey) . "','" . addslashes($featureName) . "','" . $isEnabled . "','"
-                    . addslashes($announcement) . "','" . addslashes($announcementType) . "', NOW())";
+                    . addslashes($announcement) . "','" . addslashes($announcementType) . "','" . $followGlobal . "', NOW())";
 
             if ($DB->exec($sql) !== false) {
                 $newId = intval($DB->lastInsertId());
@@ -788,6 +793,28 @@ switch($act){
             exit('{"code":0,"msg":"已'.$statusText.'"}');
         } else {
             exit('{"code":-1,"msg":"操作失败"}');
+        }
+    break;
+    
+    // ===== 功能设置：快捷切换「公告是否跟随总开关」（点击表格徽标） =====
+    case 'toggle_feature_follow':
+        if(!$isLogin)exit('{"code":-1,"msg":"未登录"}');
+        if($adminData['adminRank']!=1){exit('{"code":-1,"msg":"您的账号没有权限使用此功能！"}');}
+        {
+            $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
+            $followGlobal = (isset($_POST['follow_global']) && intval($_POST['follow_global']) === 1) ? 1 : 0;
+
+            if ($id <= 0) exit('{"code":-1,"msg":"参数错误"}');
+
+            $existing = $DB->getRow("SELECT * FROM nteam_feature_settings WHERE id='$id'");
+            if (!$existing) exit('{"code":-1,"msg":"功能设置不存在"}');
+
+            if ($DB->exec("UPDATE nteam_feature_settings SET follow_global='$followGlobal', updated_at=NOW() WHERE id='$id'") !== false) {
+                $text = $followGlobal === 1 ? '跟随总开关' : '不跟随总开关';
+                $DB->query("insert into `nteam_log` (`adminUser`,`type`,`data`,`ip`,`city`) values ('" . $_SESSION['adminUser'] . "','将功能设置「" . addslashes($existing['feature_name']) . "」公告设为" . $text . "', NOW(), '".$ip."', '')");
+                exit('{"code":0,"msg":"已设为' . $text . '"}');
+            }
+            exit('{"code":-1,"msg":"操作失败['.$DB->error().']"}');
         }
     break;
     

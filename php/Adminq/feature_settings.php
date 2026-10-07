@@ -9,6 +9,10 @@ if($adminData['adminRank']== 2) {
 }
 include './head.php';
 
+require_once('../funsion/feature_settings.php');
+// 老库自动补齐「公告是否跟随总开关」字段（follow_global），与后台其它配置表做法一致
+ensureFeatureSettingsColumn($DB);
+
 // 总公告（全局统一公告）：作为「总标识」在顶部卡片单独维护，不在下方功能列表中展示
 $globalAnnouncement = $DB->getRow("SELECT * FROM nteam_feature_settings WHERE feature_key='global_announcement'");
 $globalEnabled = $globalAnnouncement && intval($globalAnnouncement['is_enabled']) === 1;
@@ -53,7 +57,8 @@ $features = $DB->query("SELECT * FROM nteam_feature_settings WHERE feature_key <
             <div class="block-content">
                 <div class="alert alert-info fs-sm">
                     <i class="fa fa-info-circle me-1"></i>
-                    开启总公告后，<b>所有功能页面统一显示</b>下方公告内容，忽略各功能自己的公告；关闭后各功能按各自的公告显示。
+                    开启总公告后，<b>勾选了「跟随总开关」的功能页面</b>统一显示下方公告内容，忽略该功能自己的公告；关闭后所有功能按各自的公告显示。
+                    功能表格中<b>取消勾选「跟随总开关」</b>的功能，不受此开关影响，始终显示自己的公告。
                 </div>
                 <form id="globalAnnouncementForm" onsubmit="return false;">
                     <div class="mb-4">
@@ -120,6 +125,7 @@ $features = $DB->query("SELECT * FROM nteam_feature_settings WHERE feature_key <
                                 <th class="text-center" style="min-width: 80px;">状态</th>
                                 <th style="min-width: 200px;">公告内容</th>
                                 <th style="min-width: 80px;">公告类型</th>
+                                <th class="text-center" style="min-width: 90px;">跟随总开关</th>
                                 <th class="text-center" style="min-width: 140px;">更新时间</th>
                                 <th class="text-center" style="min-width: 80px;">操作</th>
                             </tr>
@@ -154,6 +160,14 @@ $features = $DB->query("SELECT * FROM nteam_feature_settings WHERE feature_key <
                                     ];
                                     echo $typeLabels[$feature['announcement_type']] ?? $typeLabels['info'];
                                     ?>
+                                </td>
+                                <td class="text-center">
+                                    <?php $fgFollow = (!isset($feature['follow_global']) || intval($feature['follow_global']) === 1) ? 1 : 0; ?>
+                                    <?php if($fgFollow === 1): ?>
+                                    <span id="follow-badge-<?php echo $feature['id']; ?>" class="badge bg-primary status-toggle" onclick="toggleFollowGlobal(<?php echo $feature['id']; ?>, 1)" title="点击改为「不跟随」：不受总开关影响，始终显示自己的公告">跟随</span>
+                                    <?php else: ?>
+                                    <span id="follow-badge-<?php echo $feature['id']; ?>" class="badge bg-secondary status-toggle" onclick="toggleFollowGlobal(<?php echo $feature['id']; ?>, 0)" title="点击改为「跟随」：总开关开启时被总公告统一替换">不跟随</span>
+                                    <?php endif; ?>
                                 </td>
                                 <td class="text-center">
                                     <span class="text-muted fs-sm"><?php echo $feature['updated_at']; ?></span>
@@ -227,6 +241,14 @@ $features = $DB->query("SELECT * FROM nteam_feature_settings WHERE feature_key <
                             <option value="danger">危险（红色）</option>
                         </select>
                     </div>
+                    <div class="mb-4">
+                        <label class="form-label"><b>公告是否跟随总开关</b></label>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="follow_global" checked>
+                            <label class="form-check-label" for="follow_global">跟随（总开关开启时，本功能公告统一显示总公告）</label>
+                        </div>
+                        <div class="form-text">不勾选则不受总开关影响，始终显示上方「公告内容」。</div>
+                    </div>
                 </form>
             </div>
             <div class="modal-footer">
@@ -288,6 +310,14 @@ $features = $DB->query("SELECT * FROM nteam_feature_settings WHERE feature_key <
                             <option value="danger">危险（红色）</option>
                         </select>
                     </div>
+                    <div class="mb-4">
+                        <label class="form-label"><b>公告是否跟随总开关</b></label>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="add_follow_global" checked>
+                            <label class="form-check-label" for="add_follow_global">跟随（总开关开启时，本功能公告统一显示总公告）</label>
+                        </div>
+                        <div class="form-text">不勾选则不受总开关影响，始终显示上方「公告内容」。</div>
+                    </div>
                     <div class="alert alert-info mb-0 fs-sm">
                         <i class="fa fa-info-circle me-1"></i>
                         功能标识需与前端代码约定一致才能在页面上生效（例如 <code>web_ai_chat</code> 对应网页端 / App 端「AI 对话」）。
@@ -345,6 +375,46 @@ function toggleFeature(id, current) {
     });
 }
 
+// ===== 快捷切换「公告是否跟随总开关」（点击表格徽标） =====
+function toggleFollowGlobal(id, current) {
+    var badge = document.getElementById('follow-badge-' + id);
+    if (!badge) return;
+    var newValue = current == 1 ? 0 : 1;
+
+    var ii = layer.load(2, {shade: [0.1, '#fff']});
+    $.ajax({
+        type: 'POST',
+        url: 'Ajax.php?act=toggle_feature_follow',
+        data: {id: id, follow_global: newValue},
+        dataType: 'json',
+        success: function(data) {
+            layer.close(ii);
+            if (data.code == 0) {
+                if (newValue == 1) {
+                    badge.className = 'badge bg-primary status-toggle';
+                    badge.title = '点击改为「不跟随」：不受总开关影响，始终显示自己的公告';
+                    badge.textContent = '跟随';
+                } else {
+                    badge.className = 'badge bg-secondary status-toggle';
+                    badge.title = '点击改为「跟随」：总开关开启时被总公告统一替换';
+                    badge.textContent = '不跟随';
+                }
+                badge.setAttribute('onclick', 'toggleFollowGlobal(' + id + ', ' + newValue + ')');
+                // 同步内存数据，避免紧接着点「编辑」时回填旧状态
+                var f = (featureData || []).find(function (item) { return item.id == id; });
+                if (f) { f.follow_global = newValue; }
+                layer.msg(data.msg, {icon: 1});
+            } else {
+                layer.alert(data.msg, {icon: 2});
+            }
+        },
+        error: function() {
+            layer.close(ii);
+            layer.msg('服务器错误');
+        }
+    });
+}
+
 function editFeature(id) {
     var feature = featureData.find(function(f) { return f.id == id; });
     if (!feature) return;
@@ -354,6 +424,9 @@ function editFeature(id) {
     document.getElementById('feature_key').value = feature.feature_key;
     document.getElementById('announcement').value = feature.announcement || '';
     document.getElementById('announcement_type').value = feature.announcement_type || 'info';
+    // 未设置过该字段的旧数据按「跟随总开关」处理
+    document.getElementById('follow_global').checked =
+        (feature.follow_global === undefined || feature.follow_global === null || Number(feature.follow_global) === 1);
     
     if (feature.is_enabled == 1) {
         document.getElementById('enabled_1').checked = true;
@@ -370,6 +443,7 @@ function saveFeature() {
     var is_enabled = document.querySelector('input[name="is_enabled"]:checked').value;
     var announcement = document.getElementById('announcement').value;
     var announcement_type = document.getElementById('announcement_type').value;
+    var follow_global = document.getElementById('follow_global').checked ? 1 : 0;
     
     var ii = layer.load(2, {shade:[0.1,'#fff']});
     
@@ -380,7 +454,8 @@ function saveFeature() {
             id: id,
             is_enabled: is_enabled,
             announcement: announcement,
-            announcement_type: announcement_type
+            announcement_type: announcement_type,
+            follow_global: follow_global
         },
         dataType: 'json',
         success: function(data) {
@@ -453,6 +528,7 @@ function openAddModal() {
     document.getElementById('add_enabled_1').checked = true;
     document.getElementById('add_announcement').value = '';
     document.getElementById('add_announcement_type').value = 'info';
+    document.getElementById('add_follow_global').checked = true;
     new bootstrap.Modal(document.getElementById('addModal')).show();
 }
 
@@ -493,7 +569,8 @@ function saveNewFeature() {
             feature_key: key,
             is_enabled: enabledInput ? enabledInput.value : 1,
             announcement: announcement,
-            announcement_type: announcementType
+            announcement_type: announcementType,
+            follow_global: document.getElementById('add_follow_global').checked ? 1 : 0
         },
         dataType: 'json',
         success: function (data) {

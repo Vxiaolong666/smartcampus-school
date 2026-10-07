@@ -150,6 +150,14 @@ function getUserDisplayName($nickname, $username) {
             border-radius: 0.2rem;
             font-size: 0.9em;
         }
+        /* 图片：Markdown 内嵌大图按容器宽度等比缩放，
+           不再以原始像素尺寸渲染导致撑破布局、出现横向滚动条
+           （注销协议、AI 分析弹窗、AI 对话等所有 Markdown 渲染处通用） */
+        .markdown-body img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 0.25rem;
+        }
 
         @media (max-width: 991.98px) {
             #page-container {

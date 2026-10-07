@@ -3817,7 +3817,9 @@ switch($act) {
     
     case 'get_feature_settings':
         require_once 'funsion/feature_settings.php';
-        // 总公告：开启时所有功能的公告统一替换为总公告内容（未开启返回 null，各走各自公告）
+        // 老库自动补齐「公告是否跟随总开关」字段（读取不到时按「跟随」处理）
+        ensureFeatureSettingsColumn($DB);
+        // 总公告：开启时，勾选「跟随总开关」的功能其公告统一替换为总公告内容（未开启返回 null，各走各自公告）
         $globalAnnouncement = getGlobalAnnouncement($DB);
 
         $keys = isset($_GET['keys']) ? trim($_GET['keys']) : '';
@@ -3825,9 +3827,9 @@ switch($act) {
         if (!empty($keys)) {
             $keyArray = array_map('addslashes', array_filter(explode(',', $keys)));
             $keyList = "'" . implode("','", $keyArray) . "'";
-            $features = $DB->query("SELECT feature_key, feature_name, is_enabled, announcement, announcement_type FROM nteam_feature_settings WHERE feature_key IN ($keyList)")->fetchAll();
+            $features = $DB->query("SELECT feature_key, feature_name, is_enabled, announcement, announcement_type, follow_global FROM nteam_feature_settings WHERE feature_key IN ($keyList)")->fetchAll();
         } else {
-            $features = $DB->query("SELECT feature_key, feature_name, is_enabled, announcement, announcement_type FROM nteam_feature_settings ORDER BY id ASC")->fetchAll();
+            $features = $DB->query("SELECT feature_key, feature_name, is_enabled, announcement, announcement_type, follow_global FROM nteam_feature_settings ORDER BY id ASC")->fetchAll();
         }
         
         $result = [];
@@ -3838,7 +3840,9 @@ switch($act) {
             }
             $announcement = $feature['announcement'];
             $announcementType = $feature['announcement_type'] ?: 'info';
-            if ($globalAnnouncement !== null) {
+            // 未勾选「跟随总开关」的功能不受总公告影响，始终显示自己的公告
+            $followGlobal = !isset($feature['follow_global']) || intval($feature['follow_global']) === 1;
+            if ($globalAnnouncement !== null && $followGlobal) {
                 $announcement = $globalAnnouncement['content'];
                 $announcementType = $globalAnnouncement['type'];
             }

@@ -64,7 +64,7 @@ include('./head.php');
                     <div class="col-lg-8">
                         <div class="d-flex mb-3">
                             <a href="agreement.php" class="btn btn-alt-secondary btn-sm">
-                                <i class="fa fa-arrow-left me-1"></i>返回协议中心
+                                <i class="fa fa-chevron-left me-1"></i>返回协议中心
                             </a>
                         </div>
 
@@ -106,7 +106,7 @@ include('./head.php');
                                     <i class="fa fa-headset me-1"></i>联系我们
                                 </a>
                                 <a class="btn btn-alt-secondary btn-sm" href="agreement.php">
-                                    <i class="fa fa-list me-1"></i>返回协议中心
+                                    <i class="fa fa-chevron-left me-1"></i>返回协议中心
                                 </a>
                             </div>
                         </article>
