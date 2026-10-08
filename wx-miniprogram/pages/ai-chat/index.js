@@ -61,7 +61,7 @@ Page({
     }
   },
 
-  // 校验后台「微信小程序端AI功能」开关：关闭时展示遮罩
+  // 校验后台「微信小程序端AI功能」开关：关闭时改用「用电统计」页代替本页
   checkAiFeature() {
     feature.checkFeature('wx_ai_chat')
       .then((res) => {
@@ -71,12 +71,32 @@ Page({
         //  - 图标：公告类型对应的图标（feature.getAnnouncementIcon），未配置公告时置空 → 用内置红叉兜底
         const ann = res && res.announcement;
         const hasAnn = !!(ann && ann.content);
-        this.setData({
-          featureDisabled: disabled,
-          featureTip: hasAnn ? ann.content : '微信小程序不支持该功能，请前往网页或APP端使用',
-          featureIcon: hasAnn ? feature.getAnnouncementIcon(ann.type) : ''
-        });
-        if (disabled) return;
+        // 展示「功能未启用」遮罩（仅跳转失败时作为兜底）
+        const showDisabledTip = () => {
+          this.setData({
+            featureDisabled: true,
+            featureTip: hasAnn ? ann.content : '微信小程序不支持该功能，请前往网页或APP端使用',
+            featureIcon: hasAnn ? feature.getAnnouncementIcon(ann.type) : ''
+          });
+        };
+
+        if (disabled) {
+          // 后台未启用小程序端 AI 功能：按后台「专属设置项」决定处理方式
+          if (res && res.disabledAction === 'mask') {
+            // 方式一：在本页直接展示「功能未启用」遮罩；Tab 文案保持/恢复「AI助手」
+            feature.setAiTabText(false);
+            showDisabledTip();
+            return;
+          }
+          // 方式二（默认）：Tab 文案改为「用电统计」，并用「用电统计」页代替 AI 页。
+          // 直接跳转（不先显示遮罩，避免页面闪一下）；跳转失败才回落到「功能未启用」提示。
+          feature.setAiTabText(true);
+          feature.goPowerStatisticsInsteadOfAi(showDisabledTip);
+          return;
+        }
+        // 功能可用（含后台重新启用）：清掉禁用状态，并确保 Tab 文案恢复为「AI助手」
+        feature.setAiTabText(false);
+        this.setData({ featureDisabled: false });
         // 功能可用但未登录：与「课程」Tab 一致，先说明登录用途再跳登录页。
         // tab 页 onLoad 只执行一次，这里每次进入都会校验，保证再次点「AI 助手」仍会提示。
         if (!api.isLoggedIn()) {

@@ -44,11 +44,17 @@ function isFeatureEnabled($DB, $featureKey) {
 }
 
 /**
- * 兼容老库：确保 nteam_feature_settings 存在 follow_global 字段
- * follow_global —— 公告是否跟随总开关：
- *   1 = 跟随（默认，总开关开启时被总公告统一替换）
- *   0 = 不跟随（不受总开关影响，始终显示该功能自己的公告）
- * 读取不到该字段时按「跟随」处理，所以即便迁移失败也不会改变原有行为。
+ * 兼容老库：确保 nteam_feature_settings 具备以下字段（自动迁移，无需手动执行 SQL）
+ *
+ * - follow_global —— 公告是否跟随总开关：
+ *     1 = 跟随（默认，总开关开启时被总公告统一替换）
+ *     0 = 不跟随（不受总开关影响，始终显示该功能自己的公告）
+ * - disabled_action —— 功能未启用时的处理方式（当前用于小程序端「AI 对话」）：
+ *     mask     = 在功能页面直接展示「功能未启用」遮罩
+ *     redirect = 跳转到用电统计页（pages/power-statistics/index）
+ *   默认 redirect：与目前已上线的行为保持一致。
+ *
+ * 读取不到字段时按上述默认值处理，因此即便迁移失败也不会改变原有行为。
  */
 function ensureFeatureSettingsColumn($DB) {
     static $done = null;
@@ -63,6 +69,10 @@ function ensureFeatureSettingsColumn($DB) {
         $col = $DB->getRow("SHOW COLUMNS FROM nteam_feature_settings LIKE 'follow_global'");
         if (!$col) {
             $DB->exec("ALTER TABLE nteam_feature_settings ADD COLUMN follow_global TINYINT(1) NOT NULL DEFAULT 1 COMMENT '公告是否跟随总开关：1=跟随，0=不跟随'");
+        }
+        $actionCol = $DB->getRow("SHOW COLUMNS FROM nteam_feature_settings LIKE 'disabled_action'");
+        if (!$actionCol) {
+            $DB->exec("ALTER TABLE nteam_feature_settings ADD COLUMN disabled_action VARCHAR(32) NOT NULL DEFAULT 'redirect' COMMENT '功能未启用时的处理方式（小程序端AI对话专用）：mask=展示遮罩，redirect=跳转用电统计页'");
         }
         $done = true;
     } catch (Exception $e) {

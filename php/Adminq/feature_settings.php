@@ -10,8 +10,13 @@ if($adminData['adminRank']== 2) {
 include './head.php';
 
 require_once('../funsion/feature_settings.php');
-// 老库自动补齐「公告是否跟随总开关」字段（follow_global），与后台其它配置表做法一致
+// 老库自动补齐「公告是否跟随总开关」「未启用时的处理方式」字段，与后台其它配置表做法一致
 ensureFeatureSettingsColumn($DB);
+
+// 「AI 对话（小程序端）」功能行：其「未启用时的处理方式」在本页用专属卡片单独维护
+// mask=在功能页面直接展示遮罩；redirect=跳转到用电统计页（默认，保持现有行为）
+$aiChatRow = $DB->getRow("SELECT * FROM nteam_feature_settings WHERE feature_key='wx_ai_chat'");
+$aiDisabledAction = ($aiChatRow && isset($aiChatRow['disabled_action']) && $aiChatRow['disabled_action'] === 'mask') ? 'mask' : 'redirect';
 
 // 总公告（全局统一公告）：作为「总标识」在顶部卡片单独维护，不在下方功能列表中展示
 $globalAnnouncement = $DB->getRow("SELECT * FROM nteam_feature_settings WHERE feature_key='global_announcement'");
@@ -90,6 +95,43 @@ $features = $DB->query("SELECT * FROM nteam_feature_settings WHERE feature_key <
                         </button>
                     </div>
                 </form>
+            </div>
+        </div>
+
+        <!-- ===== 专属设置项：小程序端「AI 对话」未启用时的处理方式 ===== -->
+        <div class="block block-rounded block-bordered">
+            <div class="block-header block-header-default">
+                <h3 class="block-title"><i class="fa fa-robot me-1"></i>AI 对话（微信小程序端）</h3>
+                <div class="block-options">
+                    <span class="badge bg-info">未启用时</span>
+                </div>
+            </div>
+            <div class="block-content">
+                <div class="alert alert-info fs-sm">
+                    <i class="fa fa-info-circle me-1"></i>
+                    当功能标识 <code>wx_ai_chat</code>（微信小程序端AI功能）<b>未启用</b>时，小程序底部第三个 Tab（原「AI助手」）的处理方式：
+                </div>
+                <div class="mb-4">
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="radio" name="aiDisabledAction" id="ai_action_mask" value="mask" <?php echo $aiDisabledAction === 'mask' ? 'checked' : ''; ?>>
+                        <label class="form-check-label" for="ai_action_mask">
+                            <b>页面直接展示遮罩</b>
+                            <span class="text-muted fs-sm d-block">Tab 仍显示「AI助手」，点进去在 AI 页内展示「功能未启用」遮罩提示</span>
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="aiDisabledAction" id="ai_action_redirect" value="redirect" <?php echo $aiDisabledAction === 'redirect' ? 'checked' : ''; ?>>
+                        <label class="form-check-label" for="ai_action_redirect">
+                            <b>跳转到用电统计页</b>
+                            <span class="text-muted fs-sm d-block">Tab 文案自动改为「用电统计」（图标不变），点进去直接打开 <code>pages/power-statistics/index</code></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <button type="button" class="btn btn-primary" onclick="saveAiDisabledAction()">
+                        <i class="fa fa-check me-1"></i>保存设置
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -572,6 +614,41 @@ function saveNewFeature() {
             announcement_type: announcementType,
             follow_global: document.getElementById('add_follow_global').checked ? 1 : 0
         },
+        dataType: 'json',
+        success: function (data) {
+            layer.close(ii);
+            if (data.code == 0) {
+                layer.alert(data.msg, {
+                    icon: 1,
+                    closeBtn: false
+                }, function () {
+                    window.location.reload();
+                });
+            } else {
+                layer.alert(data.msg, {icon: 2});
+            }
+        },
+        error: function () {
+            layer.close(ii);
+            layer.msg('服务器错误');
+        }
+    });
+    return false;
+}
+
+// ===== AI 对话（小程序端）未启用时的处理方式 =====
+function saveAiDisabledAction() {
+    var checked = document.querySelector('input[name="aiDisabledAction"]:checked');
+    if (!checked) {
+        layer.msg('请选择一种处理方式', {icon: 0});
+        return false;
+    }
+
+    var ii = layer.load(2, {shade: [0.1, '#fff']});
+    $.ajax({
+        type: 'POST',
+        url: 'Ajax.php?act=save_ai_disabled_action',
+        data: {disabled_action: checked.value},
         dataType: 'json',
         success: function (data) {
             layer.close(ii);

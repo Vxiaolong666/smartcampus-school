@@ -818,6 +818,40 @@ switch($act){
         }
     break;
     
+    // ===== 功能设置：「AI 对话（小程序端）未启用时的处理方式」=====
+    // 存在 wx_ai_chat 功能行上：mask=在功能页面直接展示遮罩，redirect=跳转到用电统计页
+    case 'save_ai_disabled_action':
+        if(!$isLogin)exit('{"code":-1,"msg":"未登录"}');
+        if($adminData['adminRank']!=1){exit('{"code":-1,"msg":"您的账号没有权限使用此功能！"}');}
+        {
+            $action = isset($_POST['disabled_action']) ? trim($_POST['disabled_action']) : '';
+            if (!in_array($action, array('mask', 'redirect'), true)) {
+                $action = 'redirect';
+            }
+            $actionEsc = addslashes($action);
+
+            require_once('../funsion/feature_settings.php');
+            ensureFeatureSettingsColumn($DB);
+
+            $existing = $DB->getRow("SELECT id FROM nteam_feature_settings WHERE feature_key='wx_ai_chat'");
+            if ($existing) {
+                $ok = $DB->exec("UPDATE nteam_feature_settings SET disabled_action='$actionEsc', updated_at=NOW() WHERE feature_key='wx_ai_chat'") !== false;
+            } else {
+                // 功能行不存在时按默认值创建：is_enabled=1 与「读不到该标识即视为启用」的原有行为一致
+                $ok = $DB->exec("INSERT INTO nteam_feature_settings
+                        (`feature_key`,`feature_name`,`is_enabled`,`announcement`,`announcement_type`,`follow_global`,`disabled_action`,`updated_at`)
+                        VALUES ('wx_ai_chat','微信小程序端AI功能',1,'','info',1,'$actionEsc', NOW())") !== false;
+            }
+
+            if ($ok) {
+                $text = $action === 'mask' ? '在功能页面直接展示遮罩' : '跳转到用电统计页';
+                $DB->query("insert into `nteam_log` (`adminUser`,`type`,`data`,`ip`,`city`) values ('" . $_SESSION['adminUser'] . "','将小程序端 AI 对话未启用时的处理方式设为：$text', NOW(), '" . $ip . "', '')");
+                exit('{"code":0,"msg":"保存成功"}');
+            }
+            exit('{"code":-1,"msg":"保存失败['.$DB->error().']"}');
+        }
+    break;
+
     // ===== 功能设置：保存「总公告」（全局统一公告）=====
     // 以保留标识 global_announcement 存储一行：is_enabled 为总开关，announcement/announcement_type 为统一公告内容。
     // 开启后所有页面（三端接口 + 网页端渲染）统一替换为该公告，关闭后各功能按各自的公告显示。

@@ -395,7 +395,7 @@ include('../Common/Core_brain.php');
                 <span class="smini-visible">
                     <i class="fa fa-circle-notch text-primary"></i>
                 </span>
-                <span class="smini-hide fs-5 tracking-wider"><?php echo conf('Name');?></span>
+                <span class="smini-hide fs-5 tracking-wider"><?php echo conf('Name');?>管理</span>
             </a>
             <div>
                 <button type="button" class="btn btn-sm btn-alt-secondary" data-toggle="layout" data-action="dark_mode_toggle">

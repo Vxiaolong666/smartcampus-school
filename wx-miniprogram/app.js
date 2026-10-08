@@ -32,11 +32,14 @@ App({
   onLaunch() {
     // 检查是否需要跳转到维护页面
     this.checkMaintenanceTime();
+    // 同步底部「AI 对话」Tab 文案：后台未启用小程序端 AI 功能时显示「用电统计」
+    feature.syncAiTabBar();
   },
 
   onShow() {
     // 小程序从后台进入前台时也检查
     this.checkMaintenanceTime();
+    feature.syncAiTabBar();
   },
 
   globalData: {

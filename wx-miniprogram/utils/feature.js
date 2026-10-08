@@ -83,7 +83,7 @@ const getFeatureAnnouncement = async (featureKey) => {
 const checkFeature = async (featureKey) => {
     const settings = await getFeatureSettings();
     if (!settings || !settings[featureKey]) {
-        return { enabled: true, announcement: null, featureName: '' };
+        return { enabled: true, announcement: null, featureName: '', disabledAction: 'redirect' };
     }
     const feature = settings[featureKey];
     return {
@@ -92,7 +92,10 @@ const checkFeature = async (featureKey) => {
             content: feature.announcement,
             type: feature.announcement_type || 'info'
         } : null,
-        featureName: feature.feature_name
+        featureName: feature.feature_name,
+        // 功能未启用时的处理方式（后台专属设置项，目前用于小程序端「AI 对话」）：
+        // mask=页面展示遮罩；redirect=跳转到用电统计页
+        disabledAction: feature.disabled_action === 'mask' ? 'mask' : 'redirect'
     };
 };
 
@@ -270,6 +273,147 @@ const getAnnouncementIcon = (type) => {
     return icons[type] || icons['info'];
 };
 
+/* ==================== 「AI 对话」Tab 替换（按后台专属设置处理） ==================== */
+
+// 第 3 个 Tab 的位置与文案（与 app.json 的 tabBar.list 顺序一致：首页 / 课程 / AI助手 / 我的）
+const AI_TAB_INDEX = 2;
+const AI_TAB_TEXT_DEFAULT = 'AI助手';
+const AI_TAB_TEXT_DISABLED = '用电统计';
+// 「AI 对话」功能标识
+const AI_CHAT_FEATURE_KEY = 'wx_ai_chat';
+// 未启用且处理方式为「跳转」时，用于替代 AI 页的页面（用电统计）
+const POWER_STATISTICS_PAGE = '/pages/power-statistics/index';
+// 自动恢复轮询间隔（毫秒）：仅在 Tab 处于「用电统计」状态期间生效
+const AI_REVERT_INTERVAL = 30000;
+
+// 最近一次已知的「Tab 是否已替换为用电统计」状态（null=尚未获取过），供 reapplyAiTabText 使用
+let lastAiDisabled = null;
+// 自动恢复轮询定时器
+let aiRevertTimer = null;
+
+/**
+ * 按后台设置计算 Tab 状态
+ * 只有「功能未启用 且 处理方式为跳转」才替换为「用电统计」；
+ * 已启用 / 处理方式为遮罩 时都显示「AI助手」（遮罩方式下由 AI 页自己展示提示）
+ * @param {Object|null} item - 功能设置项（读不到时视为已启用，与 checkFeature 默认行为一致）
+ * @returns {{enabled:boolean, action:'mask'|'redirect', disabled:boolean}}
+ */
+const resolveAiTabState = (item) => {
+    const enabled = !item ? true : item.is_enabled === 1;
+    const action = (item && item.disabled_action === 'mask') ? 'mask' : 'redirect';
+    return { enabled: enabled, action: action, disabled: !enabled && action === 'redirect' };
+};
+
+/** 停止「AI 功能重新启用」的自动恢复轮询 */
+const stopAiRevertWatcher = () => {
+    if (aiRevertTimer) {
+        clearInterval(aiRevertTimer);
+        aiRevertTimer = null;
+    }
+};
+
+/**
+ * 启动自动恢复轮询：Tab 处于「用电统计」期间，定时重新检测后台开关与处理方式；
+ * 一旦 AI 功能重新启用（或处理方式改为遮罩），文案会自动恢复为「AI助手」并停止轮询。
+ * 非替换状态下不会启动轮询，因此正常使用时没有额外请求。
+ */
+const startAiRevertWatcher = () => {
+    if (aiRevertTimer) return;
+    aiRevertTimer = setInterval(() => {
+        if (lastAiDisabled !== true) {
+            stopAiRevertWatcher();
+            return;
+        }
+        syncAiTabBar();
+    }, AI_REVERT_INTERVAL);
+};
+
+/**
+ * 设置第 3 个 Tab 的文案（不发起请求）
+ * 图标始终沿用 app.json 中配置的 AI 图标，不做改动
+ * @param {boolean} disabled - 是否替换为「用电统计」
+ */
+const setAiTabText = (disabled) => {
+    lastAiDisabled = !!disabled;
+    try {
+        wx.setTabBarItem({
+            index: AI_TAB_INDEX,
+            text: disabled ? AI_TAB_TEXT_DISABLED : AI_TAB_TEXT_DEFAULT,
+            fail: () => {}
+        });
+    } catch (e) {
+        // 非小程序端 / 基础库不支持时忽略
+    }
+    // 处于替换状态时启动自动恢复轮询；一旦恢复（或本来就是正常状态）立即停止
+    if (lastAiDisabled) {
+        startAiRevertWatcher();
+    } else {
+        stopAiRevertWatcher();
+    }
+};
+
+/**
+ * 按最近一次已知状态重新设置 Tab 文案（不发起请求）
+ *
+ * 用途：wx.showTabBar() 会把 Tab 文案重置回 app.json 中配置的「AI助手」，
+ * 因此每次 showTabBar 之后都要重新应用一次（如首页开屏结束后、页面卸载时的兜底恢复）。
+ * @returns {boolean} 是否已有已知状态并完成重放
+ */
+const reapplyAiTabText = () => {
+    if (lastAiDisabled === null) return false;
+    setAiTabText(lastAiDisabled);
+    return true;
+};
+
+/**
+ * 拉取「AI 对话」开关与未启用处理方式，并同步第 3 个 Tab 文案
+ * - 已启用 → 「AI助手」（后台重新启用后自动恢复）
+ * - 未启用 + 处理方式为跳转 → 「用电统计」
+ * - 未启用 + 处理方式为遮罩 → 仍显示「AI助手」（由 AI 页展示遮罩提示）
+ * @async
+ * @returns {Promise<{enabled:boolean, action:'mask'|'redirect', disabled:boolean}>}
+ */
+const syncAiTabBar = async () => {
+    let state = { enabled: true, action: 'redirect', disabled: false };
+    try {
+        const settings = await getFeatureSettings();
+        state = resolveAiTabState(settings ? settings[AI_CHAT_FEATURE_KEY] : null);
+    } catch (e) {
+        return state; // 接口异常时保持原状，避免误改文案
+    }
+    setAiTabText(state.disabled);
+    return state;
+};
+
+/**
+ * 读取「AI 对话」未启用时的处理方式（后台专属设置项）
+ * @async
+ * @returns {Promise<'mask'|'redirect'>} mask=页面展示遮罩；redirect=跳转到用电统计页（默认）
+ */
+const getAiDisabledAction = async () => {
+    const settings = await getFeatureSettings();
+    return resolveAiTabState(settings ? settings[AI_CHAT_FEATURE_KEY] : null).action;
+};
+
+/**
+ * AI 功能未启用、且处理方式为「跳转」时，用「用电统计」页代替 AI 页
+ *
+ * 原生 tabBar 只能改文字/图标、不能改跳转页面，
+ * 因此进入 AI 页后跳转到用电统计页。
+ * 用 redirectTo 不留返回栈，避免返回后又落回 AI 页来回跳；
+ * 用电统计页顶部返回按钮在无上一页时会回到首页（见 cb-nav-bar 的 handleBack），用户不会被困住。
+ *
+ * @param {Function} [onFail] 跳转失败时的回调（用于保留原「功能未启用」提示兜底）
+ */
+const goPowerStatisticsInsteadOfAi = (onFail) => {
+    wx.redirectTo({
+        url: POWER_STATISTICS_PAGE,
+        fail: () => {
+            if (typeof onFail === 'function') onFail();
+        }
+    });
+};
+
 module.exports = {
     getFeatureSettings,
     isFeatureEnabled,
@@ -279,5 +423,10 @@ module.exports = {
     isAcademicNotBound,
     showDisabledAlert,
     getAnnouncementClass,
-    getAnnouncementIcon
+    getAnnouncementIcon,
+    setAiTabText,
+    reapplyAiTabText,
+    syncAiTabBar,
+    getAiDisabledAction,
+    goPowerStatisticsInsteadOfAi
 };

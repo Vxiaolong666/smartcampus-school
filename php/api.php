@@ -3827,9 +3827,9 @@ switch($act) {
         if (!empty($keys)) {
             $keyArray = array_map('addslashes', array_filter(explode(',', $keys)));
             $keyList = "'" . implode("','", $keyArray) . "'";
-            $features = $DB->query("SELECT feature_key, feature_name, is_enabled, announcement, announcement_type, follow_global FROM nteam_feature_settings WHERE feature_key IN ($keyList)")->fetchAll();
+            $features = $DB->query("SELECT feature_key, feature_name, is_enabled, announcement, announcement_type, follow_global, disabled_action FROM nteam_feature_settings WHERE feature_key IN ($keyList)")->fetchAll();
         } else {
-            $features = $DB->query("SELECT feature_key, feature_name, is_enabled, announcement, announcement_type, follow_global FROM nteam_feature_settings ORDER BY id ASC")->fetchAll();
+            $features = $DB->query("SELECT feature_key, feature_name, is_enabled, announcement, announcement_type, follow_global, disabled_action FROM nteam_feature_settings ORDER BY id ASC")->fetchAll();
         }
         
         $result = [];
@@ -3846,11 +3846,14 @@ switch($act) {
                 $announcement = $globalAnnouncement['content'];
                 $announcementType = $globalAnnouncement['type'];
             }
+            // 功能未启用时的处理方式（小程序端「AI 对话」使用）：mask=展示遮罩，redirect=跳转用电统计页
+            $disabledAction = isset($feature['disabled_action']) && $feature['disabled_action'] === 'mask' ? 'mask' : 'redirect';
             $result[$feature['feature_key']] = [
                 'feature_name' => $feature['feature_name'],
                 'is_enabled' => (int)$feature['is_enabled'],
                 'announcement' => $announcement,
-                'announcement_type' => $announcementType
+                'announcement_type' => $announcementType,
+                'disabled_action' => $disabledAction
             ];
         }
         

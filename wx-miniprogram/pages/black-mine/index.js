@@ -3,6 +3,7 @@
  * 展示用户信息和功能入口
  */
 const api = require('../../utils/api.js');
+const feature = require('../../utils/feature.js');
 const __tab__ = 1;  // 当前TabBar索引
 
 Page({
@@ -383,6 +384,9 @@ Page({
         if (typeof this.getTabBar === 'function' && this.getTabBar() && __tab__ !== -1) {
             this.getTabBar().switchTabByIndex(__tab__);
         }
+
+        // 同步底部「AI 对话」Tab 文案（后台未启用小程序端 AI 功能时显示「用电统计」）
+        feature.syncAiTabBar();
 
         // 刷新所有状态
         this.refreshAllStatus();

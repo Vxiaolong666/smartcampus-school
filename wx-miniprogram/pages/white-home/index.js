@@ -252,6 +252,10 @@ Page({
             this.getTabBar().switchTabByIndex(__tab__);
         }
 
+        // 同步底部「AI 对话」Tab 文案（后台未启用小程序端 AI 功能时显示「用电统计」）
+        // 每次显示都同步：返回本页时若文案被重置（如开屏结束调用 showTabBar），这里会重新纠正
+        feature.syncAiTabBar();
+
         // 检查登录状态
         this.checkLoginStatus();
 
@@ -443,6 +447,8 @@ Page({
         this.setData({ splashVisible: false });
         // 恢复原生底部导航栏
         try { wx.showTabBar({ animation: false, fail: () => {} }); } catch (e) {}
+        // showTabBar 会把 Tab 文案重置回 app.json 的配置，这里按已知状态重放一次
+        feature.reapplyAiTabText();
     },
 
     //点击开屏广告
@@ -478,6 +484,8 @@ Page({
         this.clearSplashTimer();
         // 兜底：确保底部导航栏处于显示状态
         try { wx.showTabBar({ animation: false, fail: () => {} }); } catch (e) {}
+        // 同上：showTabBar 会重置文案，按已知状态重放
+        feature.reapplyAiTabText();
     },
 
     //轮播图点击
