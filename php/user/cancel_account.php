@@ -333,7 +333,10 @@ function renderAgreement() {
             if (typeof marked.setOptions === 'function') {
                 marked.setOptions({ breaks: true, gfm: true });
             }
-            html = (typeof marked.parse === 'function') ? marked.parse(raw) : marked(raw);
+            // 统一入口 mdToHtml：修正「紧跟段落的 --- 被当成上文的下划线式标题」导致的渲染异常
+            html = window.mdToHtml
+                ? window.mdToHtml(raw)
+                : ((typeof marked.parse === 'function') ? marked.parse(raw) : marked(raw));
         } else {
             html = $('<div>').text(raw).html().replace(/\n/g, '<br>');
         }

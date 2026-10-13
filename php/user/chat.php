@@ -323,9 +323,10 @@ if ($aiChatFeature && intval($aiChatFeature['is_enabled']) !== 1) {
                 return $('<div>').text(s).html();
             }
             function renderMd(s) {
-                if (window.marked) {
+                // 统一入口 mdToHtml（foot.php 提供）：修正紧跟段落的 --- 被当成上文标题下划线的问题
+                if (window.mdToHtml) {
                     try {
-                        return '<div class="markdown-body">' + marked.parse(s) + '</div>';
+                        return '<div class="markdown-body">' + window.mdToHtml(s) + '</div>';
                     } catch (e) {}
                 }
                 return '<div class="markdown-body">' + esc(s) + '</div>';

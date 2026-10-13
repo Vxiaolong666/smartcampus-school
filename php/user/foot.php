@@ -57,6 +57,29 @@
 </style>
 
 <script>
+/* ===== Markdown → HTML 统一入口（公告 / 协议 / AI 对话 / AI 分析共用）=====
+   修复 marked v4 的已知偏差：紧跟在段落、引用、列表后的 `---`（或 *** / ___）
+   会被当成"上文的下划线式标题"，于是它上方的内容（连同 # / > 等原始符号）
+   被整体吞进一个 <h2>，页面上看起来就像"Markdown 没渲染"。
+   本项目的约定是：这类分隔线一律按分隔线（<hr>）处理，
+   因此在其前面补一个空行，消除歧义。 */
+window.mdToHtml = function (md) {
+    var text = String(md === null || md === undefined ? '' : md).replace(/\r\n?/g, '\n');
+    var lines = text.split('\n');
+    var out = [];
+    for (var i = 0; i < lines.length; i++) {
+        var line = lines[i];
+        // 仅由 -、*、_ 组成（≥3 个，允许空格分隔）的行 = 分隔线
+        var isDivider = /^[ \t]{0,3}(?:(?:-[ \t]*){3,}|(?:\*[ \t]*){3,}|(?:_[ \t]*){3,})[ \t]*$/.test(line);
+        if (isDivider && out.length && out[out.length - 1].trim() !== '') {
+            out.push('');
+        }
+        out.push(line);
+    }
+    var normalized = out.join('\n');
+    return window.marked ? window.marked.parse(normalized) : $('<div>').text(normalized).html();
+};
+
 /* 统一的 AI 分析调用封装：页面不刷新（AJAX）、不重复发起请求、
    命中页面缓存即刻展示，并优先由后端查询历史以节省 AI 额度 */
 window.AiAnalyze = {
@@ -90,8 +113,8 @@ window.AiAnalyze = {
             dataType: 'json',
             success: function (res) {
                 if (res.code == 0) {
-                    var html = window.marked
-                        ? '<div class="markdown-body">' + window.marked.parse(res.content) + '</div>'
+                    var html = window.mdToHtml
+                        ? '<div class="markdown-body">' + window.mdToHtml(res.content) + '</div>'
                         : $('<div>').text(res.content).html();
                     if (key) { self._cache[key] = html; self._raw[key] = res.content; }
                     self._render(o.resultId, html);

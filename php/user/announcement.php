@@ -189,7 +189,7 @@ marked.setOptions({
 // 总结与要点合并为单个 markdown-body 渲染，由 marked 自然处理段落/列表间距
 function renderAiSummary(text) {
     var toHtml = function (md) {
-        return window.marked ? marked.parse(md) : $('<div>').text(md).html();
+        return window.mdToHtml ? window.mdToHtml(md) : $('<div>').text(md).html();
     };
     $('#aiSummary').html('<div class="markdown-body">' + toHtml(text || '') + '</div>');
 }
@@ -216,7 +216,9 @@ $(document).ready(function() {
     // 去掉首尾空白：内容前的缩进会被 Markdown 解析成 4 空格代码块
     var content = $.trim($('#announcementContent').text());
     var $el = $('#announcementContent');
-    $el.html(marked.parse(content));
+    // 统一入口 mdToHtml：修正「紧跟段落的 --- 被当成上文的下划线式标题」，
+    // 避免 # / > 等原始 Markdown 符号被原样吞进 <h2> 展示
+    $el.html(window.mdToHtml ? window.mdToHtml(content) : marked.parse(content));
 
     // 正文内相对路径图片补站点子目录前缀（与协议详情页一致，兼容 /csgocs 等二级目录部署）
     var base = <?php echo json_encode($siteBasePath, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;

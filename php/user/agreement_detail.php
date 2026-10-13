@@ -173,7 +173,9 @@ $(document).ready(function () {
     // 与公告详情页一致的解析参数：先取纯文本，再交给 marked 解析
     marked.setOptions({ breaks: true, gfm: true });
     // 去掉首尾空白：内容前的缩进会被 Markdown 解析成 4 空格代码块
-    var html = marked.parse($.trim($el.text()));
+    // 统一入口 mdToHtml：修正「紧跟段落的 --- 被当成上文的下划线式标题」导致的渲染异常
+    var src = $.trim($el.text());
+    var html = window.mdToHtml ? window.mdToHtml(src) : marked.parse(src);
     $el.html(html);
 
     // 正文内相对路径图片补站点子目录前缀（兼容 /csgocs 等二级目录部署）
