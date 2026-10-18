@@ -1,0 +1,208 @@
+:host {
+  display: block;
+}
+
+.cb-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 100rpx 0;
+  /* 遮罩入场：与内容淡入配套，切换时不突兀 */
+  animation: cb-loading-veil-in 0.2s ease-out both;
+}
+
+.cb-loading--compact {
+  padding: 40rpx 0;
+}
+
+.cb-loading__spinner {
+  position: relative;
+  width: 96rpx;
+  height: 96rpx;
+  animation: cb-loading-breathe 2.4s ease-in-out infinite;
+}
+
+.cb-loading--compact .cb-loading__spinner {
+  width: 76rpx;
+  height: 76rpx;
+}
+
+/* 主环：旋转 1s/圈，颜色 3s 一循环（33.3% ≈ 每转完一圈换一次色） */
+.cb-loading__ring {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 7rpx solid rgba(19, 194, 194, 0.12);
+  border-top-color: #13c2c2;
+  border-right-color: rgba(19, 194, 194, 0.8);
+  border-bottom-color: rgba(19, 194, 194, 0.35);
+  animation: cb-loading-spin 1s linear infinite, cb-ring-color 3s linear infinite;
+}
+
+.cb-loading--compact .cb-loading__ring {
+  border-width: 6rpx;
+}
+
+.cb-loading__texts {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 28rpx;
+  padding: 0 24rpx;
+}
+
+.cb-loading--compact .cb-loading__texts {
+  margin-top: 22rpx;
+}
+
+.cb-loading__text {
+  font-size: 32rpx;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 1rpx;
+  text-align: center;
+  color: #48416f;
+}
+
+.cb-loading--compact .cb-loading__text {
+  font-size: 28rpx;
+}
+
+/* 副标题：比主文案轻一档，但保持足够对比度 */
+.cb-loading__sub {
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  line-height: 1.4;
+  letter-spacing: 1rpx;
+  text-align: center;
+  color: rgba(72, 65, 111, 0.68);
+}
+
+.cb-loading--compact .cb-loading__sub {
+  margin-top: 8rpx;
+  font-size: 22rpx;
+}
+
+/* 主文案 / 副标题错峰入场（a / b 交替，保证每次切换都能重播） */
+.cb-loading__text--a {
+  animation: cb-loading-text-in-a 0.5s ease-out;
+}
+
+.cb-loading__text--b {
+  animation: cb-loading-text-in-b 0.5s ease-out;
+}
+
+.cb-loading__sub--a {
+  animation: cb-loading-sub-in-a 0.5s ease-out 0.1s both;
+}
+
+.cb-loading__sub--b {
+  animation: cb-loading-sub-in-b 0.5s ease-out 0.1s both;
+}
+
+@keyframes cb-loading-veil-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes cb-loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes cb-ring-color {
+  0%,
+  33.3% {
+    border-top-color: #13c2c2;
+    border-right-color: rgba(19, 194, 194, 0.8);
+    border-bottom-color: rgba(19, 194, 194, 0.35);
+    border-left-color: rgba(19, 194, 194, 0.12);
+  }
+  33.34%,
+  66.6% {
+    border-top-color: #4d8bff;
+    border-right-color: rgba(77, 139, 255, 0.8);
+    border-bottom-color: rgba(77, 139, 255, 0.35);
+    border-left-color: rgba(77, 139, 255, 0.12);
+  }
+  66.67%,
+  100% {
+    border-top-color: #8b7cf6;
+    border-right-color: rgba(139, 124, 246, 0.8);
+    border-bottom-color: rgba(139, 124, 246, 0.35);
+    border-left-color: rgba(139, 124, 246, 0.12);
+  }
+}
+
+/* 圆环整体轻微呼吸，避免机械感 */
+@keyframes cb-loading-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(0.94);
+  }
+}
+
+@keyframes cb-loading-text-in-a {
+  0% {
+    opacity: 0;
+    transform: translateY(8rpx) scale(0.94);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(0) scale(1.04);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes cb-loading-text-in-b {
+  0% {
+    opacity: 0;
+    transform: translateY(8rpx) scale(0.94);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(0) scale(1.04);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes cb-loading-sub-in-a {
+  0% {
+    opacity: 0;
+    transform: translateY(6rpx);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes cb-loading-sub-in-b {
+  0% {
+    opacity: 0;
+    transform: translateY(6rpx);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

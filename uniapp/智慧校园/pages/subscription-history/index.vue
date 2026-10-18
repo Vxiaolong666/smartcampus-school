@@ -10,7 +10,7 @@
 		</view>
 
 		<view class="content-wrapper">
-			<view class="info-card">
+			<view class="info-card" v-if="loaded">
 				<image class="info-icon" src="/static/assets/wxmp-clock.svg" mode="widthFix"></image>
 				<view class="info-content">
 					<view class="info-text">共 {{ total }} 条历史记录</view>
@@ -31,17 +31,14 @@
 				</view>
 			</view>
 
-			<view v-if="loading && list.length === 0" class="loading-wrapper">
-				<view class="loading-spinner"></view>
-				<view class="loading-text">加载中...</view>
-			</view>
+			<cb-loading v-if="!loaded" />
 
-			<view v-else-if="list.length === 0" class="empty-wrapper">
+			<view v-if="loaded && list.length === 0" class="empty-wrapper">
 				<image class="empty-icon" src="/static/assets/wxmp-empty.svg" mode="widthFix"></image>
 				<view class="empty-text">暂无历史记录</view>
 			</view>
 
-			<view v-else class="history-list">
+			<view v-if="loaded && list.length > 0" class="history-list">
 				<view
 					v-for="item in list"
 					:key="item.id"
@@ -62,9 +59,7 @@
 				</view>
 			</view>
 
-			<view v-if="loading && list.length > 0" class="loading-wrapper">
-				<view class="loading-text">加载中...</view>
-			</view>
+			<cb-loading v-if="loading && list.length > 0" compact />
 
 			<view v-if="!hasMore && list.length > 0" class="no-more">
 				<view class="no-more-text">没有更多了</view>
@@ -95,6 +90,7 @@ export default {
 			],
 			list: [],
 			loading: false,
+			loaded: false,
 			page: 1,
 			size: 10,
 			total: 0,
@@ -156,6 +152,7 @@ export default {
 				this.page = 1;
 				this.list = [];
 				this.hasMore = true;
+				this.loaded = false;
 			}
 
 			this.loading = true;
@@ -178,6 +175,7 @@ export default {
 			}
 
 			this.loading = false;
+			this.loaded = true;
 		}
 	}
 };

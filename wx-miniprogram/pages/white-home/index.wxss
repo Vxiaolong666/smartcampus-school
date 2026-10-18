@@ -523,11 +523,37 @@ page {
     margin-bottom: 30rpx;
 }
 
+.notices-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20rpx;
+}
+
+/* 右侧「更多」，与标题同行右对齐 */
+.notices-more {
+    display: flex;
+    align-items: center;
+    padding: 4rpx 0 4rpx 20rpx;
+}
+
+.notices-more-text {
+    font-size: 24rpx;
+    color: #948eb3;
+    line-height: 1;
+}
+
+.notices-more-arrow {
+    width: 22rpx;
+    height: 22rpx;
+    margin-left: 4rpx;
+    opacity: 0.7;
+}
+
 .notices-title {
     font-size: 28rpx;
     font-weight: bold;
     color: #48416f;
-    margin-bottom: 20rpx;
     padding-left: 20rpx;
     position: relative;
 }

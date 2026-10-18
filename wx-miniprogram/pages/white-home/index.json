@@ -1,1 +1,1 @@
-{"navigationBarTextStyle": "white", "usingComponents": {"top-menu": "/components/cb-nav-bar/index", "announcement": "/components/announcement/index"}}
+{"navigationBarTextStyle": "white", "usingComponents": {"top-menu": "/components/cb-nav-bar/index", "announcement": "/components/announcement/index", "home-skeleton": "/components/home-skeleton/index"}}

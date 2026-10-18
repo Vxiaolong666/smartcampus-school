@@ -1,0 +1,10 @@
+<view class="cb-loading {{compact ? 'cb-loading--compact' : ''}}">
+  <view class="cb-loading__spinner">
+    <view class="cb-loading__ring"></view>
+  </view>
+
+  <view class="cb-loading__texts">
+    <text class="cb-loading__text {{animate ? (flipA ? 'cb-loading__text--a' : 'cb-loading__text--b') : ''}}">{{displayText}}</text>
+    <text wx:if="{{showSub && displaySub}}" class="cb-loading__sub {{animate ? (flipA ? 'cb-loading__sub--a' : 'cb-loading__sub--b') : ''}}">{{displaySub}}</text>
+  </view>
+</view>

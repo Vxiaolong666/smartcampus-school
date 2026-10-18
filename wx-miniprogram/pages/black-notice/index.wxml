@@ -10,19 +10,21 @@
   </view>
 
   <view class="content-wrapper">
-    <view class="info-card">
+    <view class="info-card" wx:if="{{loaded}}">
       <image class="info-icon" src="/assets/wxmp-notice.svg" mode="widthFix"></image>
       <view class="info-content">
         <view class="info-text">共有{{notices.length}}条通知</view>
       </view>
     </view>
 
-    <view wx:if="{{notices.length === 0 && !loading}}" class="empty">
+    <cb-loading wx:if="{{!loaded}}" />
+
+    <view wx:if="{{loaded && notices.length === 0}}" class="empty">
       <image class="empty-icon" src="/assets/wxmp-empty.svg" mode="widthFix"></image>
       <view class="empty-text">暂无通知</view>
     </view>
-    
-    <view wx:else class="notice-list">
+
+    <view wx:if="{{loaded && notices.length > 0}}" class="notice-list">
       <view wx:for="{{notices}}" wx:key="id" class="notice-item" bind:tap="handleNoticeDetail" data-id="{{item.id}}">
         <image wx:if="{{item.cover}}" class="notice-cover" src="{{item.cover}}" mode="aspectFill"></image>
         <view class="notice-info">
@@ -34,10 +36,8 @@
         </view>
       </view>
     </view>
-    
-    <view wx:if="{{loading}}" class="loading">
-      <view class="loading-text">加载中...</view>
-    </view>
+
+    <cb-loading wx:if="{{loading && notices.length > 0}}" compact />
     
     <view wx:if="{{!hasMore && notices.length > 0}}" class="no-more">
       <view class="no-more-text">没有更多了</view>

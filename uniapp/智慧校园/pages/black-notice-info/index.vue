@@ -10,10 +10,7 @@
 		</view>
 
 		<view class="content-wrapper">
-			<view v-if="loading" class="loading-section">
-				<view class="loading-spinner"></view>
-				<text class="loading-text">加载中...</text>
-			</view>
+			<cb-loading v-if="loading" />
 
 			<view v-else-if="notice" class="notice-detail">
 				<view class="notice-card">

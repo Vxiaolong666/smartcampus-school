@@ -17,7 +17,7 @@
 				<announcement :content="announcement.content" :type="announcement.type" :closable="true" />
 			</view>
 
-			<view class="day-selector" v-if="!needBind">
+			<view class="day-selector" v-if="!loading && !needBind">
 				<view
 					class="day-item"
 					:class="{ active: selectedDay === index, today: todayDayOfWeek === index }"
@@ -32,7 +32,7 @@
 				</view>
 			</view>
 
-			<view class="info-cards" v-if="!needBind">
+			<view class="info-cards" v-if="!loading && !needBind">
 				<view class="info-card date-card">
 					<image class="info-icon" src="/static/assets/wxmp-calendar.svg" mode="widthFix"></image>
 					<view class="info-content">
@@ -161,9 +161,7 @@
 				</view>
 			</view>
 
-			<view v-if="loading" class="loading-wrapper">
-				<view class="loading-text">加载中...</view>
-			</view>
+			<cb-loading v-if="loading" />
 
 			<view v-else-if="dayCourses.length > 0" class="course-list-wrapper">
 				<view v-if="morningCourses.length > 0" class="course-section">
@@ -323,12 +321,7 @@
 				</view>
 			</view>
 
-			<view v-else-if="needBind" class="empty-wrapper">
-				<image class="empty-icon" src="/static/assets/wxmp-book-gray.svg" mode="widthFix"></image>
-				<view class="empty-title">请先绑定教务账号</view>
-				<view class="empty-text">绑定后可查看今日与本周课程安排</view>
-				<button class="bind-btn" @click="goToBind">前往绑定</button>
-			</view>
+			<cb-bind-tip v-else-if="needBind" type="academic" desc="绑定后可查看今日与本周课程安排" />
 
 			<view v-else class="empty-wrapper">
 				<image class="empty-icon" src="/static/assets/wxmp-book-gray.svg" mode="widthFix"></image>
@@ -365,7 +358,7 @@
 		</view>
 
 		<!-- 右侧浮动 AI 分析按钮（圆形，tabBar 页面抬高避免被标签栏遮挡） -->
-		<view class="ai-fab ai-fab--tab" :class="{ 'ai-loading': aiLoading }" @click="aiAnalyze">
+		<view v-if="!loading && !needBind && dayCourses.length > 0" class="ai-fab ai-fab--tab" :class="{ 'ai-loading': aiLoading }" @click="aiAnalyze">
 			<text class="ai-fab-icon">AI</text>
 			<text class="ai-fab-label">分析</text>
 		</view>

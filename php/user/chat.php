@@ -158,12 +158,15 @@ if ($aiChatFeature && intval($aiChatFeature['is_enabled']) !== 1) {
 
             .aic-icon { width: 38px; height: 38px; border-radius: 50%; border: 0; background: #f4f5f8; color: #6b7280; cursor: pointer; transition: .15s; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; }
             .aic-icon:hover { background: #e9ebf1; color: #4338ca; }
-            .aic-send { width: 42px; height: 42px; border-radius: 50%; border: 0; color: #fff; cursor: pointer; transition: .15s; display: inline-flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #6366f1, #8b5cf6); box-shadow: 0 6px 16px rgba(99, 102, 241, .35); flex: 0 0 auto; }
+            .aic-send { position: relative; width: 42px; height: 42px; border-radius: 50%; border: 0; color: #fff; cursor: pointer; transition: .15s; display: inline-flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #6366f1, #8b5cf6); box-shadow: 0 6px 16px rgba(99, 102, 241, .35); flex: 0 0 auto; }
             .aic-send:hover { filter: brightness(1.05); transform: translateY(-1px); }
             .aic-send:disabled { opacity: .5; cursor: not-allowed; box-shadow: none; transform: none; }
-            .aic-send .spin { position: relative; flex: 0 0 auto; width: 30px; height: 30px; min-width: 30px; min-height: 30px; display: block; }
-            .aic-send .spin-ring { position: absolute; inset: 0; box-sizing: border-box; border: 3px solid rgba(255, 255, 255, .3); border-top-color: #fff; border-radius: 50%; animation: aic-spin .7s linear infinite; }
-            .aic-send .spin-sq { position: absolute; left: 50%; top: 50%; width: 7px; height: 7px; background: #fff; transform: translate(-50%, -50%); }
+            /* 终止态：去掉投影，避免与外圈叠加显脏 */
+            .aic-send.sending { box-shadow: none; }
+            /* 终止态外圈：按钮边框上的一道旋转弧（体内不再画圈） */
+            .aic-send.sending::after { content: ''; position: absolute; left: -5px; top: -5px; right: -5px; bottom: -5px; box-sizing: border-box; border-radius: 50%; border: 2px solid transparent; border-top-color: #6366f1; border-right-color: rgba(99, 102, 241, .5); border-bottom-color: rgba(99, 102, 241, .14); animation: aic-spin .85s linear infinite; pointer-events: none; }
+            /* 终止图标：居中方块（约占按钮 1/3） */
+            .aic-send .spin-sq { width: 13px; height: 13px; border-radius: 2.5px; background: #fff; }
             @keyframes aic-spin { to { transform: rotate(360deg); } }
 
             .markdown-body pre { background: #282c34; color: #abb2bf; padding: .75rem; border-radius: .25rem; overflow-x: auto; margin-bottom: .6rem; }
@@ -253,6 +256,8 @@ if ($aiChatFeature && intval($aiChatFeature['is_enabled']) !== 1) {
             .dark-mode .aic-pill.active { background: #2c3350; color: #a5b4fc; }
             .dark-mode .aic-icon { background: #26313f; color: #9aa8bc; }
             .dark-mode .aic-icon:hover { background: #2f3d4e; color: #a5b4fc; }
+            /* 深色模式下的终止外圈：用更亮的紫蓝保证可见 */
+            .dark-mode .aic-send.sending::after { border-top-color: #a5b4fc; border-right-color: rgba(165, 180, 252, .5); border-bottom-color: rgba(165, 180, 252, .16); }
 
             .dark-mode .aic-menu { background: #222e3c; border-color: #33445a; box-shadow: 0 10px 30px rgba(0, 0, 0, .45); }
             .dark-mode .aic-menu-item { color: #cdd7e4; }
@@ -336,9 +341,10 @@ if ($aiChatFeature && intval($aiChatFeature['is_enabled']) !== 1) {
                 // 生成/思考中：按钮保留可点击（用于终止），其余情况按是否有内容决定禁用
                 $('#sendBtn').prop('disabled', !sending && !hasText);
                 if (sending) {
-                    $('#sendBtn').html('<span class="spin"><span class="spin-ring"></span><span class="spin-sq"></span></span>').attr('title', '终止回答');
+                    // 终止态：按钮内部只留方块，加载圆环由 .sending::after 在按钮外侧绘制
+                    $('#sendBtn').addClass('sending').html('<span class="spin-sq"></span>').attr('title', '终止回答');
                 } else {
-                    $('#sendBtn').html('<i class="fa fa-paper-plane"></i>').attr('title', '发送');
+                    $('#sendBtn').removeClass('sending').html('<i class="fa fa-paper-plane"></i>').attr('title', '发送');
                 }
             }
             function autoGrow() {

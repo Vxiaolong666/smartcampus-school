@@ -17,9 +17,7 @@
 				<announcement :content="announcement.content" :type="announcement.type" :closable="true" />
 			</view>
 
-			<view v-if="loading" class="loading-wrapper">
-				<view class="loading-text">加载中...</view>
-			</view>
+			<cb-loading v-if="loading" />
 
 			<block v-else-if="dormitories.length > 0">
 				<view class="filter-card">
@@ -104,16 +102,10 @@
 
 				</block>
 
-			<block v-else>
-				<view class="empty-wrapper">
-					<image class="empty-icon" src="/static/assets/wxmp-home2-gray.svg" mode="widthFix"></image>
-					<view class="empty-title">暂无绑定的宿舍</view>
-					<view class="empty-text">请先绑定宿舍后再查询电费</view>
-					<button class="bind-btn" @click="goToBind">立即绑定</button>
-				</view>
-			</block>
+			<cb-bind-tip v-else type="dorm" desc="绑定宿舍后可查询电费" />
 
-			<view class="tips-card">
+			<!-- 结果说明：加载中 / 未绑定宿舍（遮罩）时不展示 -->
+			<view class="tips-card" v-if="!loading && dormitories.length > 0">
 				<view class="tips-title">
 					<image class="tips-icon" src="/static/assets/wxmp-lightbulb.svg" mode="widthFix"></image>
 					<text>电费查询结果说明</text>
@@ -166,7 +158,7 @@
 		</view>
 
 		<!-- 右侧浮动 AI 分析按钮（圆形） -->
-		<view class="ai-fab" :class="{ 'ai-loading': aiLoading }" @click="aiAnalyze">
+		<view v-if="!loading && results.length > 0" class="ai-fab" :class="{ 'ai-loading': aiLoading }" @click="aiAnalyze">
 			<text class="ai-fab-icon">AI</text>
 			<text class="ai-fab-label">分析</text>
 		</view>

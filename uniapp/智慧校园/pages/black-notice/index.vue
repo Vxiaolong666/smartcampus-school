@@ -10,19 +10,21 @@
 		</view>
 
 		<view class="content-wrapper">
-			<view class="info-card">
+			<view class="info-card" v-if="loaded">
 				<image class="info-icon" src="/static/assets/wxmp-notice.svg" mode="widthFix"></image>
 				<view class="info-content">
 					<view class="info-text">共有{{ notices.length }}条通知</view>
 				</view>
 			</view>
 
-			<view v-if="notices.length === 0 && !loading" class="empty">
+			<cb-loading v-if="!loaded" />
+
+			<view v-if="loaded && notices.length === 0" class="empty">
 				<image class="empty-icon" src="/static/assets/wxmp-empty.svg" mode="widthFix"></image>
 				<view class="empty-text">暂无通知</view>
 			</view>
 
-			<view v-else class="notice-list">
+			<view v-if="loaded && notices.length > 0" class="notice-list">
 				<view
 					v-for="item in notices"
 					:key="item.id"
@@ -41,9 +43,7 @@
 				</view>
 			</view>
 
-			<view v-if="loading" class="loading">
-				<view class="loading-text">加载中...</view>
-			</view>
+			<cb-loading v-if="loading && notices.length > 0" compact />
 
 			<view v-if="!hasMore && notices.length > 0" class="no-more">
 				<view class="no-more-text">没有更多了</view>
@@ -60,6 +60,7 @@ export default {
 		return {
 			notices: [],
 			loading: false,
+			loaded: false,
 			page: 1,
 			size: 10,
 			total: 0,
@@ -94,8 +95,10 @@ export default {
 				this.page = this.page + 1;
 				this.hasMore = this.notices.length < res.data.total;
 				this.loading = false;
+				this.loaded = true;
 			} catch (err) {
 				this.loading = false;
+				this.loaded = true;
 				uni.showToast({
 					title: err.msg || '加载失败',
 					icon: 'none'

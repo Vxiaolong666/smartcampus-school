@@ -16,7 +16,9 @@
         <view class="card-desc">绑定微信后可使用微信快捷登录</view>
       </view>
 
-      <view class="status-section">
+      <cb-loading wx:if="{{!loaded}}" compact />
+
+      <view class="status-section" wx:if="{{loaded}}">
         <view class="status-icon">
           <icon wx:if="{{hasWxOpenid}}" type="success" size="64" color="#13c2c2" />
           <icon wx:else type="warn" size="64" color="#ff4d4f" />
@@ -26,17 +28,17 @@
         <view class="status-desc" wx:else>绑定后可使用微信快捷登录</view>
       </view>
 
-      <view wx:if="{{hasWxOpenid}}" class="info-section">
+      <view wx:if="{{loaded && hasWxOpenid}}" class="info-section">
         <view class="info-item">
           <view class="info-label">OpenID</view>
           <view class="info-value openid">{{openidDisplay}}</view>
         </view>
       </view>
 
-      <button wx:if="{{hasWxOpenid}}" class="unbind-btn" bindtap="onUnbind" loading="{{loading}}">
+      <button wx:if="{{loaded && hasWxOpenid}}" class="unbind-btn" bindtap="onUnbind" loading="{{loading}}">
         解除绑定
       </button>
-      <button wx:else class="bind-btn" bindtap="onBind" loading="{{loading}}">
+      <button wx:elif="{{loaded}}" class="bind-btn" bindtap="onBind" loading="{{loading}}">
         立即绑定
       </button>
     </view>

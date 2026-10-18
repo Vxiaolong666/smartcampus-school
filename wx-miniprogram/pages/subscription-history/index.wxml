@@ -10,7 +10,7 @@
   </view>
 
   <view class="content-wrapper">
-    <view class="info-card">
+    <view class="info-card" wx:if="{{loaded}}">
       <image class="info-icon" src="/assets/wxmp-clock.svg" mode="widthFix"></image>
       <view class="info-content">
         <view class="info-text">共 {{total}} 条历史记录</view>
@@ -28,17 +28,14 @@
       >{{item.label}}</view>
     </view>
 
-    <view wx:if="{{loading && list.length === 0}}" class="loading-wrapper">
-      <view class="loading-spinner"></view>
-      <view class="loading-text">加载中...</view>
-    </view>
+    <cb-loading wx:if="{{!loaded}}" />
 
-    <view wx:elif="{{list.length === 0}}" class="empty-wrapper">
+    <view wx:if="{{loaded && list.length === 0}}" class="empty-wrapper">
       <image class="empty-icon" src="/assets/wxmp-empty.svg" mode="widthFix"></image>
       <view class="empty-text">暂无历史记录</view>
     </view>
 
-    <view wx:else class="history-list">
+    <view wx:if="{{loaded && list.length > 0}}" class="history-list">
       <view wx:for="{{list}}" wx:key="id" class="history-item {{item.source}}">
         <image class="history-icon" src="{{item.icon}}" mode="widthFix"></image>
         <view class="history-body">
@@ -54,9 +51,7 @@
       </view>
     </view>
 
-    <view wx:if="{{loading && list.length > 0}}" class="loading-wrapper">
-      <view class="loading-text">加载中...</view>
-    </view>
+    <cb-loading wx:if="{{loading && list.length > 0}}" compact />
 
     <view wx:if="{{!hasMore && list.length > 0}}" class="no-more">
       <view class="no-more-text">没有更多了</view>

@@ -21,7 +21,9 @@
 					<view class="card-desc">绑定后可查询成绩、课表等信息</view>
 				</view>
 
-				<block v-if="!isBound">
+				<cb-loading v-if="!loaded" compact />
+
+				<block v-if="loaded && !isBound">
 					<view class="form-item">
 						<view class="form-label">学工号</view>
 						<input
@@ -58,7 +60,7 @@
 					<button class="submit-btn" @click="onBind" :loading="loading">绑定账号</button>
 				</block>
 
-				<block v-else>
+				<block v-else-if="loaded">
 					<view class="bound-info">
 						<view class="bound-item">
 							<view class="bound-label">学工号</view>
@@ -117,6 +119,7 @@ export default {
 			password: '',
 			realName: '',
 			loading: false,
+			loaded: false,
 			isBound: false,
 			academicInfo: {},
 			announcement: null
@@ -166,10 +169,12 @@ export default {
 				.then(res => {
 					this.isBound = true;
 					this.academicInfo = res.data;
+					this.loaded = true;
 				})
 				.catch(() => {
 					this.isBound = false;
 					this.academicInfo = null;
+					this.loaded = true;
 				});
 		},
 

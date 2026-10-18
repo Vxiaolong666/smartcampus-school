@@ -1,0 +1,33 @@
+<view class="mine-skeleton">
+  <!-- 个人资料卡 -->
+  <view class="ms-profile">
+    <view class="ms-avatar ms-block"></view>
+    <view class="ms-info">
+      <view class="ms-name ms-block"></view>
+      <view class="ms-meta">
+        <view class="ms-meta-item ms-block"></view>
+        <view class="ms-meta-divider"></view>
+        <view class="ms-meta-item ms-block"></view>
+      </view>
+    </view>
+    <view class="ms-arrow ms-block"></view>
+  </view>
+
+  <!-- 功能分组：账号绑定 / 订阅功能设置 / 账户与安全 / 客服与支持 -->
+  <view class="ms-group" wx:for="{{groups}}" wx:for-item="rows" wx:for-index="gi" wx:key="index">
+    <view class="ms-group-title ms-block"></view>
+    <view class="ms-group-card">
+      <view class="ms-item" wx:for="{{rows}}" wx:for-item="n" wx:for-index="ii" wx:key="*this">
+        <view class="ms-icon ms-block"></view>
+        <view class="ms-text ms-block"></view>
+        <view class="ms-chevron ms-block"></view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 底部操作按钮 -->
+  <view class="ms-actions">
+    <view class="ms-action ms-block"></view>
+    <view class="ms-action ms-block"></view>
+  </view>
+</view>

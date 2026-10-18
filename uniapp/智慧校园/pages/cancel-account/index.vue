@@ -11,9 +11,7 @@
 
 		<view class="content-wrapper">
 			<!-- 加载中 -->
-			<view v-if="loading" class="state-box">
-				<text class="state-text">加载中…</text>
-			</view>
+			<cb-loading v-if="loading" />
 
 			<!-- 未开启 -->
 			<view v-else-if="!enabled" class="state-box">

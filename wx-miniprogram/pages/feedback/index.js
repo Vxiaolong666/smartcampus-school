@@ -19,6 +19,7 @@ Page({
     contactSummary: '',
     submitting: false,
     loading: false,
+    loaded: false,   // 首屏数据是否已返回（用 loading 占位，避免闪现空态）
     list: [],
     total: 0,
     page: 1,
@@ -113,11 +114,12 @@ Page({
           formOpen: data.form_open === undefined ? this.data.formOpen : Number(data.form_open) === 1,
           // 后台「反馈配置」的「提交前人机验证」开关
           formCaptcha: data.form_captcha === undefined ? this.data.formCaptcha : Number(data.form_captcha) === 1,
-          loading: false
+          loading: false,
+          loaded: true
         });
       })
       .catch((err) => {
-        this.setData({ loading: false });
+        this.setData({ loading: false, loaded: true });
         wx.showToast({ title: (err && err.msg) || '记录加载失败', icon: 'none' });
       });
   },

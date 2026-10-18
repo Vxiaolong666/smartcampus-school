@@ -17,7 +17,9 @@
 					<view class="card-desc">绑定微信后可使用微信快捷登录</view>
 				</view>
 
-				<view class="status-section">
+				<cb-loading v-if="!loaded" compact />
+
+				<view class="status-section" v-if="loaded">
 					<view class="status-icon">
 						<image v-if="hasWxOpenid" class="status-icon-img" src="/static/assets/wxmp-check.svg" mode="aspectFit"></image>
 						<image v-else class="status-icon-img" src="/static/assets/wxmp-error.svg" mode="aspectFit"></image>
@@ -27,15 +29,15 @@
 					<view class="status-desc" v-else>绑定后可使用微信快捷登录</view>
 				</view>
 
-				<view v-if="hasWxOpenid" class="info-section">
+				<view v-if="loaded && hasWxOpenid" class="info-section">
 					<view class="info-item">
 						<view class="info-label">OpenID</view>
 						<view class="info-value openid">{{ openidDisplay }}</view>
 					</view>
 				</view>
 
-				<button v-if="hasWxOpenid" class="unbind-btn" @click="onUnbind" :loading="loading">解除绑定</button>
-				<button v-else class="bind-btn" @click="onBind" :loading="loading">立即绑定</button>
+				<button v-if="loaded && hasWxOpenid" class="unbind-btn" @click="onUnbind" :loading="loading">解除绑定</button>
+				<button v-else-if="loaded" class="bind-btn" @click="onBind" :loading="loading">立即绑定</button>
 			</view>
 
 			<view class="tips-card">
@@ -63,6 +65,7 @@ export default {
 			hasWxOpenid: false,
 			openid: '',
 			openidDisplay: '',
+			loaded: false,
 			loading: false
 		};
 	},
@@ -96,7 +99,9 @@ export default {
 				this.hasWxOpenid = hasWxOpenid;
 				this.openid = openid;
 				this.openidDisplay = openidDisplay;
+				this.loaded = true;
 			} catch (err) {
+				this.loaded = true;
 				uni.showToast({ title: err.msg || '加载失败', icon: 'none' });
 			}
 		},

@@ -15,7 +15,9 @@
 				<view class="card-desc">管理您的订阅消息授权和剩余次数</view>
 			</view>
 
-			<view class="action-card">
+			<cb-loading v-if="!loaded" />
+
+			<view class="action-card" v-if="loaded">
 				<view class="action-title">
 					<image class="action-icon" src="/static/assets/wxmp-lightbulb.svg" mode="widthFix"></image>
 					<text>订阅说明</text>
@@ -25,7 +27,7 @@
 				</view>
 			</view>
 
-			<view class="action-card">
+			<view class="action-card" v-if="loaded">
 				<view class="action-title">
 					<image class="action-icon" src="/static/assets/wxmp-question.svg" mode="widthFix"></image>
 					<text>为什么需要一次一次订阅？</text>
@@ -35,17 +37,14 @@
 				</view>
 			</view>
 
-			<view v-if="loading" class="loading-wrapper">
-				<view class="loading-spinner"></view>
-				<view class="loading-text">加载中...</view>
-			</view>
+			<cb-loading v-if="loaded && loading" />
 
-			<view v-else-if="subscriptions.length === 0" class="empty-wrapper">
+			<view v-else-if="loaded && subscriptions.length === 0" class="empty-wrapper">
 				<image class="empty-icon" src="/static/assets/wxmp-empty.svg" mode="widthFix"></image>
 				<view class="empty-text">暂无可用的订阅消息模板</view>
 			</view>
 
-			<view v-else class="subscription-list">
+			<view v-else-if="loaded" class="subscription-list">
 				<view
 					v-for="item in subscriptions"
 					:key="item.id"
@@ -86,7 +85,7 @@
 				</view>
 			</view>
 
-			<view class="action-card">
+			<view class="action-card" v-if="loaded">
 				<view class="action-title">如何增加订阅次数？</view>
 				<view class="action-steps">
 					<view class="step-item">
@@ -104,7 +103,7 @@
 				</view>
 			</view>
 
-			<view class="bottom-actions">
+			<view class="bottom-actions" v-if="loaded">
 				<button class="action-btn secondary" @click="goToSubscriptionHistory">
 					<image class="btn-icon" src="/static/assets/wxmp-clock.svg" mode="widthFix"></image>
 					<text>订阅历史</text>
@@ -130,6 +129,7 @@ export default {
 	data() {
 		return {
 			loading: true,
+			loaded: false,
 			subscriptions: []
 		};
 	},
@@ -166,12 +166,13 @@ export default {
 				}));
 
 				this.subscriptions = subscriptions;
-				this.loading = false;
 			} catch (err) {
 				console.error('加载订阅数据失败', err);
-				this.loading = false;
 				uni.showToast({ title: err.msg || '加载失败', icon: 'none' });
 			}
+
+			this.loading = false;
+			this.loaded = true;
 		},
 
 		async onRequestSubscribe(e) {

@@ -65,10 +65,12 @@
       <view class="fb-card">
         <view class="fb-card-head">
           <view class="fb-card-title">我的反馈</view>
-          <view class="fb-count">共 {{total}} 条</view>
+          <view class="fb-count" wx:if="{{loaded}}">共 {{total}} 条</view>
         </view>
 
-        <view class="fb-empty" wx:if="{{list.length === 0 && !loading}}">
+        <cb-loading wx:if="{{!loaded}}" compact />
+
+        <view class="fb-empty" wx:if="{{loaded && list.length === 0}}">
           <image class="fb-empty-icon" src="/assets/wxmp-empty.svg" mode="widthFix"></image>
           <view class="fb-empty-title">还没有提交过反馈</view>
           <view class="fb-empty-desc">提交后可在这里查看处理状态与处理备注。</view>
@@ -91,9 +93,9 @@
           <view class="fb-item-more">查看详情 ›</view>
         </view>
 
-        <view class="fb-loading" wx:if="{{loading}}">加载中…</view>
-        <view class="fb-more" wx:elif="{{hasMore}}" bindtap="loadMore">点击加载更多</view>
-        <view class="fb-no-more" wx:elif="{{list.length}}">没有更多了</view>
+        <cb-loading wx:if="{{loaded && loading && list.length > 0}}" compact />
+        <view class="fb-more" wx:if="{{loaded && !loading && hasMore}}" bindtap="loadMore">点击加载更多</view>
+        <view class="fb-no-more" wx:if="{{loaded && !loading && !hasMore && list.length}}">没有更多了</view>
       </view>
     </block>
   </view>

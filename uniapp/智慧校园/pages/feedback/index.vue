@@ -65,10 +65,12 @@
 				<view class="fb-card">
 					<view class="fb-card-head">
 						<view class="fb-card-title">我的反馈</view>
-						<view class="fb-count">共 {{ total }} 条</view>
+						<view class="fb-count" v-if="loaded">共 {{ total }} 条</view>
 					</view>
 
-					<view v-if="list.length === 0 && !loading" class="fb-empty">
+					<cb-loading v-if="!loaded" compact />
+
+					<view v-if="loaded && list.length === 0" class="fb-empty">
 						<image class="fb-empty-icon" src="/static/assets/wxmp-empty.svg" mode="widthFix"></image>
 						<view class="fb-empty-title">还没有提交过反馈</view>
 						<view class="fb-empty-desc">提交后可在这里查看处理状态与处理备注。</view>
@@ -91,9 +93,9 @@
 						<view class="fb-item-more">查看详情 ›</view>
 					</view>
 
-					<view v-if="loading" class="fb-loading">加载中…</view>
-					<view v-else-if="hasMore" class="fb-more" @click="loadMore">点击加载更多</view>
-					<view v-else-if="list.length" class="fb-no-more">没有更多了</view>
+					<cb-loading v-if="loaded && loading && list.length > 0" compact />
+					<view v-if="loaded && !loading && hasMore" class="fb-more" @click="loadMore">点击加载更多</view>
+					<view v-if="loaded && !loading && !hasMore && list.length" class="fb-no-more">没有更多了</view>
 				</view>
 			</template>
 		</view>
@@ -168,6 +170,7 @@ export default {
 			contactSummary: '',
 			submitting: false,
 			loading: false,
+			loaded: false,
 			list: [],
 			total: 0,
 			page: 1,
@@ -285,9 +288,11 @@ export default {
 						this.formCaptcha = Number(data.form_captcha) === 1;
 					}
 					this.loading = false;
+					this.loaded = true;
 				})
 				.catch((err) => {
 					this.loading = false;
+					this.loaded = true;
 					uni.showToast({ title: (err && err.msg) || '记录加载失败', icon: 'none' });
 				});
 		},

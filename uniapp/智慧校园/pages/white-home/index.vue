@@ -21,6 +21,10 @@
 		</view>
 
 		<view class="content-wrapper">
+			<!-- 首屏数据未就绪时展示骨架屏（仅首页） -->
+			<home-skeleton v-if="!pageReady" />
+
+			<block v-else>
 			<view v-if="indexAnnouncement">
 				<announcement :content="indexAnnouncement.content" :type="indexAnnouncement.type" :closable="true" />
 			</view>
@@ -89,6 +93,13 @@
 									{{ nextCourse.timeDisplay }}
 									<text v-if="nextCourse.location"> · {{ nextCourse.location }}</text>
 								</view>
+							</block>
+							<block v-else-if="courseLoading">
+								<view class="glance-card-header">
+									<view class="glance-card-label">课程信息</view>
+								</view>
+								<view class="glance-card-value">加载中...</view>
+								<view class="glance-card-info">正在获取课程信息</view>
 							</block>
 							<block v-else-if="courseLoadError">
 								<view class="glance-card-header">
@@ -183,7 +194,13 @@
 			</view>
 
 			<view class="notices-section">
-				<view class="notices-title">通知公告</view>
+				<view class="notices-header">
+					<view class="notices-title">通知公告</view>
+					<view class="notices-more" @click="handleNotices">
+						<text class="notices-more-text">更多</text>
+						<image class="notices-more-arrow" src="/static/assets/wxmp-right.svg" mode="aspectFit"></image>
+					</view>
+				</view>
 				<view class="content-notices">
 					<view
 						v-for="item in notices"
@@ -205,6 +222,7 @@
 					<view class="content-notice-more" @click="handleNotices">查看更多</view>
 				</view>
 			</view>
+			</block>
 		</view>
 
 		<!-- 版本更新弹窗 -->
@@ -221,8 +239,8 @@
 			@close="updateVisible = false"
 		/>
 
-		<!-- 右下角浮动刷新按钮（独立样式：纯白底 + 黑色图标，刷新整个首页数据） -->
-		<view class="home-refresh-fab" :class="{ 'home-refresh-fab-loading': pageRefreshing }" @click="handlePageRefresh">
+		<!-- 右下角浮动刷新按钮（独立样式：纯白底 + 黑色图标，刷新整个首页数据）；骨架屏期间隐藏，首屏加载完成后再展示 -->
+		<view v-if="pageReady" class="home-refresh-fab" :class="{ 'home-refresh-fab-loading': pageRefreshing }" @click="handlePageRefresh">
 			<image class="home-refresh-icon" src="/static/assets/wxmp-refresh-black.svg" mode="aspectFit"></image>
 		</view>
 
@@ -320,6 +338,7 @@ export default {
 			nextCourse: null,
 			allCoursesEnded: false,
 			courseLoadError: false,
+			courseLoading: false,     // 课程信息是否加载中（展示加载态，避免闪现「暂无课程」）
 			currentWeek: 0,          // 当前教学周（0=未取到，不展示）
 			powerInfo: null,
 			noDormitory: false,
@@ -328,6 +347,7 @@ export default {
 			todayText: '',           // 今日日期（M月D日）
 			swiperAutoplay: true,
 			_dataLoaded: false,
+			pageReady: false,        // 首屏数据是否就绪（未就绪展示骨架屏）
 			featureSettings: {},
 			indexAnnouncement: null,
 			updateVisible: false,
@@ -344,8 +364,6 @@ export default {
 		this.checkLoginStatus();
 		this.loadRandomPoem();
 		this.todayText = this.getTodayText();
-		this.loadFeatureSettings();
-		this.loadBanners();
 		// 开屏广告（后台可配置，免登录）
 		this.loadSplashAd();
 		// App 启动后首页加载时自动检查版本更新（免登录，与「关于我们-检查更新」逻辑一致）
@@ -363,9 +381,8 @@ export default {
 
 		if (!this._dataLoaded) {
 			this._dataLoaded = true;
-			this.loadGlanceData();
-			this.loadLowSubscriptions();
-			this.loadNotices();
+			// 首次显示：首屏数据全部返回后再撤掉骨架屏
+			this.initHomeData();
 		} else {
 			// 再次显示（登录成功回跳首页 / 从其它页面返回）：异步刷新课程与电费信息，
 			// 不展示 loading、失败也不清空，避免闪烁
@@ -390,6 +407,25 @@ export default {
 	},
 
 	methods: {
+		// 首屏数据：全部返回（成功或失败）后再撤掉骨架屏，避免逐个跳变
+		async initHomeData() {
+			// 兜底：接口异常缓慢时最多骨架 6s，避免长时间停在骨架屏
+			const guard = setTimeout(() => {
+				this.pageReady = true;
+			}, 6000);
+
+			const tasks = [
+				this.loadFeatureSettings(),
+				this.loadBanners(),
+				this.loadNotices(),
+				this.loadGlanceData(),
+				this.loadLowSubscriptions()
+			];
+			await Promise.all(tasks.map(p => Promise.resolve(p).catch(() => {})));
+			clearTimeout(guard);
+			this.pageReady = true;
+		},
+
 		async loadFeatureSettings() {
 			try {
 				const settings = await feature.getFeatureSettings();
@@ -450,6 +486,8 @@ export default {
 		async loadGlanceData(options) {
 			const silent = !!(options && options.silent);
 			if (!api.isLoggedIn()) return;
+			// 非静默（首屏/下拉刷新）时才展示课程卡的加载态，静默刷新保留原展示
+			if (!silent) this.courseLoading = true;
 			try {
 				const res = await api.getGlanceData();
 				const data = res.data || {};
@@ -468,6 +506,8 @@ export default {
 				this.currentWeek = 0;
 				this.powerInfo = null;
 				this.noDormitory = false;
+			} finally {
+				this.courseLoading = false;
 			}
 		},
 
@@ -1334,11 +1374,37 @@ page {
 	margin-bottom: 30rpx;
 }
 
+.notices-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 20rpx;
+}
+
+/* 右侧「更多」，与标题同行右对齐 */
+.notices-more {
+	display: flex;
+	align-items: center;
+	padding: 4rpx 0 4rpx 20rpx;
+}
+
+.notices-more-text {
+	font-size: 24rpx;
+	color: #948eb3;
+	line-height: 1;
+}
+
+.notices-more-arrow {
+	width: 22rpx;
+	height: 22rpx;
+	margin-left: 4rpx;
+	opacity: 0.7;
+}
+
 .notices-title {
 	font-size: 28rpx;
 	font-weight: bold;
 	color: #48416f;
-	margin-bottom: 20rpx;
 	padding-left: 20rpx;
 	position: relative;
 }

@@ -8,6 +8,7 @@ const { sceneTypeNames } = require('../../utils/common.js');
 Page({
     data: {
         loading: true,          // 加载状态
+        loaded: false,          // 首屏数据是否已返回（说明卡片与loading同批展示）
         subscriptions: []       // 订阅列表
     },
 
@@ -48,11 +49,12 @@ Page({
 
             this.setData({
                 subscriptions,
-                loading: false
+                loading: false,
+                loaded: true
             });
         } catch (err) {
             console.error('加载订阅数据失败', err);
-            this.setData({ loading: false });
+            this.setData({ loading: false, loaded: true });
             wx.showToast({ title: err.msg || '加载失败', icon: 'none' });
         }
     },

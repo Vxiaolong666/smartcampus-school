@@ -1,0 +1,236 @@
+<template>
+	<view class="mine-skeleton">
+		<!-- 个人资料卡 -->
+		<view class="ms-profile">
+			<view class="ms-avatar ms-block"></view>
+			<view class="ms-info">
+				<view class="ms-name ms-block"></view>
+				<view class="ms-meta">
+					<view class="ms-meta-item ms-block"></view>
+					<view class="ms-meta-divider"></view>
+					<view class="ms-meta-item ms-block"></view>
+				</view>
+			</view>
+			<view class="ms-arrow ms-block"></view>
+		</view>
+
+		<!-- 功能分组：账号绑定 / 订阅功能设置 / 账户与安全 / 客服与支持 -->
+		<view class="ms-group" v-for="(rows, gi) in groups" :key="'group' + gi">
+			<view class="ms-group-title ms-block"></view>
+			<view class="ms-group-card">
+				<view class="ms-item" v-for="i in rows" :key="'item' + gi + i">
+					<view class="ms-icon ms-block"></view>
+					<view class="ms-text ms-block"></view>
+					<view class="ms-chevron ms-block"></view>
+				</view>
+			</view>
+		</view>
+
+		<!-- 底部操作按钮 -->
+		<view class="ms-actions">
+			<view class="ms-action ms-block"></view>
+			<view class="ms-action ms-block"></view>
+		</view>
+	</view>
+</template>
+
+<script>
+/**
+ * 「我的」页骨架屏（仅该页使用）
+ * 结构与真实内容一一对应：资料卡 → 4 个功能分组 → 底部按钮
+ * 风格与首页骨架屏一致：浅紫灰块 + 整体呼吸
+ */
+export default {
+	name: 'mine-skeleton',
+	data() {
+		return {
+			// 各分组的条目数：账号绑定 2、订阅功能设置 4、账户与安全 5、客服与支持 4
+			groups: [2, 4, 5, 4]
+		};
+	}
+};
+</script>
+
+<style scoped>
+.mine-skeleton {
+	animation: ms-pulse 1.6s ease-in-out infinite;
+}
+
+/* 骨架块底色（与首页骨架屏保持一致） */
+.ms-block {
+	background-color: #e9ecf8;
+	border-radius: 8rpx;
+}
+
+/* 卡片高光扫过（与首页骨架屏轮播块同款扫光） */
+.ms-profile,
+.ms-group-card {
+	position: relative;
+	overflow: hidden;
+}
+
+.ms-profile::after,
+.ms-group-card::after {
+	content: '';
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	width: 60%;
+	background: linear-gradient(
+		90deg,
+		rgba(255, 255, 255, 0) 0%,
+		rgba(255, 255, 255, 0.85) 50%,
+		rgba(255, 255, 255, 0) 100%
+	);
+	transform: translate3d(-120%, 0, 0);
+	animation: ms-shimmer 1.8s linear infinite;
+	pointer-events: none;
+}
+
+/* 各分组错峰扫光，避免所有卡片同时亮起 */
+.ms-group:nth-child(2) .ms-group-card::after {
+	animation-delay: 0.12s;
+}
+
+.ms-group:nth-child(3) .ms-group-card::after {
+	animation-delay: 0.24s;
+}
+
+.ms-group:nth-child(4) .ms-group-card::after {
+	animation-delay: 0.36s;
+}
+
+.ms-group:nth-child(5) .ms-group-card::after {
+	animation-delay: 0.48s;
+}
+
+/* 资料卡 */
+.ms-profile {
+	display: flex;
+	align-items: center;
+	background: #ffffff;
+	border: 1rpx solid #f0f0f5;
+	border-radius: 24rpx;
+	padding: 40rpx 30rpx;
+	margin-bottom: 20rpx;
+}
+
+.ms-avatar {
+	width: 100rpx;
+	height: 100rpx;
+	border-radius: 50%;
+	flex-shrink: 0;
+}
+
+.ms-info {
+	flex: 1;
+	margin-left: 24rpx;
+}
+
+.ms-name {
+	width: 220rpx;
+	height: 32rpx;
+}
+
+.ms-meta {
+	display: flex;
+	align-items: center;
+	margin-top: 18rpx;
+}
+
+.ms-meta-item {
+	width: 96rpx;
+	height: 24rpx;
+}
+
+.ms-meta-divider {
+	width: 2rpx;
+	height: 24rpx;
+	background: #eef0f8;
+	margin: 0 20rpx;
+}
+
+.ms-arrow {
+	width: 30rpx;
+	height: 30rpx;
+	border-radius: 50%;
+	flex-shrink: 0;
+	margin-left: 16rpx;
+}
+
+/* 功能分组 */
+.ms-group {
+	margin-bottom: 20rpx;
+}
+
+.ms-group-title {
+	width: 140rpx;
+	height: 22rpx;
+	margin: 0 10rpx 16rpx;
+}
+
+.ms-group-card {
+	background: #ffffff;
+	border-radius: 20rpx;
+	overflow: hidden;
+}
+
+.ms-item {
+	display: flex;
+	align-items: center;
+	height: 100rpx;
+	padding: 0 30rpx;
+	background: #ffffff;
+}
+
+.ms-icon {
+	width: 50rpx;
+	height: 50rpx;
+	border-radius: 12rpx;
+	flex-shrink: 0;
+}
+
+.ms-text {
+	width: 180rpx;
+	height: 26rpx;
+	margin-left: 20rpx;
+}
+
+.ms-chevron {
+	width: 24rpx;
+	height: 24rpx;
+	border-radius: 50%;
+	margin-left: auto;
+}
+
+/* 底部按钮 */
+.ms-actions {
+	display: flex;
+	gap: 30rpx;
+	margin-top: 30rpx;
+	padding-bottom: calc(10rpx + env(safe-area-inset-bottom));
+}
+
+.ms-action {
+	flex: 1;
+	height: 88rpx;
+	border-radius: 16rpx;
+}
+
+@keyframes ms-shimmer {
+	to {
+		transform: translate3d(220%, 0, 0);
+	}
+}
+
+@keyframes ms-pulse {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.62;
+	}
+}
+</style>

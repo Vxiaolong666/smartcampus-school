@@ -1,0 +1,43 @@
+<view class="home-skeleton {{animated === false ? 'home-skeleton--static' : ''}}">
+  <!-- 外层只做入场淡入，内层只做呼吸，均单条动画（小程序对多动画简写支持不稳定） -->
+  <view class="home-skeleton__inner">
+    <!-- 轮播图 -->
+    <view class="sk-banner sk-shine"></view>
+
+    <!-- 快捷入口（3 个） -->
+    <view class="sk-menus">
+      <view class="sk-menu" wx:for="{{menuList}}" wx:key="*this">
+        <view class="sk-circle sk-shine"></view>
+        <view class="sk-line sk-line--menu sk-shine"></view>
+      </view>
+    </view>
+
+    <!-- 功能入口（2 个） -->
+    <view class="sk-menus sk-menus--sub">
+      <view class="sk-menu sk-menu--wide" wx:for="{{subList}}" wx:key="*this">
+        <view class="sk-circle sk-circle--sm sk-shine"></view>
+        <view class="sk-line sk-line--wide sk-shine"></view>
+      </view>
+    </view>
+
+    <!-- 今日速览 -->
+    <view class="sk-title sk-shine"></view>
+    <view class="sk-cards">
+      <view class="sk-card" wx:for="{{cardList}}" wx:key="*this">
+        <view class="sk-line sk-line--xs sk-shine"></view>
+        <view class="sk-line sk-line--lg sk-shine"></view>
+        <view class="sk-line sk-line--md sk-shine"></view>
+      </view>
+    </view>
+
+    <!-- 通知公告 -->
+    <view class="sk-title sk-shine"></view>
+    <view class="sk-notice" wx:for="{{noticeList}}" wx:key="*this">
+      <view class="sk-notice-cover sk-shine"></view>
+      <view class="sk-notice-info">
+        <view class="sk-line sk-line--lg sk-shine"></view>
+        <view class="sk-line sk-line--sm sk-shine"></view>
+      </view>
+    </view>
+  </view>
+</view>

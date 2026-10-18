@@ -93,5 +93,31 @@
       <image class="empty-icon" src="/assets/wxmp-bolt-gray.svg" mode="widthFix"></image>
       <view class="empty-text">选择校区和楼栋后开始查询</view>
     </view>
+
+    <!-- 查询结果说明：与电费查询页保持一致，查询中隐藏 -->
+    <view class="tips-card" wx:if="{{!querying}}">
+      <view class="tips-title">
+        <image class="tips-icon" src="/assets/wxmp-lightbulb.svg" mode="widthFix"></image>
+        <text>电费查询结果说明</text>
+      </view>
+      <view class="tips-list">
+        <view class="tips-item">
+          <view class="tips-dot normal"></view>
+          <view class="tips-text">电量充足：余额大于等于30度</view>
+        </view>
+        <view class="tips-item">
+          <view class="tips-dot warning"></view>
+          <view class="tips-text">电量偏低：10度至30度之间</view>
+        </view>
+        <view class="tips-item">
+          <view class="tips-dot low"></view>
+          <view class="tips-text">电量不足：余额小于10度</view>
+        </view>
+        <view class="tips-item">
+          <view class="tips-dot arrears"></view>
+          <view class="tips-text">已欠费：余额小于等于0度</view>
+        </view>
+      </view>
+    </view>
   </view>
 </view>

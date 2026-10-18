@@ -44,6 +44,7 @@ Page({
         nextCourse: null,       // 下一节课信息
         allCoursesEnded: false,  // 今日课程是否已全部结束
         courseLoadError: false,  // 课程数据加载是否失败
+        courseLoading: false,    // 课程信息是否加载中（展示加载态，避免闪现「暂无课程」）
         currentWeek: 0,          // 当前教学周（0=未取到，不展示）
         powerInfo: null,        // 电费信息
         noDormitory: false,     // 是否未绑定宿舍
@@ -51,6 +52,7 @@ Page({
         randomPoem: '',          // 随机古诗词一言
         todayText: '',           // 今日日期（M月D日）
         _dataLoaded: false,      // 数据是否已加载（避免重复加载）
+        pageReady: false,        // 首屏数据是否就绪（未就绪展示骨架屏）
         featureSettings: {},     // 功能开关设置
         indexAnnouncement: null, // 首页公告
         splashVisible: false,    // 开屏广告是否展示
@@ -90,13 +92,30 @@ Page({
         this.checkLoginStatus();
         this.loadRandomPoem();
         this.setData({ todayText: this.getTodayText() });
-        this.loadFeatureSettings();
-        this.loadBanners();
         // 开屏广告（后台可配置，免登录）
         this.loadSplashAd();
 
         // 合规要求：首页免登录即可浏览（轮播、公告、通知等），不再强制跳转登录页
         // 需要账号的功能在各自页面入口处提示登录，登录入口保留在「我的」页
+    },
+
+    // 首屏数据：全部返回（成功或失败）后再撤掉骨架屏，避免逐个跳变
+    async initHomeData() {
+        // 兜底：接口异常缓慢时最多骨架 6s，避免长时间停在骨架屏
+        const guard = setTimeout(() => {
+            this.setData({ pageReady: true });
+        }, 6000);
+
+        const tasks = [
+            this.loadFeatureSettings(),
+            this.loadBanners(),
+            this.loadNotices(),
+            this.loadGlanceData(),
+            this.loadLowSubscriptions()
+        ];
+        await Promise.all(tasks.map(p => Promise.resolve(p).catch(() => {})));
+        clearTimeout(guard);
+        this.setData({ pageReady: true });
     },
 
     //加载功能开关设置
@@ -148,6 +167,8 @@ Page({
     async loadGlanceData(options) {
         const silent = !!(options && options.silent);
         if (!api.isLoggedIn()) return;
+        // 非静默（首屏/下拉刷新）时才展示课程卡的加载态，静默刷新保留原展示
+        if (!silent) this.setData({ courseLoading: true });
         try {
             const res = await api.getGlanceData();
             const data = res.data || {};
@@ -170,6 +191,8 @@ Page({
                 powerInfo: null,
                 noDormitory: false
             });
+        } finally {
+            this.setData({ courseLoading: false });
         }
     },
 
@@ -265,9 +288,8 @@ Page({
         // 首次显示：完整加载（避免重复加载）
         if (!this.data._dataLoaded) {
             this.setData({ _dataLoaded: true });
-            this.loadGlanceData();
-            this.loadLowSubscriptions();
-            this.loadNotices();
+            // 首次显示：首屏数据全部返回后再撤掉骨架屏
+            this.initHomeData();
         } else {
             // 再次显示（登录成功回跳首页 / 从其它页面返回）：异步刷新课程与电费信息，
             // 不展示 loading、失败也不清空，避免闪烁

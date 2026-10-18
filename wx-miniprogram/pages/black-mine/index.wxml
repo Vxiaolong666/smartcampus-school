@@ -11,7 +11,10 @@
 
   <view class="content-wrapper">
 
-    <view class="profile-card" bindtap="{{isLoggedIn ? 'handleProfile' : 'handleLogin'}}">
+    <!-- 数据返回前整页内容用骨架屏占位（不保留顶部个人资料卡），避免先显示默认资料再跳变 -->
+    <mine-skeleton wx:if="{{isLoggedIn && !statusLoaded}}" />
+
+    <view class="profile-card" wx:if="{{!isLoggedIn || statusLoaded}}" bindtap="{{isLoggedIn ? 'handleProfile' : 'handleLogin'}}">
       <view class="profile-content">
         <block wx:if="{{isLoggedIn && apiUserInfo}}">
           <view class="profile-avatar-wrap">
@@ -51,7 +54,7 @@
       </view>
     </view>
 
-    <view class="item-bar">
+    <view class="item-bar" wx:if="{{!isLoggedIn || statusLoaded}}">
 
       <block wx:if="{{isLoggedIn}}">
         <view class="item-group">

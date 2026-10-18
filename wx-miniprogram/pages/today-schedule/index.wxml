@@ -16,7 +16,7 @@
       <announcement content="{{announcement.content}}" type="{{announcement.type}}" closable="{{true}}" />
     </view>
 
-    <view class="day-selector" wx:if="{{!needBind}}">
+    <view class="day-selector" wx:if="{{!loading && !needBind}}">
       <view 
         class="day-item {{selectedDay === index ? 'active' : ''}} {{todayDayOfWeek === index ? 'today' : ''}}" 
         wx:for="{{weekDates}}" 
@@ -30,7 +30,7 @@
       </view>
     </view>
 
-    <view class="info-cards" wx:if="{{!needBind}}">
+    <view class="info-cards" wx:if="{{!loading && !needBind}}">
       <view class="info-card date-card">
         <image class="info-icon" src="/assets/wxmp-calendar.svg" mode="widthFix"></image>
         <view class="info-content">
@@ -143,9 +143,7 @@
       </view>
     </view>
 
-    <view wx:if="{{loading}}" class="loading-wrapper">
-      <view class="loading-text">加载中...</view>
-    </view>
+    <cb-loading wx:if="{{loading}}" />
 
     <view wx:elif="{{dayCourses.length > 0}}" class="course-list-wrapper">
       <view wx:if="{{morningCourses.length > 0}}" class="course-section">
@@ -296,12 +294,7 @@
       </view>
     </view>
 
-    <view wx:elif="{{needBind}}" class="empty-wrapper">
-      <image class="empty-icon" src="/assets/wxmp-book-gray.svg" mode="widthFix"></image>
-      <view class="empty-title">请先绑定教务账号</view>
-      <view class="empty-text">绑定后可查看今日与本周课程安排</view>
-      <button class="bind-btn" bindtap="goToBind">前往绑定</button>
-    </view>
+    <cb-bind-tip wx:elif="{{needBind}}" type="academic" desc="绑定后可查看今日与本周课程安排" />
 
     <view wx:else class="empty-wrapper">
       <image class="empty-icon" src="/assets/wxmp-book-gray.svg" mode="widthFix"></image>
@@ -337,7 +330,7 @@
   </view>
 
   <!-- 右侧浮动 AI 分析按钮（tabBar 页面抬高避免被标签栏遮挡） -->
-  <view class="ai-fab ai-fab--tab {{aiLoading ? 'ai-loading' : ''}}" bindtap="aiAnalyze">
+  <view wx:if="{{!loading && !needBind && dayCourses.length > 0}}" class="ai-fab ai-fab--tab {{aiLoading ? 'ai-loading' : ''}}" bindtap="aiAnalyze">
     <text class="ai-fab-icon">AI</text>
     <text class="ai-fab-label">分析</text>
   </view>

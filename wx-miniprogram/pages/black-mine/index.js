@@ -16,6 +16,7 @@ Page({
         apiUserInfo: null,          // 用户信息
         wxBindText: '绑定微信',      // 微信绑定按钮文本
         userAvatar: '',             // 用户头像
+        statusLoaded: false,        // 绑定状态是否已全部返回（未完成时用 loading 占位）
         academicBound: false,       // 是否已绑定教务账号
         dormitoryCount: 0,          // 已绑定宿舍数量
         maxDormitories: 5,          // 最大宿舍绑定数量
@@ -26,11 +27,8 @@ Page({
 
     //页面初次渲染完成
     onReady() {
-        this.checkLoginStatus();
-        this.loadUserInfo();
-        this.checkAcademicStatus();
-        this.checkDormitoryStatus();
-        this.checkSubscriptionStatus();
+        // tab 页 onShow 早于 onReady，通常首轮刷新已由 onShow 发起，这里仅做兜底
+        if (!this._statusRequested) this.refreshAllStatus();
     },
 
     //检查登录状态
@@ -100,7 +98,7 @@ Page({
             return;
         }
         
-        api.getAcademic()
+        return api.getAcademic()
             .then(res => {
                 // 已绑定教务账号
                 this.setData({ academicBound: !!(res.data && res.data.student_id) });
@@ -119,7 +117,7 @@ Page({
             return;
         }
         
-        api.getDormitories()
+        return api.getDormitories()
             .then(res => {
                 // 更新宿舍数量
                 this.setData({ dormitoryCount: (res.data || []).length });
@@ -137,7 +135,7 @@ Page({
             return;
         }
         
-        api.request({
+        return api.request({
             act: 'get_user_subscriptions',
             method: 'GET'
         })
@@ -370,11 +368,17 @@ Page({
 
     //刷新全部状态（onShow 与点击 Tab 时共用）
     refreshAllStatus() {
+        this._statusRequested = true;
         this.checkLoginStatus();
         this.loadUserInfo();
-        this.checkAcademicStatus();
-        this.checkDormitoryStatus();
-        this.checkSubscriptionStatus();
+        // 并行拉取各项绑定状态，全部结束后再渲染，避免先显示「未绑定」再跳成「已绑定」
+        Promise.all([
+            this.checkAcademicStatus(),
+            this.checkDormitoryStatus(),
+            this.checkSubscriptionStatus()
+        ]).catch(() => {}).finally(() => {
+            this.setData({ statusLoaded: true });
+        });
         this.refreshCacheSize();
     },
 

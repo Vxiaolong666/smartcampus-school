@@ -5,6 +5,7 @@ Page({
     data: {
         notices: [],       // 通知列表
         loading: false,    // 加载状态
+        loaded: false,     // 首屏数据是否已返回（用 loading 占位，避免闪现空态）
         page: 1,           // 当前页码
         size: 10,          // 每页数量
         total: 0,          // 总数量
@@ -38,10 +39,11 @@ Page({
                 total: res.data.total,
                 page: this.data.page + 1,
                 hasMore: this.data.notices.length + list.length < res.data.total,
-                loading: false
+                loading: false,
+                loaded: true
             });
         } catch (err) {
-            this.setData({ loading: false });
+            this.setData({ loading: false, loaded: true });
             wx.showToast({
                 title: err.msg || '加载失败',
                 icon: 'none'

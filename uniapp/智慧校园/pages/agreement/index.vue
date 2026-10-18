@@ -17,10 +17,7 @@
 
 			<!-- 加载中 -->
 			<view v-if="loading" class="ag-list-card">
-				<view class="ag-loading-box">
-					<view class="ag-loading-spinner"></view>
-					<view class="ag-loading-tip">加载中…</view>
-				</view>
+				<cb-loading compact />
 			</view>
 
 			<!-- 拉取失败（网络异常 / 协议表未初始化）：不再回退本地内置清单 -->

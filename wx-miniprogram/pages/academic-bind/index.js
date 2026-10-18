@@ -11,6 +11,7 @@ Page({
         password: '',         // 教务密码
         realName: '',         // 真实姓名（可选）
         loading: false,       // 加载状态
+        loaded: false,        // 绑定状态是否已返回（用 loading 占位，避免先展示未绑定表单）
         isBound: false,       // 是否已绑定教务账号
         academicInfo: null,
         announcement: null    // 教务账号信息
@@ -68,14 +69,16 @@ Page({
                 // 成功：设置为已绑定true，更新状态
                 this.setData({
                     isBound: true,
-                    academicInfo: res.data
+                    academicInfo: res.data,
+                    loaded: true
                 });
             })
             .catch(err => {
                 // 失败：设置为未绑定false，清空状态
                 this.setData({
                     isBound: false,
-                    academicInfo: null
+                    academicInfo: null,
+                    loaded: true
                 });
             });
     },

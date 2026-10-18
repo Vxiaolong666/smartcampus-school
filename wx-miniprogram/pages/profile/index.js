@@ -7,7 +7,8 @@ Page({
         userInfo: null,         // 用户信息
         nickname: '',           // 昵称
         avatar: '',             // 头像URL
-        hasWxOpenid: false      // 是否已绑定微信
+        hasWxOpenid: false,     // 是否已绑定微信
+        loaded: false           // 用户信息是否已返回（用 loading 占位，避免闪现空表单）
     },
 
     // 页面加载时触发
@@ -30,9 +31,11 @@ Page({
                 userInfo,
                 nickname: userInfo.nickname || userInfo.username,
                 avatar: api.getFileUrl(userInfo.avatar),
-                hasWxOpenid: !!userInfo.wx_openid
+                hasWxOpenid: !!userInfo.wx_openid,
+                loaded: true
             });
         } catch (err) {
+            this.setData({ loaded: true });
             wx.showToast({ title: err.msg || '加载失败', icon: 'none' });
         }
     },

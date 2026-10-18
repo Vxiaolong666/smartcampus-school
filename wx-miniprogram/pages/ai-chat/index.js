@@ -41,7 +41,9 @@ Page({
     // 兜底文案：后台未配置公告时展示
     featureTip: '微信小程序不支持该功能，请前往网页或APP端使用',
     // 动态图标：后台公告类型对应的图标（见 feature.getAnnouncementIcon）；为空时用内置红叉兜底
-    featureIcon: ''
+    featureIcon: '',
+    // 功能开关是否已校验完成（未完成时内容区用 loading 占位，避免闪现对话界面）
+    featureReady: false
   },
 
   onLoad() {
@@ -108,6 +110,9 @@ Page({
       .catch(() => {
         // 开关接口异常不阻断功能（与其它功能开关的默认行为一致）
         this.loadModelsOnce();
+      })
+      .finally(() => {
+        this.setData({ featureReady: true });
       });
   },
 

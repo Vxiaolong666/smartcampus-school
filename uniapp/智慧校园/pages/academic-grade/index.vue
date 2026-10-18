@@ -14,7 +14,7 @@
 				<announcement :content="announcement.content" :type="announcement.type" :closable="true" />
 			</view>
 
-			<view class="filter-card" v-if="!needBind">
+			<view class="filter-card" v-if="!needBind && (semesters.length > 0 || !loading)">
 				<view class="filter-row">
 					<view class="filter-item">
 						<view class="filter-label">学期</view>
@@ -50,15 +50,9 @@
 				</view>
 			</view>
 
-			<view v-if="loading" class="loading-wrapper">
-				<view class="loading-text">加载中...</view>
-			</view>
+			<cb-loading v-if="loading" />
 
-			<view v-else-if="needBind" class="empty-wrapper">
-				<image class="empty-icon" src="/static/assets/wxmp-read.svg" mode="widthFix"></image>
-				<view class="empty-text">请先绑定教务账号后再查询成绩</view>
-				<button class="bind-btn" @click="goToBind">前往绑定</button>
-			</view>
+			<cb-bind-tip v-else-if="needBind" type="academic" desc="绑定后可查询成绩" />
 
 			<view v-else-if="grades.length === 0" class="empty-wrapper">
 				<image class="empty-icon" src="/static/assets/wxmp-read.svg" mode="widthFix"></image>
@@ -116,7 +110,7 @@
 		</view>
 
 		<!-- 右侧浮动 AI 分析按钮（圆形） -->
-		<view class="ai-fab" :class="{ 'ai-loading': aiLoading }" @click="aiAnalyze">
+		<view v-if="!loading && !needBind && grades.length > 0" class="ai-fab" :class="{ 'ai-loading': aiLoading }" @click="aiAnalyze">
 			<text class="ai-fab-icon">AI</text>
 			<text class="ai-fab-label">分析</text>
 		</view>
@@ -176,7 +170,7 @@ export default {
 			semesters: [],
 			semesterIndex: 0,
 			currentSemester: '',
-			loading: false,
+			loading: true,
 			needBind: false,
 			grades: [],
 			summary: {

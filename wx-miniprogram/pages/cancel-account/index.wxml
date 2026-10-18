@@ -10,9 +10,7 @@
 
   <view class="content-wrapper">
     <!-- 加载中 -->
-    <view wx:if="{{loading}}" class="state-box">
-      <text class="state-text">加载中…</text>
-    </view>
+    <cb-loading wx:if="{{loading}}" />
 
     <!-- 未开启 -->
     <view wx:elif="{{!enabled}}" class="state-box">

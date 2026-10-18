@@ -17,15 +17,9 @@
         <view class="card-title">学籍信息</view>
       </view>
 
-      <view wx:if="{{loading}}" class="loading-wrapper">
-        <view class="loading-text">加载中...</view>
-      </view>
+      <cb-loading wx:if="{{loading}}" compact />
 
-      <view wx:elif="{{needBind}}" class="empty-wrapper empty-bind">
-        <image class="empty-icon" src="/assets/wxmp-about.svg" mode="widthFix"></image>
-        <view class="empty-text">请先绑定教务账号后再查询学籍</view>
-        <button class="bind-btn" bindtap="goToBind">前往绑定</button>
-      </view>
+      <cb-bind-tip wx:elif="{{needBind}}" type="academic" desc="绑定后可查询学籍信息" compact />
 
       <view wx:elif="{{!studentInfo}}" class="empty-wrapper">
         <image class="empty-icon" src="/assets/wxmp-about.svg" mode="widthFix"></image>

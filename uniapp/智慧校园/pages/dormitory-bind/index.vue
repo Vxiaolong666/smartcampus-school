@@ -14,27 +14,25 @@
 				<announcement :content="announcement.content" :type="announcement.type" :closable="true" />
 			</view>
 
-			<view class="info-card">
+			<view class="info-card" v-if="!loading">
 				<image class="info-icon" src="/static/assets/wxmp-home2.svg" mode="widthFix"></image>
 				<view class="info-content">
 					<view class="info-text">最多可绑定{{ maxDormitories }}个宿舍，当前已绑定{{ dormitories.length }}个</view>
 				</view>
 			</view>
 
-			<view class="btn-group">
-				<button v-if="dormitories.length < maxDormitories" class="primary-btn" @click="openAddPanel">
-					<image class="btn-icon" src="/static/assets/wxmp-add.svg" mode="widthFix"></image>
-					添加宿舍
-				</button>
-				<button v-if="dormitories.length > 0" class="secondary-btn" @click="goToPowerFee">
+			<view class="btn-group" v-if="!loading">
+				<button class="secondary-btn" @click="goToPowerFee">
 					<image class="btn-icon" src="/static/assets/wxmp-search.svg" mode="widthFix"></image>
 					查询电费
 				</button>
+				<button v-if="dormitories.length < maxDormitories" class="primary-btn" @click="openAddPanel">
+					<image class="btn-icon btn-icon-add" src="/static/assets/wxmp-add-plain.svg" mode="widthFix"></image>
+					添加宿舍
+				</button>
 			</view>
 
-			<view v-if="loading" class="loading-wrapper">
-				<view class="loading-text">加载中...</view>
-			</view>
+			<cb-loading v-if="loading" />
 
 			<view v-else-if="dormitories.length > 0" class="dorm-list">
 				<view class="dorm-item" v-for="item in dormitories" :key="item.id">

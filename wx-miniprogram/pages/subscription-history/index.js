@@ -30,6 +30,7 @@ Page({
 
     list: [],
     loading: false,
+    loaded: false,   // 首屏数据是否已返回（用 loading 占位，避免闪现空态）
     page: 1,
     size: 10,
     total: 0,
@@ -93,7 +94,7 @@ Page({
       page = 1;
       list = [];
       hasMore = true;
-      this.setData({ list: [], total: 0, page: 1, hasMore: true });
+      this.setData({ list: [], total: 0, page: 1, hasMore: true, loaded: false });
     }
 
     this.setData({ loading: true });
@@ -127,11 +128,12 @@ Page({
         total: total,
         page: page + 1,
         hasMore: merged.length < total,
-        loading: false
+        loading: false,
+        loaded: true
       });
     } catch (err) {
       console.error('加载订阅历史失败', err);
-      this.setData({ loading: false });
+      this.setData({ loading: false, loaded: true });
       wx.showToast({ title: (err && err.msg) || '加载失败', icon: 'none' });
     }
   }

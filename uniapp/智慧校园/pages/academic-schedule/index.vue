@@ -14,7 +14,7 @@
 				<announcement :content="announcement.content" :type="announcement.type" :closable="true" />
 			</view>
 
-			<view class="filter-card" v-if="!needBind">
+			<view class="filter-card" v-if="!needBind && (modes.length > 0 || !loading)">
 				<view class="filter-row">
 					<view class="filter-item">
 						<view class="filter-label">类别</view>
@@ -38,16 +38,9 @@
 				</view>
 			</view>
 
-			<view v-if="loading" class="loading-wrapper">
-				<view class="loading-text">加载中...</view>
-			</view>
+			<cb-loading v-if="loading" />
 
-			<view v-else-if="needBind" class="empty-wrapper empty-bind">
-				<image class="empty-icon" src="/static/assets/wxmp-book-gray.svg" mode="widthFix"></image>
-				<view class="empty-title">请先绑定教务账号</view>
-				<view class="empty-text">绑定后可查看本周课程表安排</view>
-				<button class="bind-btn" @click="goToBind">前往绑定</button>
-			</view>
+			<cb-bind-tip v-else-if="needBind" type="academic" desc="绑定后可查看本周课程表安排" />
 
 			<view v-else-if="schedule.length === 0" class="empty-wrapper">
 				<image class="empty-icon" src="/static/assets/wxmp-book-gray.svg" mode="widthFix"></image>
@@ -152,7 +145,7 @@
 		</view>
 
 		<!-- 右侧浮动 AI 分析按钮（圆形） -->
-		<view class="ai-fab" :class="{ 'ai-loading': aiLoading }" @click="aiAnalyze">
+		<view v-if="!loading && !needBind && courses.length > 0" class="ai-fab" :class="{ 'ai-loading': aiLoading }" @click="aiAnalyze">
 			<text class="ai-fab-icon">AI</text>
 			<text class="ai-fab-label">分析</text>
 		</view>
@@ -287,7 +280,7 @@ export default {
 				'第20周'
 			],
 			weekIndex: 0,
-			loading: false,
+			loading: true,
 			needBind: false,
 			schedule: [],
 			courses: [],

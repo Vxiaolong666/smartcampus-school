@@ -11,16 +11,9 @@
     <view class="content-wrapper">
         <announcement wx:if="{{announcement}}" content="{{announcement.content}}" type="{{announcement.type}}" closable="{{true}}" />
 
-        <view wx:if="{{loading}}" class="loading-section">
-            <view class="loading-spinner"></view>
-            <text class="loading-text">加载中...</text>
-        </view>
-        
-        <view wx:elif="{{dormitories.length === 0}}" class="empty-section">
-            <image class="empty-icon" src="/assets/wxmp-home2-gray.svg" mode="widthFix"></image>
-            <text class="empty-text">未绑定宿舍，请先绑定宿舍</text>
-            <button class="bind-btn" bindtap="goToBind">前往绑定</button>
-        </view>
+        <cb-loading wx:if="{{loading}}" />
+
+        <cb-bind-tip wx:elif="{{dormitories.length === 0}}" type="dorm" desc="绑定宿舍后可配置电费推送" />
         
         <view wx:else class="settings-list">
             <view class="action-card">

@@ -1,0 +1,6 @@
+<view class="cb-bind-tip {{compact ? 'cb-bind-tip--compact' : ''}}">
+  <image class="cb-bind-tip__icon" src="{{tipIcon}}" mode="widthFix"></image>
+  <view class="cb-bind-tip__title">{{tipTitle}}</view>
+  <view class="cb-bind-tip__desc">{{tipDesc}}</view>
+  <button wx:if="{{showBtn}}" class="cb-bind-tip__btn" bindtap="onBind">{{btnText}}</button>
+</view>

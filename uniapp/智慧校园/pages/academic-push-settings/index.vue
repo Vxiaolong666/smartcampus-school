@@ -14,10 +14,7 @@
 				<announcement :content="announcement.content" :type="announcement.type" :closable="true" />
 			</view>
 
-			<view v-if="loading" class="loading-section">
-				<view class="loading-spinner"></view>
-				<text class="loading-text">加载中...</text>
-			</view>
+			<cb-loading v-if="loading" />
 
 			<view v-else-if="!hasAcademicAccount" class="form-card">
 				<view class="card-header">
@@ -25,10 +22,7 @@
 					<view class="card-title">{{ pageTitle }}</view>
 					<view class="card-desc">{{ pageDesc }}</view>
 				</view>
-				<view class="empty-tip">
-					<text>请先绑定教务账号后再设置学术推送</text>
-				</view>
-				<button class="submit-btn" @click="goToBind">前往绑定</button>
+				<cb-bind-tip type="academic" desc="绑定后可设置学术推送" compact />
 			</view>
 
 			<block v-else>

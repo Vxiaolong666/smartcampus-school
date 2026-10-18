@@ -14,16 +14,9 @@
 				<announcement :content="announcement.content" :type="announcement.type" :closable="true" />
 			</view>
 
-			<view v-if="loading" class="loading-section">
-				<view class="loading-spinner"></view>
-				<text class="loading-text">加载中...</text>
-			</view>
+			<cb-loading v-if="loading" />
 
-			<view v-else-if="dormitories.length === 0" class="empty-section">
-				<image class="empty-icon" src="/static/assets/wxmp-home2-gray.svg" mode="widthFix"></image>
-				<view class="empty-title">请先绑定宿舍</view>
-				<view class="empty-text">绑定宿舍后可查看用电统计</view>
-			</view>
+			<cb-bind-tip v-else-if="dormitories.length === 0" type="dorm" desc="绑定宿舍后可查看用电统计" />
 
 			<block v-else>
 				<view class="filter-section">
@@ -400,7 +393,7 @@
 		</view>
 
 		<!-- 右侧浮动 AI 分析按钮（圆形） -->
-		<view class="ai-fab" :class="{ 'ai-loading': aiLoading }" @click="aiAnalyze">
+		<view v-if="!loading && dormitories.length > 0" class="ai-fab" :class="{ 'ai-loading': aiLoading }" @click="aiAnalyze">
 			<text class="ai-fab-icon">AI</text>
 			<text class="ai-fab-label">分析</text>
 		</view>

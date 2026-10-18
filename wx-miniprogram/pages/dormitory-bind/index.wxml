@@ -14,27 +14,25 @@
       <announcement content="{{announcement.content}}" type="{{announcement.type}}" closable="{{true}}" />
     </view>
 
-    <view class="info-card">
+    <view class="info-card" wx:if="{{!loading}}">
       <image class="info-icon" src="/assets/wxmp-home2.svg" mode="widthFix"></image>
       <view class="info-content">
         <view class="info-text">最多可绑定{{maxDormitories}}个宿舍，当前已绑定{{dormitories.length}}个</view>
       </view>
     </view>
 
-    <view class="btn-group">
-      <button wx:if="{{dormitories.length < maxDormitories}}" class="primary-btn" bindtap="showAddPanel">
-        <image class="btn-icon" src="/assets/wxmp-add.svg" mode="widthFix"></image>
-        添加宿舍
-      </button>
-      <button wx:if="{{dormitories.length > 0}}" class="secondary-btn" bindtap="goToPowerFee">
+    <view class="btn-group" wx:if="{{!loading}}">
+      <button class="secondary-btn" bindtap="goToPowerFee">
         <image class="btn-icon" src="/assets/wxmp-search.svg" mode="widthFix"></image>
         查询电费
       </button>
+      <button wx:if="{{dormitories.length < maxDormitories}}" class="primary-btn" bindtap="showAddPanel">
+        <image class="btn-icon btn-icon-add" src="/assets/wxmp-add-plain.svg" mode="widthFix"></image>
+        添加宿舍
+      </button>
     </view>
 
-    <view wx:if="{{loading}}" class="loading-wrapper">
-      <view class="loading-text">加载中...</view>
-    </view>
+    <cb-loading wx:if="{{loading}}" />
 
     <view wx:elif="{{dormitories.length > 0}}" class="dorm-list">
       <view class="dorm-item" wx:for="{{dormitories}}" wx:key="id">

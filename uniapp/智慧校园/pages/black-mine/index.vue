@@ -10,7 +10,10 @@
 		</view>
 
 		<view class="content-wrapper">
-			<view class="profile-card" @click="isLoggedIn ? handleProfile() : handleLogin()">
+			<!-- 数据返回前整页内容用骨架屏占位（不保留顶部个人资料卡），避免先显示默认资料再跳变 -->
+			<mine-skeleton v-if="isLoggedIn && !statusLoaded" />
+
+			<view class="profile-card" v-if="!isLoggedIn || statusLoaded" @click="isLoggedIn ? handleProfile() : handleLogin()">
 				<view class="profile-content">
 					<block v-if="isLoggedIn && apiUserInfo">
 						<view class="profile-avatar-wrap">
@@ -50,7 +53,7 @@
 				</view>
 			</view>
 
-			<view class="item-bar">
+			<view class="item-bar" v-if="!isLoggedIn || statusLoaded">
 				<block v-if="isLoggedIn">
 					<view class="item-group">
 						<view class="item-group-title">账号绑定</view>
@@ -228,6 +231,7 @@ export default {
 			apiUserInfo: null,
 			wxBindText: '绑定微信',
 			userAvatar: '',
+			statusLoaded: false,
 			academicBound: false,
 			dormitoryCount: 0,
 			maxDormitories: 5,
@@ -330,9 +334,14 @@ export default {
 			this._lastLoadAt = now;
 
 			this.loadUserInfo();
-			this.checkAcademicStatus();
-			this.checkDormitoryStatus();
-			this.checkSubscriptionStatus();
+			// 并行拉取各项绑定状态，全部结束后再渲染，避免状态位逐个跳变
+			Promise.all([
+				this.checkAcademicStatus(),
+				this.checkDormitoryStatus(),
+				this.checkSubscriptionStatus()
+			]).catch(() => {}).finally(() => {
+				this.statusLoaded = true;
+			});
 		},
 
 		checkLoginStatus() {
@@ -389,7 +398,7 @@ export default {
 				return;
 			}
 
-			api.getAcademic()
+			return api.getAcademic()
 				.then(res => {
 					this.academicBound = !!(res.data && res.data.student_id);
 				})
@@ -404,7 +413,7 @@ export default {
 				return;
 			}
 
-			api.getDormitories()
+			return api.getDormitories()
 				.then(res => {
 					this.dormitoryCount = (res.data || []).length;
 				})
@@ -419,7 +428,7 @@ export default {
 				return;
 			}
 
-			api.request({
+			return api.request({
 				act: 'get_user_subscriptions',
 				method: 'GET'
 			})

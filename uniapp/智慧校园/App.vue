@@ -1090,4 +1090,21 @@
 		font-size: 22rpx;
 		color: #948eb3;
 	}
+
+	/* ==================== 遮罩退出后内容淡入（全局统一） ==================== */
+	/* 加载遮罩 / 未绑定遮罩消失后，内容节点由 v-if 重新创建时会自动播放该动画，
+	   与遮罩的淡入衔接成「遮罩退出 → 内容展示」的过渡，无需逐页加类名 */
+	@keyframes cb-content-reveal {
+		from {
+			opacity: 0;
+		}
+		to {
+			opacity: 1;
+		}
+	}
+
+	.content-wrapper > view,
+	.content-wrapper > uni-view {
+		animation: cb-content-reveal 0.22s ease-out both;
+	}
 </style>

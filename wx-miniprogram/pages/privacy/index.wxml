@@ -23,10 +23,7 @@
       </view>
       <!-- 正文始终从接口获取：加载中 -->
       <view class="ag-body" wx:elif="{{loading}}">
-        <view class="ag-loading-box">
-          <view class="ag-loading-spinner"></view>
-          <view class="ag-loading-tip">加载中…</view>
-        </view>
+        <cb-loading compact />
       </view>
       <!-- 拉取失败（网络异常 / 协议表未初始化）：不再回退本地内置内容 -->
       <view class="ag-body" wx:elif="{{failed}}">

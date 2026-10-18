@@ -9,7 +9,7 @@ Page({
     data: {
         featureEnabled: true,       // 功能是否启用
         announcement: null,          // 公告信息
-        loading: false,              // 加载状态
+        loading: true,               // 加载状态（初始为 true，避免首屏闪现空态）
         needBind: false,             // 是否未绑定教务账号
         studentInfo: null            // 学生信息
     },

@@ -24,7 +24,13 @@
   </view>
 
   <view class="content-wrapper">
+    <!-- 功能开关校验中：顶部导航保留，其余内容统一用 loading 占位，避免先渲染对话再被遮罩覆盖 -->
+    <view wx:if="{{!featureReady}}" class="chat-loading">
+      <cb-loading />
+    </view>
+
     <scroll-view
+      wx:if="{{featureReady}}"
       class="chat-body"
       scroll-y
       scroll-into-view="{{scrollTarget}}"
@@ -156,7 +162,7 @@
     </scroll-view>
 
     <!-- 输入区 -->
-    <view class="chat-input">
+    <view class="chat-input" wx:if="{{featureReady}}">
       <view class="input-box">
         <textarea
           class="msg-input"
@@ -181,13 +187,17 @@
           </view>
         </view>
       </view>
-      <button
-        class="send-btn {{!streaming && !inputText ? 'disabled' : ''}}"
-        bindtap="onSendBtnTap"
-      >
-        <image wx:if="{{!streaming}}" class="send-icon" src="/assets/wxmp-send-white.svg" mode="aspectFit" />
-        <view wx:else class="send-stop"></view>
-      </button>
+      <!-- 发送/终止按钮：终止时圆环在按钮外侧作边框旋转，按钮内部只留方块 -->
+      <view class="send-btn-wrap">
+        <view wx:if="{{streaming}}" class="send-ring"></view>
+        <button
+          class="send-btn {{!streaming && !inputText ? 'disabled' : ''}} {{streaming ? 'streaming' : ''}}"
+          bindtap="onSendBtnTap"
+        >
+          <image wx:if="{{!streaming}}" class="send-icon" src="/assets/wxmp-send-white.svg" mode="aspectFit" />
+          <view wx:else class="send-stop"></view>
+        </button>
+      </view>
 
       <!-- 模型选择菜单 -->
       <view wx:if="{{showModelMenu}}" class="model-mask" bindtap="closeModelMenu">

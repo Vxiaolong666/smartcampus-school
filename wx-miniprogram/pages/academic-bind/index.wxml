@@ -21,7 +21,9 @@
         <view class="card-desc">绑定后可查询成绩、课表等信息</view>
       </view>
 
-      <block wx:if="{{!isBound}}">
+      <cb-loading wx:if="{{!loaded}}" compact />
+
+      <block wx:if="{{loaded && !isBound}}">
         <view class="form-item">
           <view class="form-label">学工号</view>
           <input 
@@ -58,7 +60,7 @@
         <button class="submit-btn" bindtap="onBind" loading="{{loading}}">绑定账号</button>
       </block>
 
-      <block wx:else>
+      <block wx:elif="{{loaded}}">
         <view class="bound-info">
           <view class="bound-item">
             <view class="bound-label">学工号</view>

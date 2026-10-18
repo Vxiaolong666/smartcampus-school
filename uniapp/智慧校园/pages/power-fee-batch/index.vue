@@ -96,6 +96,32 @@
 				<image class="empty-icon" src="/static/assets/wxmp-bolt-gray.svg" mode="widthFix"></image>
 				<view class="empty-text">选择校区和楼栋后开始查询</view>
 			</view>
+
+			<!-- 查询结果说明：与电费查询页保持一致，查询中隐藏 -->
+			<view class="tips-card" v-if="!querying">
+				<view class="tips-title">
+					<image class="tips-icon" src="/static/assets/wxmp-lightbulb.svg" mode="widthFix"></image>
+					<text>电费查询结果说明</text>
+				</view>
+				<view class="tips-list">
+					<view class="tips-item">
+						<view class="tips-dot normal"></view>
+						<view class="tips-text">电量充足：余额大于等于30度</view>
+					</view>
+					<view class="tips-item">
+						<view class="tips-dot warning"></view>
+						<view class="tips-text">电量偏低：10度至30度之间</view>
+					</view>
+					<view class="tips-item">
+						<view class="tips-dot low"></view>
+						<view class="tips-text">电量不足：余额小于10度</view>
+					</view>
+					<view class="tips-item">
+						<view class="tips-dot arrears"></view>
+						<view class="tips-text">已欠费：余额小于等于0度</view>
+					</view>
+				</view>
+			</view>
 		</view>
 	</view>
 </template>
@@ -620,5 +646,66 @@ page {
 	color: #948eb3;
 }
 
+/* ==================== 查询结果说明（与电费查询页保持一致） ==================== */
+.tips-card {
+	background: white;
+	border-radius: 20rpx;
+	padding: 24rpx;
+	box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.05);
+}
 
+.tips-title {
+	font-size: 28rpx;
+	font-weight: bold;
+	color: #48416f;
+	margin-bottom: 20rpx;
+	display: flex;
+	align-items: center;
+}
+
+.tips-icon {
+	width: 28rpx;
+	height: 28rpx;
+	margin-right: 10rpx;
+}
+
+.tips-list {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 16rpx;
+}
+
+.tips-item {
+	display: flex;
+	align-items: center;
+	width: calc(50% - 8rpx);
+}
+
+.tips-dot {
+	width: 16rpx;
+	height: 16rpx;
+	border-radius: 50%;
+	margin-right: 12rpx;
+}
+
+.tips-dot.normal {
+	background: #52c41a;
+}
+
+.tips-dot.warning {
+	background: #faad14;
+}
+
+.tips-dot.low {
+	background: #ff4d4f;
+}
+
+.tips-dot.arrears {
+	background: #722ed1;
+}
+
+.tips-text {
+	font-size: 22rpx;
+	color: #948eb3;
+}
 </style>

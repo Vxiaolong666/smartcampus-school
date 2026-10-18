@@ -11,7 +11,7 @@ Page({
     semesters: [],           // 学期列表
     semesterIndex: 0,        // 当前选中的学期索引
     currentSemester: '',     // 当前学期ID
-    loading: false,          // 加载状态
+    loading: true,           // 加载状态（初始为 true，避免首屏闪现空态）
     needBind: false,         // 是否未绑定教务账号
     grades: [],              // 成绩列表
     summary: {               // 成绩统计

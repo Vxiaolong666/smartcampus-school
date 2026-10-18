@@ -15,7 +15,9 @@
       <view class="card-desc">管理您的个人信息和账号设置</view>
     </view>
 
-    <view class="form-card avatar-card">
+    <cb-loading wx:if="{{!loaded}}" />
+
+    <view class="form-card avatar-card" wx:if="{{loaded}}">
       <view class="avatar-section">
         <image wx:if="{{avatar}}" class="avatar" src="{{avatar}}" mode="aspectFill" />
         <view wx:else class="avatar-placeholder">
@@ -28,7 +30,7 @@
       </view>
     </view>
 
-    <view class="form-card">
+    <view class="form-card" wx:if="{{loaded}}">
       <view class="form-item">
         <view class="form-label">昵称</view>
         <input 

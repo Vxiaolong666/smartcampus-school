@@ -26,7 +26,13 @@
     </view>
 
     <view class="content-wrapper">
+      <!-- 功能开关校验中：顶部导航保留，其余内容统一用 loading 占位，避免先渲染对话再被遮罩覆盖 -->
+      <view v-if="!featureReady" class="chat-loading">
+        <cb-loading />
+      </view>
+
       <scroll-view
+        v-if="featureReady"
         class="chat-body"
         scroll-y
         :scroll-into-view="scrollTarget"
@@ -153,7 +159,7 @@
       </scroll-view>
 
       <!-- 输入区 -->
-      <view class="chat-input">
+      <view class="chat-input" v-if="featureReady">
         <view class="input-box">
           <textarea
             class="msg-input"
@@ -178,14 +184,18 @@
             </view>
           </view>
         </view>
-        <button
-          class="send-btn"
-          :class="{ disabled: !streaming && !inputText.trim() }"
-          @click="onSendBtnTap"
-        >
-          <image v-if="!streaming" class="send-icon" src="/static/assets/wxmp-send-white.svg" mode="aspectFit"></image>
-          <view v-else class="send-stop"></view>
-        </button>
+        <!-- 发送/终止按钮：终止时圆环在按钮外侧作边框旋转，按钮内部只留方块 -->
+        <view class="send-btn-wrap">
+          <view v-if="streaming" class="send-ring"></view>
+          <button
+            class="send-btn"
+            :class="{ disabled: !streaming && !inputText.trim(), streaming }"
+            @click="onSendBtnTap"
+          >
+            <image v-if="!streaming" class="send-icon" src="/static/assets/wxmp-send-white.svg" mode="aspectFit"></image>
+            <view v-else class="send-stop"></view>
+          </button>
+        </view>
 
         <!-- 模型选择菜单 -->
         <view v-if="showModelMenu" class="model-mask" @click="showModelMenu = false">
@@ -246,7 +256,9 @@ export default {
       // 后台「功能设置」开关（uniapp_ai_chat）：关闭时展示整页遮罩，文案 / 图标取后台公告
       featureDisabled: false,
       featureTip: '',
-      featureIcon: ''
+      featureIcon: '',
+      // 功能开关是否已校验完成（未完成时整块内容用 loading 占位，避免闪现对话界面）
+      featureReady: false
     };
   },
 
@@ -296,6 +308,8 @@ export default {
           this._modelsLoaded = true;
           this.loadModels();
         }
+      }).catch(() => {}).finally(() => {
+        this.featureReady = true;
       });
     },
 
@@ -628,6 +642,15 @@ uni-page-body {
   border-top-right-radius: 60rpx;
   box-shadow: 0 -80rpx 80rpx 40rpx rgba(0, 0, 0, 0.2);
   overflow: hidden;
+}
+
+/* 功能开关校验中的加载占位（横向居中，不做垂直居中，与其他页面加载态一致） */
+.chat-loading {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
 }
 
 /* ===== 聊天主体 ===== */
@@ -1001,10 +1024,39 @@ uni-page-body {
   opacity: 0.7;
 }
 
+/* 按钮外层：为 Outside 的加载圆环提供定位参照（按钮自身 overflow 不会裁掉它） */
+.send-btn-wrap {
+  position: relative;
+  margin-left: 16rpx;
+  flex-shrink: 0;
+  display: flex;
+}
+
+/* 终止中：按钮外框的旋转圆环（作为按钮的边框，仅一道弧，避免糊成一圈） */
+.send-ring {
+  position: absolute;
+  left: -9rpx;
+  top: -9rpx;
+  right: -9rpx;
+  bottom: -9rpx;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 3rpx solid transparent;
+  border-top-color: #13c2c2;
+  border-right-color: rgba(19, 194, 194, 0.45);
+  border-bottom-color: rgba(19, 194, 194, 0.12);
+  animation: send-spin 0.85s linear infinite;
+  pointer-events: none;
+}
+
+/* 终止时去掉按钮投影，否则与外圈叠在一起会显脏 */
+.send-btn.streaming {
+  box-shadow: none;
+}
+
 .send-btn {
   width: 84rpx;
   height: 84rpx;
-  margin-left: 16rpx;
   border-radius: 50%;
   background: linear-gradient(135deg, #13c2c2 0%, #1890ff 100%);
   display: flex;
@@ -1031,33 +1083,12 @@ uni-page-body {
   height: 40rpx;
 }
 
-/* 终止按钮：转圈 + 方块（与网页版一致） */
+/* 终止图标：中央方块（约占按钮 1/3，加载圆环在按钮外侧） */
 .send-stop {
-  position: relative;
-  width: 44rpx;
-  height: 44rpx;
-}
-
-.send-stop::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  box-sizing: border-box;
-  border: 5rpx solid rgba(255, 255, 255, 0.35);
-  border-top-color: #fff;
-  border-radius: 50%;
-  animation: send-spin 0.7s linear infinite;
-}
-
-.send-stop::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 12rpx;
-  height: 12rpx;
+  width: 26rpx;
+  height: 26rpx;
+  border-radius: 5rpx;
   background: #fff;
-  transform: translate(-50%, -50%);
 }
 
 @keyframes send-spin {
@@ -1231,5 +1262,46 @@ uni-page-body {
   font-size: 30rpx;
   line-height: 1.8;
   color: #4b5563;
+  animation: fd-text-in 0.32s ease-out 0.14s both;
+}
+
+/* 遮罩入场：整体淡入 + 图标回弹 + 文案上浮，退出时由内容淡入衔接 */
+.feature-disabled-mask {
+  animation: fd-mask-in 0.22s ease-out both;
+}
+
+.feature-disabled-icon {
+  animation: fd-icon-in 0.42s cubic-bezier(0.34, 1.4, 0.64, 1) 0.06s both;
+}
+
+@keyframes fd-mask-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fd-icon-in {
+  from {
+    opacity: 0;
+    transform: scale(0.84);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes fd-text-in {
+  from {
+    opacity: 0;
+    transform: translateY(10rpx);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>

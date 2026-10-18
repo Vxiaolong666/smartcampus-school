@@ -14,16 +14,9 @@
 				<announcement :content="announcement.content" :type="announcement.type" :closable="true" />
 			</view>
 
-			<view v-if="loading" class="loading-section">
-				<view class="loading-spinner"></view>
-				<text class="loading-text">加载中...</text>
-			</view>
+			<cb-loading v-if="loading" />
 
-			<view v-else-if="dormitories.length === 0" class="empty-section">
-				<image class="empty-icon" src="/static/assets/wxmp-home2-gray.svg" mode="widthFix"></image>
-				<text class="empty-text">未绑定宿舍，请先绑定宿舍</text>
-				<button class="bind-btn" @click="goToBind">前往绑定</button>
-			</view>
+			<cb-bind-tip v-else-if="dormitories.length === 0" type="dorm" desc="绑定宿舍后可配置电费推送" />
 
 			<view v-else class="settings-list">
 				<view class="action-card">

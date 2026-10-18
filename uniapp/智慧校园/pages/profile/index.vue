@@ -15,7 +15,9 @@
 				<view class="card-desc">管理您的个人信息和账号设置</view>
 			</view>
 
-			<view class="form-card avatar-card">
+			<cb-loading v-if="!loaded" />
+
+			<view class="form-card avatar-card" v-if="loaded">
 				<view class="avatar-section">
 					<image v-if="avatar" class="avatar" :src="avatar" mode="aspectFill"></image>
 					<view v-else class="avatar-placeholder">
@@ -30,7 +32,7 @@
 				</view>
 			</view>
 
-			<view class="form-card">
+			<view class="form-card" v-if="loaded">
 				<view class="form-item">
 					<view class="form-label">昵称</view>
 					<input
@@ -83,7 +85,8 @@ export default {
 			userInfo: {},
 			nickname: '',
 			avatar: '',
-			hasWxOpenid: false
+			hasWxOpenid: false,
+			loaded: false
 		};
 	},
 
@@ -105,7 +108,9 @@ export default {
 				this.nickname = userInfo.nickname || userInfo.username;
 				this.avatar = api.getFileUrl(userInfo.avatar);
 				this.hasWxOpenid = !!userInfo.wx_openid;
+				this.loaded = true;
 			} catch (err) {
+				this.loaded = true;
 				uni.showToast({ title: err.msg || '加载失败', icon: 'none' });
 			}
 		},

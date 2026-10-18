@@ -9,6 +9,7 @@ Page({
         hasWxOpenid: false,  // 是否已绑定微信
         openid: '',          // 微信openid
         openidDisplay: '',   // 脱敏显示的openid
+        loaded: false,       // 绑定状态是否已返回（用 loading 占位，避免先展示未绑定状态）
         loading: false       // 加载状态
     },
 
@@ -46,8 +47,9 @@ Page({
                 : '';
             
             // 更新页面数据
-            this.setData({ hasWxOpenid, openid, openidDisplay });
+            this.setData({ hasWxOpenid, openid, openidDisplay, loaded: true });
         } catch (err) {
+            this.setData({ loaded: true });
             wx.showToast({ title: err.msg || '加载失败', icon: 'none' });
         }
     },

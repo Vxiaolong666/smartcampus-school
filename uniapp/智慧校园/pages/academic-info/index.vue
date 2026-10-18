@@ -20,15 +20,14 @@
 					<view class="card-title">学籍信息</view>
 				</view>
 
-				<view v-if="loading" class="loading-wrapper">
-					<view class="loading-text">加载中...</view>
-				</view>
+				<cb-loading v-if="loading" compact />
 
-				<view v-else-if="needBind" class="empty-wrapper empty-bind">
-					<image class="empty-icon" src="/static/assets/wxmp-about.svg" mode="widthFix"></image>
-					<view class="empty-text">请先绑定教务账号后再查询学籍</view>
-					<button class="bind-btn" @click="goToBind">前往绑定</button>
-				</view>
+				<cb-bind-tip
+					v-else-if="needBind"
+					type="academic"
+					desc="绑定后可查询学籍信息"
+					compact
+				/>
 
 				<view v-else-if="!studentInfo" class="empty-wrapper">
 					<image class="empty-icon" src="/static/assets/wxmp-about.svg" mode="widthFix"></image>
@@ -112,7 +111,7 @@ export default {
 		return {
 			featureEnabled: true,
 			announcement: null,
-			loading: false,
+			loading: true,
 			needBind: false,
 			studentInfo: null
 		};
