@@ -10,8 +10,8 @@
   </view>
 
   <view class="content-wrapper">
-    <cb-loading wx:if="{{loading}}" />
     <cb-load-fail />
+    <cb-loading wx:if="{{loading}}" />
     
     <view wx:elif="{{notice}}" class="notice-detail">
       <view class="notice-card">

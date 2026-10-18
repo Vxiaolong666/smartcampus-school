@@ -15,8 +15,8 @@
 				<view class="card-desc">管理您的订阅消息授权和剩余次数</view>
 			</view>
 
-			<cb-loading v-if="!loaded" />
 			<cb-load-fail />
+			<cb-loading v-if="!loaded" />
 
 			<view class="action-card" v-if="loaded">
 				<view class="action-title">

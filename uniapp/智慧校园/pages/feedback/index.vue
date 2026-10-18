@@ -68,8 +68,8 @@
 						<view class="fb-count" v-if="loaded">共 {{ total }} 条</view>
 					</view>
 
-					<cb-loading v-if="!loaded" compact />
 					<cb-load-fail />
+					<cb-loading v-if="!loaded" compact />
 
 					<view v-if="loaded && list.length === 0" class="fb-empty">
 						<image class="fb-empty-icon" src="/static/assets/wxmp-empty.svg" mode="widthFix"></image>

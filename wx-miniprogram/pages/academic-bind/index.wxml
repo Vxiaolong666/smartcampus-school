@@ -21,8 +21,8 @@
         <view class="card-desc">绑定后可查询成绩、课表等信息</view>
       </view>
 
-      <cb-loading wx:if="{{!loaded}}" compact />
       <cb-load-fail />
+      <cb-loading wx:if="{{!loaded}}" compact />
 
       <block wx:if="{{loaded && !isBound}}">
         <view class="form-item">

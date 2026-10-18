@@ -29,8 +29,8 @@
       </view>
     </view>
 
-    <cb-loading wx:if="{{loading}}" />
     <cb-load-fail />
+    <cb-loading wx:if="{{loading}}" />
 
     <cb-bind-tip wx:elif="{{needBind}}" type="academic" desc="绑定后可查看与查询课程表" />
 

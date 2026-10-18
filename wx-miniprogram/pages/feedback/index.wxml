@@ -68,8 +68,8 @@
           <view class="fb-count" wx:if="{{loaded}}">共 {{total}} 条</view>
         </view>
 
-        <cb-loading wx:if="{{!loaded}}" compact />
         <cb-load-fail />
+        <cb-loading wx:if="{{!loaded}}" compact />
 
         <view class="fb-empty" wx:if="{{loaded && list.length === 0}}">
           <image class="fb-empty-icon" src="/assets/wxmp-empty.svg" mode="widthFix"></image>

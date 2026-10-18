@@ -14,8 +14,8 @@
 				<announcement :content="announcement.content" :type="announcement.type" :closable="true" />
 			</view>
 
-			<cb-loading v-if="loading" />
 			<cb-load-fail />
+			<cb-loading v-if="loading" />
 
 			<cb-bind-tip v-else-if="dormitories.length === 0" type="dorm" desc="绑定宿舍后可查看用电统计" />
 

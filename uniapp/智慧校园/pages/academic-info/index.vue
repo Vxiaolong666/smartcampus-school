@@ -20,8 +20,8 @@
 					<view class="card-title">学籍信息</view>
 				</view>
 
-				<cb-loading v-if="loading" compact />
 				<cb-load-fail />
+				<cb-loading v-if="loading" compact />
 
 				<cb-bind-tip
 					v-else-if="needBind"

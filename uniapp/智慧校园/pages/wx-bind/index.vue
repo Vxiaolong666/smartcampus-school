@@ -17,8 +17,8 @@
 					<view class="card-desc">绑定微信后可使用微信快捷登录</view>
 				</view>
 
-				<cb-loading v-if="!loaded" compact />
 				<cb-load-fail />
+				<cb-loading v-if="!loaded" compact />
 
 				<view class="status-section" v-if="loaded">
 					<view class="status-icon">

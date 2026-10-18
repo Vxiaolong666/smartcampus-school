@@ -28,8 +28,8 @@
       >{{item.label}}</view>
     </view>
 
-    <cb-loading wx:if="{{!loaded}}" />
     <cb-load-fail />
+    <cb-loading wx:if="{{!loaded}}" />
 
     <view wx:if="{{loaded && list.length === 0}}" class="empty-wrapper">
       <image class="empty-icon" src="/assets/wxmp-empty.svg" mode="widthFix"></image>

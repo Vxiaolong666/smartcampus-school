@@ -17,8 +17,8 @@
 				<announcement :content="announcement.content" :type="announcement.type" :closable="true" />
 			</view>
 
-			<cb-loading v-if="loading" />
 			<cb-load-fail />
+			<cb-loading v-if="loading" />
 
 			<block v-else-if="dormitories.length > 0">
 				<view class="filter-card">

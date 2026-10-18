@@ -22,8 +22,8 @@
 					<text class="alert-refresh" @click="loadBinds">刷新</text>
 				</view>
 
-				<cb-loading v-if="loading" compact />
 				<cb-load-fail />
+				<cb-loading v-if="loading" compact />
 				<view v-else-if="!enabled" class="state-line">管理员未开启聚合登录功能</view>
 				<view v-else-if="channels.length === 0" class="state-line">暂无可绑定的登录渠道</view>
 

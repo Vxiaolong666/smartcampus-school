@@ -32,8 +32,8 @@
       </button>
     </view>
 
-    <cb-loading wx:if="{{loading}}" />
     <cb-load-fail />
+    <cb-loading wx:if="{{loading}}" />
 
     <view wx:elif="{{dormitories.length > 0}}" class="dorm-list">
       <view class="dorm-item" wx:for="{{dormitories}}" wx:key="id">

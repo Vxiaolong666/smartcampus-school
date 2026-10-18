@@ -21,8 +21,8 @@
 					<view class="card-desc">绑定后可查询成绩、课表等信息</view>
 				</view>
 
-				<cb-loading v-if="!loaded" compact />
 				<cb-load-fail />
+				<cb-loading v-if="!loaded" compact />
 
 				<block v-if="loaded && !isBound">
 					<view class="form-item">

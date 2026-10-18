@@ -10,8 +10,8 @@
 		</view>
 
 		<view class="content-wrapper">
-			<cb-loading v-if="loading" />
 			<cb-load-fail />
+			<cb-loading v-if="loading" />
 
 			<view v-else class="maintenance-card">
 				<view class="card-header">

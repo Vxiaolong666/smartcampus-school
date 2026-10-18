@@ -38,8 +38,8 @@
 				</view>
 			</view>
 
-			<cb-loading v-if="loading" />
 			<cb-load-fail />
+			<cb-loading v-if="loading" />
 
 			<cb-bind-tip v-else-if="needBind" type="academic" desc="绑定后可查看本周课程表安排" />
 

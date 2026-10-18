@@ -15,8 +15,8 @@
       <view class="card-desc">管理您的个人信息和账号设置</view>
     </view>
 
-    <cb-loading wx:if="{{!loaded}}" />
     <cb-load-fail />
+    <cb-loading wx:if="{{!loaded}}" />
 
     <view class="form-card avatar-card" wx:if="{{loaded}}">
       <view class="avatar-section">

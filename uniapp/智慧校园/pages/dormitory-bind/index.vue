@@ -32,8 +32,8 @@
 				</button>
 			</view>
 
-			<cb-loading v-if="loading" />
 			<cb-load-fail />
+			<cb-loading v-if="loading" />
 
 			<view v-else-if="dormitories.length > 0" class="dorm-list">
 				<view class="dorm-item" v-for="item in dormitories" :key="item.id">
