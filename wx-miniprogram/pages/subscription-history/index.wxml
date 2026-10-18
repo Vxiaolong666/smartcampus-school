@@ -59,7 +59,11 @@
     </view>
 
     <view wx:if="{{showBackTop}}" class="back-top" bindtap="onBackTop">
-      <text class="back-top-arrow">↑</text>
+      <view class="back-top-arrow">
+        <view class="back-top-arrow-line line-left"></view>
+        <view class="back-top-arrow-line line-right"></view>
+        <view class="back-top-arrow-stem"></view>
+      </view>
     </view>
   </view>
 </view>

@@ -67,7 +67,11 @@
 			</view>
 
 			<view v-if="showBackTop" class="back-top" @click="onBackTop">
-				<image class="back-top-icon" src="/static/assets/wxmp-arrow-up.svg" mode="widthFix"></image>
+				<view class="back-top-arrow">
+					<view class="back-top-arrow-line line-left"></view>
+					<view class="back-top-arrow-line line-right"></view>
+					<view class="back-top-arrow-stem"></view>
+				</view>
 			</view>
 			</view>
 			</view>
@@ -457,6 +461,7 @@ page {
 	font-size: 26rpx;
 }
 
+/* 按钮底色取 AI 总结卡片同款浅色渐变，让箭头渐变有对比 */
 .back-top {
 	position: fixed;
 	right: 30rpx;
@@ -464,11 +469,12 @@ page {
 	width: 88rpx;
 	height: 88rpx;
 	border-radius: 50%;
-	background: #13c2c2;
+	background: linear-gradient(135deg, #e6f7ff 0%, #f0f5ff 55%, #e6fffb 100%);
+	border: 1rpx solid rgba(19, 194, 194, 0.18);
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	box-shadow: 0 8rpx 24rpx rgba(19, 194, 194, 0.4);
+	box-shadow: 0 10rpx 30rpx rgba(24, 144, 255, 0.18), 0 2rpx 8rpx rgba(19, 194, 194, 0.12);
 	z-index: 50;
 }
 
@@ -476,8 +482,40 @@ page {
 	opacity: 0.85;
 }
 
-.back-top-icon {
-	width: 40rpx;
-	height: 40rpx;
+/* 返回顶部箭头：纯 CSS 绘制，线条加圆角，避免矢量图的尖锐感 */
+.back-top-arrow {
+	position: relative;
+	width: 32rpx;
+	height: 34rpx;
+	margin-top: 2rpx;
+}
+
+.back-top-arrow-line {
+	position: absolute;
+	top: 4rpx;
+	left: 13rpx;
+	width: 6rpx;
+	height: 18rpx;
+	background: linear-gradient(180deg, #13c2c2 0%, #1890ff 100%);
+	border-radius: 6rpx;
+	transform-origin: center top;
+}
+
+.back-top-arrow-line.line-left {
+	transform: rotate(-42deg);
+}
+
+.back-top-arrow-line.line-right {
+	transform: rotate(42deg);
+}
+
+.back-top-arrow-stem {
+	position: absolute;
+	top: 8rpx;
+	left: 13rpx;
+	width: 6rpx;
+	height: 24rpx;
+	background: linear-gradient(180deg, #13c2c2 0%, #1890ff 100%);
+	border-radius: 6rpx;
 }
 </style>

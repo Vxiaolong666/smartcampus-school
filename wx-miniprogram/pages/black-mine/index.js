@@ -322,12 +322,16 @@ Page({
             if (info && typeof info.currentSize === 'number') currentSize = info.currentSize;
         } catch (e) {}
         if (currentSize >= 0) {
-            let mb = Math.round(currentSize / 1024 * 100) / 100;
-            // 最小显示 0.01MB，避免出现 0.00MB
-            if (mb < 0.01) mb = 0.01;
+            // 不足 0.01MB（约 10KB）视为没有可清理内容
+            if (currentSize < 10) {
+                this.setData({ cacheSizeText: '很干净了' });
+                return;
+            }
+            const mb = Math.round(currentSize / 1024 * 100) / 100;
             this.setData({ cacheSizeText: mb.toFixed(2) + ' MB' });
         } else {
-            this.setData({ cacheSizeText: this._estimateCacheSize().toFixed(2) + ' MB' });
+            const mb = this._estimateCacheSize();
+            this.setData({ cacheSizeText: mb < 0.01 ? '很干净了' : mb.toFixed(2) + ' MB' });
         }
     },
 
@@ -336,8 +340,7 @@ Page({
         let last = 0;
         try { last = wx.getStorageSync('cache_cleared_at') || 0; } catch (e) {}
         const elapsedMin = last ? Math.max(0, (Date.now() - last) / 60000) : 0;
-        let mb = Math.abs(Math.sin(elapsedMin)) * 3;
-        if (mb < 0.1) mb = 0.1;
+        const mb = Math.abs(Math.sin(elapsedMin)) * 3;
         return Math.round(mb * 100) / 100;
     },
 
