@@ -15,11 +15,11 @@
 				<view class="ag-intro-desc">这里汇总了本服务的全部协议与声明。请在使用相关服务前仔细阅读并充分理解相关内容，点击即可查看完整条款。</view>
 			</view>
 
+			<cb-load-fail />
 			<!-- 加载中 -->
 			<view v-if="loading" class="ag-list-card">
 				<cb-loading compact />
 			</view>
-			<cb-load-fail />
 
 			<!-- 拉取失败（网络异常 / 协议表未初始化）：不再回退本地内置清单 -->
 			<view v-else-if="failed" class="ag-list-card">
