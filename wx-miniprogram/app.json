@@ -78,6 +78,7 @@
   "usingComponents": {
     "top-menu": "/components/cb-nav-bar/index",
     "cb-loading": "/components/cb-loading/index",
-    "cb-bind-tip": "/components/cb-bind-tip/index"
+    "cb-bind-tip": "/components/cb-bind-tip/index",
+    "cb-load-fail": "/components/cb-load-fail/index"
   }
 }

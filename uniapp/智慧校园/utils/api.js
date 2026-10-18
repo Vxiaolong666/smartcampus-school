@@ -8,6 +8,8 @@
  * - 网络异常：reject 返回 { code: -1, msg: '网络请求失败' }
  */
 
+import loadFail from './load-fail.js';
+
 let API_BASE_URL = 'https://mc.xzwmc.com/csgocs/api.php';
 //https://mc.xzwmc.com/csgocs/api.php
 //http://127.0.0.12/api.php
@@ -44,6 +46,8 @@ const request = (options) => {
         }
       },
       fail: () => {
+        // 网络层失败：驱动页面级「加载失败」遮罩（仅对当前页面生效）
+        loadFail.show('网络请求失败，请检查网络后重试');
         reject({ code: -1, msg: '网络请求失败' });
       }
     });
