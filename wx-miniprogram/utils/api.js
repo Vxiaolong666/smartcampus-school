@@ -41,6 +41,8 @@ const request = (options) => {
       success: (res) => {
         // 业务状态码为0，表示请求成功，返回完整响应数据
         if (res.data.code === 0) {
+          // 请求成功：收起页面级「加载失败」遮罩
+          loadFail.clear();
           resolve(res.data);
         } 
         // 业务状态码为-2，表示token失效或登录过期

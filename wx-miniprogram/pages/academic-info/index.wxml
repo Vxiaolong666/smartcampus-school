@@ -9,6 +9,7 @@
   </view>
 
   <view class="content-wrapper">
+    <cb-load-fail />
     <announcement wx:if="{{announcement}}" content="{{announcement.content}}" type="{{announcement.type}}" closable="{{true}}" />
 
     <view class="info-card">
@@ -17,7 +18,6 @@
         <view class="card-title">学籍信息</view>
       </view>
 
-      <cb-load-fail />
       <cb-loading wx:if="{{loading}}" compact />
 
       <cb-bind-tip wx:elif="{{needBind}}" type="academic" desc="绑定后可查询学籍信息" compact />

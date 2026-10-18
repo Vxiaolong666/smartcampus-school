@@ -1,6 +1,6 @@
 <view class="cb-load-fail" wx:if="{{visible}}" catchtouchmove="noop">
   <view class="cb-load-fail__card">
-    <image class="cb-load-fail__icon" src="/assets/wxmp-empty.svg" mode="widthFix"></image>
+    <image class="cb-load-fail__icon" src="/assets/wxmp-network-error.svg" mode="widthFix"></image>
     <view class="cb-load-fail__title">加载失败</view>
     <view class="cb-load-fail__desc">{{message}}</view>
     <view class="cb-load-fail__btn" bindtap="onRetry">重新加载</view>

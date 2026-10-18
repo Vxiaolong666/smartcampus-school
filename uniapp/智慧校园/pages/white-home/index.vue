@@ -101,6 +101,13 @@
 								<view class="glance-card-value">加载中...</view>
 								<view class="glance-card-info">正在获取课程信息</view>
 							</block>
+							<block v-else-if="noAcademicBind">
+								<view class="glance-card-header">
+									<view class="glance-card-label">课程信息</view>
+								</view>
+								<view class="glance-card-value">未绑定教务</view>
+								<view class="glance-card-info">请先绑定教务账号</view>
+							</block>
 							<block v-else-if="courseLoadError">
 								<view class="glance-card-header">
 									<view class="glance-card-label">课程信息</view>
@@ -342,6 +349,7 @@ export default {
 			currentWeek: 0,          // 当前教学周（0=未取到，不展示）
 			powerInfo: null,
 			noDormitory: false,
+			noAcademicBind: false,    // 是否未绑定教务（未绑定时不展示「今日无课程」）
 			pageRefreshing: false,   // 整个首页是否正在刷新
 			randomPoem: '',
 			todayText: '',           // 今日日期（M月D日）
@@ -497,6 +505,16 @@ export default {
 				this.currentWeek = parseInt(data.current_week, 10) || 0;
 				this.powerInfo = data.power_info || null;
 				this.noDormitory = data.no_dormitory || false;
+
+				// 未绑定教务时不要展示「今日无课程」：无课程数据时确认教务绑定状态
+				this.noAcademicBind = false;
+				if (!this.nextCourse) {
+					try {
+						await api.getAcademic();
+					} catch (err) {
+						this.noAcademicBind = feature.isAcademicNotBound(err);
+					}
+				}
 			} catch (err) {
 				console.error('加载速览数据失败', err);
 				if (silent) return;
@@ -506,6 +524,7 @@ export default {
 				this.currentWeek = 0;
 				this.powerInfo = null;
 				this.noDormitory = false;
+				this.noAcademicBind = false;
 			} finally {
 				this.courseLoading = false;
 			}

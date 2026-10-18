@@ -18,8 +18,7 @@ Component({
   lifetimes: {
     attached() {
       this._route = loadFail.getRoute();
-      // 进入新页面时清掉上一页遗留的失败状态，避免误显示
-      loadFail.clear();
+      // 只按路由匹配展示，避免返回上一页时误显示；状态由请求成功时清除
       this.sync(loadFail.get());
       this._unsubscribe = loadFail.subscribe((state) => this.sync(state));
     },

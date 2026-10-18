@@ -10,6 +10,7 @@
 		</view>
 
 		<view class="fb-content">
+			<cb-load-fail />
 			<!-- 未登录：反馈需要账号，先引导登录 -->
 			<view v-if="!isLoggedIn" class="fb-card">
 				<view class="fb-empty">
@@ -68,7 +69,6 @@
 						<view class="fb-count" v-if="loaded">共 {{ total }} 条</view>
 					</view>
 
-					<cb-load-fail />
 					<cb-loading v-if="!loaded" compact />
 
 					<view v-if="loaded && list.length === 0" class="fb-empty">

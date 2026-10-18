@@ -10,6 +10,7 @@
   </view>
 
   <view class="fb-content">
+    <cb-load-fail />
     <!-- 未登录：反馈需要账号，先引导登录 -->
     <view class="fb-card" wx:if="{{!isLoggedIn}}">
       <view class="fb-empty">
@@ -68,7 +69,6 @@
           <view class="fb-count" wx:if="{{loaded}}">共 {{total}} 条</view>
         </view>
 
-        <cb-load-fail />
         <cb-loading wx:if="{{!loaded}}" compact />
 
         <view class="fb-empty" wx:if="{{loaded && list.length === 0}}">

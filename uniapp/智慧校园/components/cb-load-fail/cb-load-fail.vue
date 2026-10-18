@@ -1,7 +1,7 @@
 <template>
 	<view v-if="visible" class="cb-load-fail" @touchmove.stop.prevent="noop">
 		<view class="cb-load-fail__card">
-			<image class="cb-load-fail__icon" src="/static/assets/wxmp-empty.svg" mode="widthFix"></image>
+			<image class="cb-load-fail__icon" src="/static/assets/wxmp-network-error.svg" mode="widthFix"></image>
 			<view class="cb-load-fail__title">加载失败</view>
 			<view class="cb-load-fail__desc">{{ message }}</view>
 			<view class="cb-load-fail__btn" @click="onRetry">重新加载</view>
@@ -34,8 +34,7 @@ export default {
 
 	created() {
 		this._route = loadFail.getRoute();
-		// 进入新页面时清掉上一页遗留的失败状态，避免误显示
-		loadFail.clear();
+		// 只按路由匹配展示，避免返回上一页时误显示；状态由请求成功时清除
 		this.sync(loadFail.get());
 		this._unsubscribe = loadFail.subscribe((state) => this.sync(state));
 	},
@@ -102,19 +101,24 @@ export default {
 
 <style scoped>
 .cb-load-fail {
-	position: fixed;
+	/* 只覆盖所在的内容区容器（.content-wrapper 为定位参照），不涉及导航栏 */
+	position: absolute;
+	top: 0;
 	left: 0;
 	right: 0;
 	bottom: 0;
-	/* 保留顶部导航（状态栏 + 导航栏），失败时仍可正常返回 */
-	top: calc(var(--status-bar-height, 0px) + 100rpx);
 	z-index: 900;
 	display: flex;
-	align-items: center;
+	/* 横向居中即可，不做垂直居中 */
+	align-items: flex-start;
 	justify-content: center;
-	padding: 0 60rpx;
-	background: rgba(239, 241, 255, 0.97);
-	animation: clf-fade-in 0.2s ease-out both;
+	padding: 100rpx 60rpx 0;
+	/* 不透明页面底色：彻底盖住原内容 */
+	background: #eff1ff;
+	/* 与内容区保持一致的上圆角，避免把原有圆角/顶部背景图盖成直角 */
+	border-radius: 60rpx 60rpx 0 0;
+	overflow: hidden;
+	/* 不做整体淡入：网络失败时要立即完全遮住内容区，避免原内容闪现 */
 }
 
 .cb-load-fail__card {

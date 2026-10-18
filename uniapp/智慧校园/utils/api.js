@@ -36,6 +36,8 @@ const request = (options) => {
       },
       success: (res) => {
         if (res.data.code === 0) {
+          // 请求成功：收起页面级「加载失败」遮罩
+          loadFail.clear();
           resolve(res.data);
         } else if (res.data.code === -2) {
           uni.removeStorageSync('api_token');

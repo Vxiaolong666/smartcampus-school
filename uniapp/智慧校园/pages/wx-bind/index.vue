@@ -10,6 +10,7 @@
 		</view>
 
 		<view class="content-wrapper">
+			<cb-load-fail />
 			<view class="bind-card">
 				<view class="card-header">
 					<image class="card-logo" src="/static/assets/wxmp-wechat.svg" mode="widthFix"></image>
@@ -17,7 +18,6 @@
 					<view class="card-desc">绑定微信后可使用微信快捷登录</view>
 				</view>
 
-				<cb-load-fail />
 				<cb-loading v-if="!loaded" compact />
 
 				<view class="status-section" v-if="loaded">

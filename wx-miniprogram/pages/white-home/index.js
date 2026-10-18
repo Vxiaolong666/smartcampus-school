@@ -48,6 +48,7 @@ Page({
         currentWeek: 0,          // 当前教学周（0=未取到，不展示）
         powerInfo: null,        // 电费信息
         noDormitory: false,     // 是否未绑定宿舍
+        noAcademicBind: false,  // 是否未绑定教务（未绑定时不展示「今日无课程」）
         pageRefreshing: false,  // 整个首页是否正在刷新
         randomPoem: '',          // 随机古诗词一言
         todayText: '',           // 今日日期（M月D日）
@@ -178,8 +179,18 @@ Page({
                 courseLoadError: data.course_load_error || false,
                 currentWeek: parseInt(data.current_week, 10) || 0,
                 powerInfo: data.power_info || null,
-                noDormitory: data.no_dormitory || false
+                noDormitory: data.no_dormitory || false,
+                noAcademicBind: false
             });
+
+            // 未绑定教务时不要展示「今日无课程」：无课程数据时确认教务绑定状态
+            if (!this.data.nextCourse) {
+                try {
+                    await api.getAcademic();
+                } catch (err2) {
+                    this.setData({ noAcademicBind: feature.isAcademicNotBound(err2) });
+                }
+            }
         } catch (err) {
             console.error('加载速览数据失败', err);
             if (silent) return;
@@ -189,7 +200,8 @@ Page({
                 courseLoadError: true,
                 currentWeek: 0,
                 powerInfo: null,
-                noDormitory: false
+                noDormitory: false,
+                noAcademicBind: false
             });
         } finally {
             this.setData({ courseLoading: false });

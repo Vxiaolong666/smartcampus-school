@@ -1,17 +1,22 @@
 .cb-load-fail {
-  position: fixed;
+  /* 只覆盖所在的内容区容器（.content-wrapper 为定位参照），不涉及导航栏 */
+  position: absolute;
+  top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  /* 保留顶部导航（状态栏 + 导航栏），失败时仍可正常返回 */
-  top: calc(var(--status-bar-height, 0px) + 100rpx);
   z-index: 900;
   display: flex;
-  align-items: center;
+  /* 横向居中即可，不做垂直居中 */
+  align-items: flex-start;
   justify-content: center;
-  padding: 0 60rpx;
-  background: rgba(239, 241, 255, 0.97);
-  animation: clf-fade-in 0.2s ease-out both;
+  padding: 100rpx 60rpx 0;
+  /* 不透明页面底色：彻底盖住原内容 */
+  background: #eff1ff;
+  /* 与内容区保持一致的上圆角，避免把原有圆角/顶部背景图盖成直角 */
+  border-radius: 60rpx 60rpx 0 0;
+  overflow: hidden;
+  /* 不做整体淡入：网络失败时要立即完全遮住内容区，避免原内容闪现 */
 }
 
 .cb-load-fail__card {

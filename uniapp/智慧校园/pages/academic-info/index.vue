@@ -10,6 +10,7 @@
 		</view>
 
 		<view class="content-wrapper">
+			<cb-load-fail />
 			<view v-if="announcement">
 				<announcement :content="announcement.content" :type="announcement.type" :closable="true" />
 			</view>
@@ -20,7 +21,6 @@
 					<view class="card-title">学籍信息</view>
 				</view>
 
-				<cb-load-fail />
 				<cb-loading v-if="loading" compact />
 
 				<cb-bind-tip
