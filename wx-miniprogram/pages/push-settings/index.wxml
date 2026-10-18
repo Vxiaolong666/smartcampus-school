@@ -12,6 +12,7 @@
         <announcement wx:if="{{announcement}}" content="{{announcement.content}}" type="{{announcement.type}}" closable="{{true}}" />
 
         <cb-loading wx:if="{{loading}}" />
+        <cb-load-fail />
 
         <cb-bind-tip wx:elif="{{dormitories.length === 0}}" type="dorm" desc="绑定宿舍后可配置电费推送" />
         

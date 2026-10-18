@@ -107,7 +107,7 @@ export default {
 	right: 0;
 	bottom: 0;
 	/* 保留顶部导航（状态栏 + 导航栏），失败时仍可正常返回 */
-	top: calc(var(--status-bar-height, 0px) + 88rpx);
+	top: calc(var(--status-bar-height, 0px) + 100rpx);
 	z-index: 900;
 	display: flex;
 	align-items: center;

@@ -144,6 +144,7 @@
     </view>
 
     <cb-loading wx:if="{{loading}}" />
+    <cb-load-fail />
 
     <view wx:elif="{{dayCourses.length > 0}}" class="course-list-wrapper">
       <view wx:if="{{morningCourses.length > 0}}" class="course-section">

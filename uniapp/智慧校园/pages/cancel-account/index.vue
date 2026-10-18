@@ -12,6 +12,7 @@
 		<view class="content-wrapper">
 			<!-- 加载中 -->
 			<cb-loading v-if="loading" />
+			<cb-load-fail />
 
 			<!-- 未开启 -->
 			<view v-else-if="!enabled" class="state-box">

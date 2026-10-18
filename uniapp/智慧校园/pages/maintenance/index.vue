@@ -11,6 +11,7 @@
 
 		<view class="content-wrapper">
 			<cb-loading v-if="loading" />
+			<cb-load-fail />
 
 			<view v-else class="maintenance-card">
 				<view class="card-header">

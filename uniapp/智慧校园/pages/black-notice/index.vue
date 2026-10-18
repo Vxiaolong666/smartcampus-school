@@ -18,6 +18,7 @@
 			</view>
 
 			<cb-loading v-if="!loaded" />
+			<cb-load-fail />
 
 			<view v-if="loaded && notices.length === 0" class="empty">
 				<image class="empty-icon" src="/static/assets/wxmp-empty.svg" mode="widthFix"></image>

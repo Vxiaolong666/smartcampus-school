@@ -15,6 +15,7 @@
 			</view>
 
 			<cb-loading v-if="loading" />
+			<cb-load-fail />
 
 			<cb-bind-tip v-else-if="dormitories.length === 0" type="dorm" desc="绑定宿舍后可配置电费推送" />
 

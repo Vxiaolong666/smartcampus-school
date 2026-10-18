@@ -18,6 +18,7 @@
       </view>
 
       <cb-loading wx:if="{{loading}}" compact />
+      <cb-load-fail />
 
       <cb-bind-tip wx:elif="{{needBind}}" type="academic" desc="绑定后可查询学籍信息" compact />
 

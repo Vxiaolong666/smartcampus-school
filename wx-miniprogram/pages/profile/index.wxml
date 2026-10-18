@@ -16,6 +16,7 @@
     </view>
 
     <cb-loading wx:if="{{!loaded}}" />
+    <cb-load-fail />
 
     <view class="form-card avatar-card" wx:if="{{loaded}}">
       <view class="avatar-section">

@@ -10,6 +10,7 @@
 
   <view class="content-wrapper">
     <cb-loading wx:if="{{loading}}" />
+    <cb-load-fail />
 
     <view wx:else class="maintenance-card">
       <view class="card-header">

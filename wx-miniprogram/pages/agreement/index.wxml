@@ -14,6 +14,7 @@
       <view class="ag-intro-desc">这里汇总了本服务的全部协议与声明。请在使用相关服务前仔细阅读并充分理解相关内容，点击即可查看完整条款。</view>
     </view>
 
+    <cb-load-fail />
     <!-- 加载中 -->
     <view class="ag-list-card" wx:if="{{loading}}">
       <cb-loading compact />

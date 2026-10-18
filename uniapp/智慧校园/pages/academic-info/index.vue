@@ -21,6 +21,7 @@
 				</view>
 
 				<cb-loading v-if="loading" compact />
+				<cb-load-fail />
 
 				<cb-bind-tip
 					v-else-if="needBind"

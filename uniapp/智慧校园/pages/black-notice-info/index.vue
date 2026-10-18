@@ -11,6 +11,7 @@
 
 		<view class="content-wrapper">
 			<cb-loading v-if="loading" />
+			<cb-load-fail />
 
 			<view v-else-if="notice" class="notice-detail">
 				<view class="notice-card">

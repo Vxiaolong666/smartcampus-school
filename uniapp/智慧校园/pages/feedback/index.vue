@@ -69,6 +69,7 @@
 					</view>
 
 					<cb-loading v-if="!loaded" compact />
+					<cb-load-fail />
 
 					<view v-if="loaded && list.length === 0" class="fb-empty">
 						<image class="fb-empty-icon" src="/static/assets/wxmp-empty.svg" mode="widthFix"></image>

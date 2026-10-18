@@ -22,6 +22,7 @@
       </view>
 
       <cb-loading wx:if="{{!loaded}}" compact />
+      <cb-load-fail />
 
       <block wx:if="{{loaded && !isBound}}">
         <view class="form-item">

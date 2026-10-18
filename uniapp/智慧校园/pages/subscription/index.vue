@@ -16,6 +16,7 @@
 			</view>
 
 			<cb-loading v-if="!loaded" />
+			<cb-load-fail />
 
 			<view class="action-card" v-if="loaded">
 				<view class="action-title">

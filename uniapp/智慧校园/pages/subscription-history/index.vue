@@ -32,6 +32,7 @@
 			</view>
 
 			<cb-loading v-if="!loaded" />
+			<cb-load-fail />
 
 			<view v-if="loaded && list.length === 0" class="empty-wrapper">
 				<image class="empty-icon" src="/static/assets/wxmp-empty.svg" mode="widthFix"></image>

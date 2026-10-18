@@ -16,6 +16,7 @@
         </view>
 
         <cb-loading wx:if="{{!loaded}}" />
+        <cb-load-fail />
 
         <view class="action-card" wx:if="{{loaded}}">
             <view class="action-title">

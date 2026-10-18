@@ -26,6 +26,7 @@
     </view>
 
     <view class="content-wrapper">
+      <cb-load-fail />
       <!-- 功能开关校验中：顶部导航保留，其余内容统一用 loading 占位，避免先渲染对话再被遮罩覆盖 -->
       <view v-if="!featureReady" class="chat-loading">
         <cb-loading />

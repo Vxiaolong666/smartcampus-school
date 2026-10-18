@@ -11,6 +11,7 @@
   <view class="content-wrapper">
     <!-- 加载中 -->
     <cb-loading wx:if="{{loading}}" />
+    <cb-load-fail />
 
     <!-- 未开启 -->
     <view wx:elif="{{!enabled}}" class="state-box">

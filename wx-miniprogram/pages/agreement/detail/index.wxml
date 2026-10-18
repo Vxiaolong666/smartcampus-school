@@ -39,6 +39,7 @@
         <!-- 正文拆成「文本块 + 图片块」：文本交 rich-text，图片用原生 image（各端稳定显示、可点击放大） -->
         <md-blocks blocks="{{blocks}}" bind:preview="previewImage" />
       </view>
+      <cb-load-fail />
       <view class="ag-footer">感谢您信任并使用本服务</view>
     </view>
 

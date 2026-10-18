@@ -19,6 +19,7 @@
 			<view v-if="loading" class="ag-list-card">
 				<cb-loading compact />
 			</view>
+			<cb-load-fail />
 
 			<!-- 拉取失败（网络异常 / 协议表未初始化）：不再回退本地内置清单 -->
 			<view v-else-if="failed" class="ag-list-card">

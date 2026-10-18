@@ -13,6 +13,7 @@
     <announcement wx:if="{{announcement}}" content="{{announcement.content}}" type="{{announcement.type}}" closable="{{true}}" />
 
     <cb-loading wx:if="{{loading}}" />
+    <cb-load-fail />
 
     <view wx:elif="{{!hasAcademicAccount}}" class="form-card">
       <view class="card-header">

@@ -62,6 +62,7 @@
 			</view>
 
 			<cb-loading v-if="loading" />
+			<cb-load-fail />
 
 			<view v-if="!loading && logs.length === 0" class="empty">
 				<image class="empty-icon-img" src="/static/assets/wxmp-empty.svg" mode="aspectFit"></image>

@@ -22,6 +22,7 @@
 				</view>
 
 				<cb-loading v-if="!loaded" compact />
+				<cb-load-fail />
 
 				<block v-if="loaded && !isBound">
 					<view class="form-item">

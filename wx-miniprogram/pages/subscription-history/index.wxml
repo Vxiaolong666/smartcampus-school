@@ -29,6 +29,7 @@
     </view>
 
     <cb-loading wx:if="{{!loaded}}" />
+    <cb-load-fail />
 
     <view wx:if="{{loaded && list.length === 0}}" class="empty-wrapper">
       <image class="empty-icon" src="/assets/wxmp-empty.svg" mode="widthFix"></image>

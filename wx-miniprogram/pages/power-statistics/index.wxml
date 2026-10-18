@@ -15,6 +15,7 @@
         </view>
 
         <cb-loading wx:if="{{loading}}" />
+        <cb-load-fail />
 
         <cb-bind-tip wx:elif="{{dormitories.length === 0}}" type="dorm" desc="绑定宿舍后可查看用电统计" />
         

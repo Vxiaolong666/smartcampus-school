@@ -44,6 +44,7 @@
     </view>
 
     <cb-loading wx:if="{{loading}}" />
+    <cb-load-fail />
 
     <cb-bind-tip wx:elif="{{needBind}}" type="academic" desc="绑定后可查询成绩" />
 

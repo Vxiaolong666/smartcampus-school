@@ -17,6 +17,7 @@
       </view>
 
       <cb-loading wx:if="{{!loaded}}" compact />
+      <cb-load-fail />
 
       <view class="status-section" wx:if="{{loaded}}">
         <view class="status-icon">

@@ -15,6 +15,7 @@
 			</view>
 
 			<cb-loading v-if="loading" />
+			<cb-load-fail />
 
 			<view v-else-if="!hasAcademicAccount" class="form-card">
 				<view class="card-header">

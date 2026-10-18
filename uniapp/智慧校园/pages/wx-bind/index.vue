@@ -18,6 +18,7 @@
 				</view>
 
 				<cb-loading v-if="!loaded" compact />
+				<cb-load-fail />
 
 				<view class="status-section" v-if="loaded">
 					<view class="status-icon">

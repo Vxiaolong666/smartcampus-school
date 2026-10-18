@@ -162,6 +162,7 @@
 			</view>
 
 			<cb-loading v-if="loading" />
+			<cb-load-fail />
 
 			<view v-else-if="dayCourses.length > 0" class="course-list-wrapper">
 				<view v-if="morningCourses.length > 0" class="course-section">

@@ -11,6 +11,7 @@
 
   <view class="content-wrapper">
     <cb-loading wx:if="{{loading}}" />
+    <cb-load-fail />
     
     <view wx:elif="{{notice}}" class="notice-detail">
       <view class="notice-card">

@@ -18,6 +18,7 @@
 			</view>
 
 			<cb-loading v-if="loading" />
+			<cb-load-fail />
 
 			<block v-else-if="dormitories.length > 0">
 				<view class="filter-card">

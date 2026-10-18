@@ -17,6 +17,7 @@
     </view>
 
     <cb-loading wx:if="{{loading}}" />
+    <cb-load-fail />
 
     <block wx:elif="{{dormitories.length > 0}}">
       <view class="filter-card">

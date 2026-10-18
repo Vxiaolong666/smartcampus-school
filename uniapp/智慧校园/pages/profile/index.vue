@@ -16,6 +16,7 @@
 			</view>
 
 			<cb-loading v-if="!loaded" />
+			<cb-load-fail />
 
 			<view class="form-card avatar-card" v-if="loaded">
 				<view class="avatar-section">
