@@ -70,6 +70,14 @@ if ($tablesReady && isset($_GET['edit'])) {
 }
 .upload-box:hover { border-color: #0d80f2; color: #0d80f2; }
 .upload-box img { max-width: 100%; max-height: 160px; border-radius: 6px; }
+/* 状态徽章：可点击切换，带悬停反馈与请求中态 */
+.banner-status-badge {
+    cursor: pointer;
+    user-select: none;
+    transition: opacity .15s ease, transform .15s ease;
+}
+.banner-status-badge:hover { opacity: .82; transform: translateY(-1px); }
+.banner-status-badge.is-loading { opacity: .6; pointer-events: none; }
 /* ===== 移动端表格适配：压缩内边距/字号，图片缩小，保证横向可滑动 ===== */
 @media (max-width: 768px) {
     .table-responsive .table th,
@@ -252,7 +260,12 @@ if ($tablesReady && isset($_GET['edit'])) {
                                         <div>通用：<?php echo $bxUrl ? '<code>' . h($bxUrl) . '</code>' : '<span class="text-muted">—</span>'; ?></div>
                                     </td>
                                     <td><?php echo intval($b['sort']); ?></td>
-                                    <td><?php echo intval($b['status']) ? '<span class="badge bg-success">启用</span>' : '<span class="badge bg-secondary">禁用</span>'; ?></td>
+                                    <td>
+                                        <span class="badge banner-status-badge <?php echo intval($b['status']) ? 'bg-success' : 'bg-secondary'; ?>"
+                                              data-id="<?php echo intval($b['id']); ?>"
+                                              data-status="<?php echo intval($b['status']); ?>"
+                                              title="点击切换启用 / 禁用"><?php echo intval($b['status']) ? '启用' : '禁用'; ?></span>
+                                    </td>
                                     <td>
                                         <a href="banner_config.php?edit=<?php echo intval($b['id']); ?>" class="btn btn-sm btn-alt-secondary">编辑</a>
                                         <button type="button" class="btn btn-sm btn-alt-danger" onclick="delRow('banner_del', <?php echo intval($b['id']); ?>, '确认删除该轮播图？')">删除</button>
@@ -336,6 +349,39 @@ $('#bannerImageInput').on('change', function() {
         error: function() {
             layer.close(loadIndex);
             layer.msg('上传失败', {icon: 2});
+        }
+    });
+});
+// ===== 状态徽章：点击即时切换启用 / 禁用（AJAX，不刷新整页）=====
+// 使用事件委托 + 命名空间，PJAX 局部刷新后按钮依然有效且不会重复绑定
+$(document).off('click.bannerStatus').on('click.bannerStatus', '.banner-status-badge', function() {
+    var $badge = $(this);
+    if ($badge.hasClass('is-loading')) return;
+    var id = parseInt($badge.data('id'), 10);
+    if (!id) return;
+
+    $badge.addClass('is-loading');
+    $.ajax({
+        type: 'POST',
+        url: 'Ajax.php?act=banner_toggle_status',
+        data: { id: id },
+        dataType: 'json',
+        success: function(res) {
+            $badge.removeClass('is-loading');
+            if (res && res.code == 0) {
+                var status = parseInt(res.data.status, 10) ? 1 : 0;
+                $badge.data('status', status)
+                      .removeClass('bg-success bg-secondary')
+                      .addClass(status ? 'bg-success' : 'bg-secondary')
+                      .text(status ? '启用' : '禁用');
+                layer.msg(res.msg || '状态已更新', {icon: 1, time: 1200});
+            } else {
+                layer.msg((res && res.msg) || '操作失败', {icon: 2});
+            }
+        },
+        error: function() {
+            $badge.removeClass('is-loading');
+            layer.msg('服务器错误', {icon: 2});
         }
     });
 });

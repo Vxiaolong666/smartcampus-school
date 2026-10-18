@@ -2,11 +2,27 @@
 $mod = 'user';
 include('../Common/Core_brain.php');
 
+// ===== 维护状态判断（先于登录校验，确保维护提示优先展示）=====
+require_once(__DIR__ . '/../funsion/maintenance_window.php');
+$__scriptName = isset($_SERVER['SCRIPT_NAME']) ? basename($_SERVER['SCRIPT_NAME']) : '';
+
+// 登录 / 注册 / 找回密码等账号入口始终放行，不受任何维护状态影响
+$__maintExempt = isMaintenanceExemptPage();
+
+// 管理员手动维护：全站拦截，仅放行首页 index.php 与上述账号入口
+$__manualMaint = $__maintExempt ? null : manualMaintenanceInfo($DB);
+if ($__manualMaint && $__scriptName === 'index.php') {
+    $__manualMaint = null;
+}
+
+// 每日例行维护：仅拦截指定页面（本周课程 / 成绩 / 课程 / 学籍 / 学术推送 / 电费）
+$__dailyBlocked = $__maintExempt ? null : dailyMaintenanceBlockedInfo($DB);
+
 if(!isset($requireLogin)) {
     $requireLogin = false;
 }
 
-if($requireLogin && !isset($_SESSION['userId'])){
+if($requireLogin && !isset($_SESSION['userId']) && !$__manualMaint && !$__dailyBlocked){
     header('Location: login.php');
     exit;
 }
@@ -783,3 +799,18 @@ function getUserDisplayName($nickname, $username) {
         </div>
     </header>
     <main id="main-container">
+<?php
+// ===== 维护提示输出（判断已在文件顶部完成）=====
+// 管理员手动维护优先：全站拦截（仅放行首页 index.php，顶部已处理放行）
+if ($__manualMaint) {
+    renderManualMaintenanceBlocked($__manualMaint);
+    include(__DIR__ . '/foot.php');
+    exit;
+}
+// 每日例行维护：仅拦截指定页面，其余页面正常访问
+if ($__dailyBlocked) {
+    renderDailyMaintenanceBlocked($__dailyBlocked);
+    include(__DIR__ . '/foot.php');
+    exit;
+}
+?>

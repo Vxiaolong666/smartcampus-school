@@ -439,7 +439,7 @@ export default {
 	display: flex;
 	align-items: center;
 	margin-bottom: 14rpx;
-	padding: 8rpx 44rpx 8rpx 12rpx;
+	padding: 10rpx 28rpx;
 	border-radius: 999rpx;
 	background: rgba(255, 255, 255, 0.16);
 	border: 1rpx solid rgba(255, 255, 255, 0.22);
@@ -459,6 +459,7 @@ export default {
 .splash-name {
 	font-size: 30rpx;
 	font-weight: bold;
+	line-height: 1.2;
 	color: #ffffff;
 	letter-spacing: 1rpx;
 	text-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.35);
@@ -466,10 +467,13 @@ export default {
 
 /* 广告标识 */
 .splash-ad-tag {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
 	margin-left: 18rpx;
-	padding: 3rpx 12rpx;
+	padding: 4rpx 12rpx;
 	font-size: 20rpx;
-	line-height: 1.4;
+	line-height: 1.2;
 	color: rgba(255, 255, 255, 0.85);
 	border: 1rpx solid rgba(255, 255, 255, 0.45);
 	border-radius: 6rpx;

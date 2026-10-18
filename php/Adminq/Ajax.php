@@ -1773,6 +1773,31 @@ switch($act){
         }
     break;
 
+    // 轮播图状态切换（列表页点击状态徽章，仅改 status，不整页刷新）
+    case 'banner_toggle_status':
+        if(!$isLogin)exit('{"code":-1,"msg":"未登录"}');
+        if($adminData['adminRank']!=1){exit('{"code":-1,"msg":"您的账号没有权限使用此功能！"}');}
+        {
+            $id = intval(isset($_POST['id']) ? $_POST['id'] : 0);
+            if ($id <= 0) exit('{"code":-1,"msg":"参数错误"}');
+
+            $rs = @$DB->query("SELECT `status` FROM nteam_banners WHERE `id`={$id}");
+            $row = $rs ? $rs->fetch() : null;
+            if (!$row) exit('{"code":-1,"msg":"轮播图不存在"}');
+
+            $status = intval($row['status']) ? 0 : 1;
+            if ($DB->exec("update nteam_banners set `status`={$status} where `id`={$id}") === false) {
+                exit('{"code":-1,"msg":"操作失败"}');
+            }
+            $DB->query("insert into `nteam_log` (`adminUser`,`type`,`data`,`ip`,`city`) values ('" . $_SESSION['adminUser'] . "','修改了轮播图状态(ID:{$id} → " . ($status ? '启用' : '禁用') . ")', NOW(), '".$ip."', '')");
+            exit(json_encode(array(
+                'code' => 0,
+                'msg'  => $status ? '已启用' : '已禁用',
+                'data' => array('id' => $id, 'status' => $status),
+            ), JSON_UNESCAPED_UNICODE));
+        }
+    break;
+
     case 'app_version_save':
         if(!$isLogin)exit('{"code":0,"msg":"未登录"}');
         if($adminData['adminRank']!=1){exit('{"code":-1,"msg":"您的账号没有权限使用此功能！"}');}
