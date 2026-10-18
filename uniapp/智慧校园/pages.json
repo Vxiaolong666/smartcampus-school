@@ -1,6 +1,14 @@
 {
 	"pages": [
 		{
+			"path": "pages/splash/index",
+			"style": {
+				"navigationBarTitleText": "智慧校园",
+				"backgroundColor": "#000000",
+				"backgroundColorContent": "#000000"
+			}
+		},
+		{
 			"path": "pages/white-home/index",
 			"style": {
 				"navigationBarTitleText": "首页"
@@ -283,6 +291,14 @@
 				"selectedIconPath": "static/assets/tab_mine_2.png"
 			}
 		]
+	},
+	"h5": {
+		// H5 生产构建优化：开启 treeShaking，剔除未使用的代码，减小首屏包体
+		"optimization": {
+			"treeShaking": {
+				"enable": true
+			}
+		}
 	},
 	"uniIdRouter": {},
 	"condition" : { //模式配置，仅开发期间生效

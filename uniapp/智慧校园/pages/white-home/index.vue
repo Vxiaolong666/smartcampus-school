@@ -251,16 +251,7 @@
 			<image class="home-refresh-icon" src="/static/assets/wxmp-refresh-black.svg" mode="aspectFit"></image>
 		</view>
 
-		<!-- 开屏广告 -->
-		<splash-ad
-			:show="splashVisible"
-			:image="splashImage"
-			:url="splashUrl"
-			:duration="splashDuration"
-			:name="splashName"
-			@close="splashVisible = false"
-		/>
-	</view>
+</view>
 </template>
 
 <script>
@@ -298,38 +289,6 @@ const POEMS = [
 	'「不识庐山真面目，只缘身在此山中」'
 ];
 
-// ===== 开屏广告会话标记 =====
-// 用于区分「首次进入」与「首页刷新」：H5 用 sessionStorage（刷新保留、关闭标签页清除）；
-// App / 小程序用内存标记（冷启动重置）。首次进入不受冷却限制，仅同会话内刷新才受冷却。
-function splashSessionHandled() {
-	let handled = false;
-	// #ifdef H5
-	try { handled = window.sessionStorage.getItem('splash_session') === '1'; } catch (e) {}
-	// #endif
-	// #ifndef H5
-	try {
-		const app = getApp();
-		handled = !!(app && app.globalData && app.globalData.__splashSession);
-	} catch (e) {}
-	// #endif
-	return handled;
-}
-
-function markSplashSession() {
-	// #ifdef H5
-	try { window.sessionStorage.setItem('splash_session', '1'); } catch (e) {}
-	// #endif
-	// #ifndef H5
-	try {
-		const app = getApp();
-		if (app) {
-			app.globalData = app.globalData || {};
-			app.globalData.__splashSession = true;
-		}
-	} catch (e) {}
-	// #endif
-}
-
 export default {
 	data() {
 		return {
@@ -360,11 +319,6 @@ export default {
 			indexAnnouncement: null,
 			updateVisible: false,
 			updateInfo: {},
-			splashVisible: false,
-			splashImage: '',
-			splashUrl: '',
-			splashDuration: 3,
-			splashName: '智慧校园'
 			};
 			},
 
@@ -372,9 +326,7 @@ export default {
 		this.checkLoginStatus();
 		this.loadRandomPoem();
 		this.todayText = this.getTodayText();
-		// 开屏广告（后台可配置，免登录）
-		this.loadSplashAd();
-		// App 启动后首页加载时自动检查版本更新（免登录，与「关于我们-检查更新」逻辑一致）
+		// App 启动后自动检查版本更新（免登录，与「关于我们-检查更新」逻辑一致）
 		this.checkAppUpdate();
 
 		// 合规要求：首页免登录即可浏览（轮播、公告、通知等），不再强制跳转登录页
@@ -561,92 +513,6 @@ export default {
 			// 首页本身可免登录浏览：选择「暂不登录」后原地停留，不做跳转
 			api.goLoginWithTip({ stayOnCancel: true });
 			return false;
-		},
-
-		// 开屏广告（后台「开屏广告」配置；免登录）
-		// 带本地缓存：成功则更新缓存（并把图片存到本地），失败时用缓存兜底，确保始终有内容可展示
-		async loadSplashAd() {
-			const cacheKey = 'splash_ad_cache';
-			const shownKey = 'splash_ad_shown_at';
-			const COOLDOWN = 30 * 60 * 1000; // 展示冷却：30 分钟内不重复展示（刷新首页/重新进入不重复弹）
-
-			// 仅「同一会话内再次进入首页（刷新）」应用冷却；首次进入不受冷却限制
-			if (splashSessionHandled()) {
-				let lastShown = 0;
-				try { lastShown = uni.getStorageSync(shownKey) || 0; } catch (e) {}
-				if (lastShown && (Date.now() - lastShown) < COOLDOWN) return;
-			}
-
-			let cached = null;
-			try { cached = uni.getStorageSync(cacheKey) || null; } catch (e) {}
-
-			try {
-				const res = await api.getSplashAd('app');
-				const d = res && res.data;
-				if (!d || !(d.image_url || d.image)) {
-					// 后台明确无广告/已关闭 → 清缓存，避免展示过期内容
-					try { uni.removeStorageSync(cacheKey); } catch (e) {}
-					return;
-				}
-				const config = {
-					image: d.image_url || d.image,
-					localImage: '',
-					url: d.url || '',
-					duration: parseInt(d.duration, 10) || 3,
-					name: d.site_name || '智慧校园',
-					ts: Date.now()
-				};
-				this.showSplash(config);
-				try { uni.setStorageSync(cacheKey, config); } catch (e) {}
-				this.cacheSplashImage(config, cacheKey);
-			} catch (e) {
-				// 请求失败 → 用本地缓存兜底
-				if (this.isSplashCacheValid(cached)) {
-					this.showSplash(cached);
-				}
-			}
-		},
-
-		// 缓存是否可用（有图片且未过期，TTL 3 天）
-		isSplashCacheValid(c) {
-			if (!c || !(c.localImage || c.image)) return false;
-			const TTL = 3 * 24 * 60 * 60 * 1000;
-			if (c.ts && (Date.now() - c.ts) > TTL) return false;
-			return true;
-		},
-
-		// 展示开屏广告（优先使用本地缓存图片）
-		showSplash(config) {
-			this.splashImage = config.localImage || config.image;
-			this.splashUrl = config.url || '';
-			this.splashDuration = parseInt(config.duration, 10) || 3;
-			this.splashName = config.name || '智慧校园';
-			this.splashVisible = true;
-			// 记录展示时间与会话标记，配合冷却期避免同会话重复展示
-			try { uni.setStorageSync('splash_ad_shown_at', Date.now()); } catch (e) {}
-			markSplashSession();
-		},
-
-		// 把开屏图片下载并保存到本地，供离线/加速展示（best effort）
-		cacheSplashImage(config, cacheKey) {
-			// #ifdef APP-PLUS || MP-WEIXIN
-			try {
-				uni.downloadFile({
-					url: config.image,
-					success: (res) => {
-						if (!res || res.statusCode !== 200 || !res.tempFilePath) return;
-						uni.saveFile({
-							tempFilePath: res.tempFilePath,
-							success: (s) => {
-								if (!s || !s.savedFilePath) return;
-								config.localImage = s.savedFilePath;
-								try { uni.setStorageSync(cacheKey, config); } catch (e) {}
-							}
-						});
-					}
-				});
-			} catch (e) {}
-			// #endif
 		},
 
 		// App 启动后首页加载时自动检查版本更新（仅打包环境；免登录接口）

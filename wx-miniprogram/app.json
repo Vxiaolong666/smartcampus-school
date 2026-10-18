@@ -1,6 +1,7 @@
 {
-  "entryPagePath": "pages/white-home/index",
+  "entryPagePath": "pages/splash/index",
   "pages": [
+    "pages/splash/index",
     "pages/white-home/index",
     "pages/login/index",
     "pages/register/index",

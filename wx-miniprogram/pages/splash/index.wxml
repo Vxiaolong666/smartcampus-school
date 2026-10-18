@@ -1,0 +1,42 @@
+<view class="splash-page" catchtouchmove="noop">
+  <!-- 广告图已就绪：铺满整屏 + 跳过 + 底部品牌栏 -->
+  <block wx:if="{{image}}">
+    <view class="splash-bg">
+      <image class="splash-bg-img" src="{{image}}" mode="aspectFill"></image>
+    </view>
+    <image class="splash-image" src="{{image}}" mode="aspectFit" bindtap="onTap"></image>
+    <view class="splash-skip" style="top: {{skipTop}}px" bindtap="goHome">
+      <text class="splash-skip-label">跳过</text>
+      <text class="splash-skip-num">{{countdown}}s</text>
+    </view>
+    <view class="splash-footer" bindtap="onTap">
+      <view class="splash-brand">
+        <image class="splash-logo" src="/assets/wxmp-logo.svg" mode="aspectFit"></image>
+        <text class="splash-name">{{name}}</text>
+        <text class="splash-ad-tag">广告</text>
+      </view>
+      <view wx:if="{{url}}" class="splash-hint">点击跳转到详情页</view>
+      <view class="splash-disclaimer" catchtap="noop">广告内容由广告主提供，本平台仅提供展示，请注意甄别</view>
+    </view>
+
+    <!-- 底部倒计时进度条：随展示时长线性收缩 -->
+    <view class="splash-progress">
+      <view class="splash-progress-bar" style="animation-duration: {{duration}}s"></view>
+    </view>
+  </block>
+
+  <!-- 广告未就绪 / 无广告：品牌启动页 -->
+  <view wx:else class="splash-loading">
+    <view class="splash-loading-glow"></view>
+    <view class="splash-loading-card">
+      <image class="splash-loading-logo" src="/assets/wxmp-logo.svg" mode="aspectFit"></image>
+    </view>
+    <text class="splash-loading-name">{{name}}</text>
+    <text class="splash-loading-sub">一站式智慧校园生活助手</text>
+    <view class="splash-loading-dots">
+      <view class="splash-loading-dot"></view>
+      <view class="splash-loading-dot"></view>
+      <view class="splash-loading-dot"></view>
+    </view>
+  </view>
+</view>

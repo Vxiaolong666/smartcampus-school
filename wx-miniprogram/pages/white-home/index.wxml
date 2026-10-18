@@ -1,4 +1,3 @@
-<page-meta page-style="{{splashVisible ? 'overflow:hidden;' : ''}}"></page-meta>
 <wxs src="../../utils/date.wxs" module="dt" />
 <view>
   <view class="background-wrapper">
@@ -220,21 +219,4 @@
     <image class="home-refresh-icon" src="/assets/wxmp-refresh-black.svg" mode="aspectFit"></image>
   </view>
 
-  <!-- 开屏广告 -->
-  <view class="splash-mask" wx:if="{{splashVisible}}" catch:touchmove="noop">
-    <!-- 同图模糊背景：铺满整屏填充留白 -->
-    <view class="splash-bg">
-      <image class="splash-bg-img" src="{{splashImage}}" mode="aspectFill"></image>
-    </view>
-    <!-- 广告图：铺满整屏（cover，超出部分按屏幕比例裁切） -->
-    <image class="splash-image" src="{{splashImage}}" mode="aspectFill" bind:tap="handleSplashTap"></image>
-    <view class="splash-skip" bind:tap="closeSplash">跳过 {{splashCountdown}}s</view>
-    <view class="splash-footer" bind:tap="handleSplashTap">
-      <view class="splash-brand">
-        <image class="splash-logo" src="/assets/wxmp-logo.svg" mode="aspectFit"></image>
-        <text class="splash-name">{{splashName}}</text>
-      </view>
-      <view wx:if="{{splashUrl}}" class="splash-hint">点击跳转到详情页</view>
-    </view>
-  </view>
 </view>
