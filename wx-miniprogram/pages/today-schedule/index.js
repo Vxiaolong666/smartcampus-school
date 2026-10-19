@@ -62,6 +62,7 @@ Page({
         showAiResult: false,        // AI 分析结果浮层
         aiResult: '',               // AI 分析结果（Markdown）
         aiResultHtml: '',           // 渲染用 HTML
+        aiError: '',                // 分析失败提示（空字符串表示无错误）
         aiLoading: false,           // 是否正在分析
         aiCache: {},                // 分析结果缓存（按选中日）
         windowHeight: 0,
@@ -361,7 +362,7 @@ Page({
             // 遍历每门课程
             for (const course of data[0].courses) {
                 // 解析上课时间字符串，获取星期和节次
-                const { weekDay, sections } = this.parseClassTime(course.classTime || '');
+                const { weekDay, sections } = this.parseClassTime(course);
                 // 星期不在0-6范围内则跳过
                 if (weekDay < 0 || weekDay >= 7) continue;
 
@@ -401,34 +402,102 @@ Page({
         return Math.max(12, max || 11);
     },
 
-    //解析上课时间字符串（如"10506"表示周一第5、6节）
-    parseClassTime(classTime) {
-        // 空字符串或长度不足则返回默认值
-        if (!classTime || classTime.length < 2) return { weekDay: 0, sections: [] };
-
-        // 第一个字符表示星期（1=周一, ..., 7=周日），转为0-based索引
-        const weekDay = parseInt(classTime.charAt(0)) - 1;
-        // 剩余字符为节次信息
-        const timeStr = classTime.substring(1);
-        const sections = [];
+    //解析上课时间：星期优先取 weekDay 字段(1-7)，节次优先 weekNoteDetail；
+    //其次 classTime 的「1 + 两位节次」编码（如 103104 = 第 3、4 节，与网页端/AI 分析同源）；
+    //最后兼容「星期(1位) + 两位节次」旧格式（如 20506 = 周二第 5、6 节）
+    parseClassTime(course) {
+        const src = course || {};
+        const classTime = String(src.classTime || '');
         // 节次上限按后台作息（至少 12 节），第 12 节及以后的课程不再被丢弃
         const maxSection = this.maxSection();
 
-        // 优先按两位数格式解析节次（如"05"表示第5节）
-        for (let i = 0; i < timeStr.length; i += 2) {
-            const section = parseInt(timeStr.substr(i, 2));
-            if (section >= 1 && section <= maxSection) sections.push(section);
+        // 星期：1-7 → 0-6
+        let weekDay = -1;
+        if (src.weekDay !== undefined && src.weekDay !== null && src.weekDay !== '') {
+            const wd = parseInt(src.weekDay, 10);
+            if (wd >= 1 && wd <= 7) weekDay = wd - 1;
+        }
+        if (weekDay < 0 && classTime.length >= 1) {
+            const wd = parseInt(classTime.charAt(0), 10);
+            if (wd >= 1 && wd <= 7) weekDay = wd - 1;
         }
 
-        // 两位数解析失败时，尝试一位数格式（如"5"表示第5节）
-        if (sections.length === 0) {
-            for (let i = 0; i < timeStr.length; i++) {
-                const section = parseInt(timeStr.charAt(i));
-                if (section >= 1 && section <= maxSection) sections.push(section);
+        // 节次（1 基）
+        const sections = [];
+        const pushSection = n => {
+            if (n >= 1 && n <= maxSection && sections.indexOf(n) === -1) sections.push(n);
+        };
+
+        // 1) weekNoteDetail，如「3节,4节」「103,104」
+        const detail = String(src.weekNoteDetail || '');
+        if (detail.trim()) {
+            detail.split(/[,，]/).forEach(part => {
+                const digits = String(part).match(/\d+/);
+                if (!digits) return;
+                let num = parseInt(digits[0], 10);
+                // 「103」这类三位编码取末两位的节次
+                if (num > maxSection && digits[0].length >= 3) {
+                    num = parseInt(digits[0].slice(-2), 10);
+                }
+                if (!isNaN(num)) pushSection(num);
+            });
+        }
+
+        // 2) classTime「1 + 两位节次」编码（长度须为 3 的倍数，否则按旧格式处理）
+        if (sections.length === 0 && classTime.length >= 3 && classTime.length % 3 === 0) {
+            for (let i = 1; i <= maxSection; i++) {
+                const code = '1' + ('0' + i).slice(-2);
+                if (classTime.indexOf(code) !== -1) pushSection(i);
             }
         }
 
-        return { weekDay, sections };
+        // 3) 旧格式兼容
+        if (sections.length === 0) {
+            const timeStr = classTime.length > 2 ? classTime.substring(1) : classTime;
+            for (let i = 0; i + 1 < timeStr.length; i += 2) {
+                const num = parseInt(timeStr.substr(i, 2), 10);
+                if (!isNaN(num)) pushSection(num);
+            }
+            if (sections.length === 0) {
+                for (let i = 0; i < timeStr.length; i++) {
+                    const num = parseInt(timeStr.charAt(i), 10);
+                    if (!isNaN(num)) pushSection(num);
+                }
+            }
+        }
+
+        return { weekDay, sections: sections.sort((a, b) => a - b) };
+    },
+
+    //判断课程在当前教学周是否开课：兼容「1-16」「1-16周」「1,3,5」「1-16周(单)」等写法
+    isCourseInWeek(weeks, currentWeek) {
+        const raw = String(weeks || '').trim();
+        if (!raw) return true;
+        const week = parseInt(currentWeek, 10) || 0;
+        if (!week) return true;
+
+        let matched = false;
+        const rangeRe = /(\d+)\s*[-~至]\s*(\d+)/g;
+        let m;
+        while ((m = rangeRe.exec(raw)) !== null) {
+            const s = parseInt(m[1], 10);
+            const e = parseInt(m[2], 10);
+            if (week >= Math.min(s, e) && week <= Math.max(s, e)) {
+                matched = true;
+                break;
+            }
+        }
+        if (!matched) {
+            const nums = raw.replace(rangeRe, ' ').match(/\d+/g) || [];
+            matched = nums.some(n => parseInt(n, 10) === week);
+        }
+        if (!matched) return false;
+
+        // 单 / 双周限制
+        const isOdd = week % 2 === 1;
+        if (/单/.test(raw) && !isOdd) return false;
+        if (/双/.test(raw) && isOdd) return false;
+        return true;
     },
 
     //筛选当天课程
@@ -441,18 +510,8 @@ Page({
         let dayCourses = allCourses.filter(course => {
             // 星期不匹配则排除
             if (course.weekDay !== targetDay - 1) return false;
-            // 无周次信息则保留
-            if (!course.weeks) return true;
-            
-            // 检查当前周次是否在上课周次范围内
-            const match = course.weeks.match(/^(\d+)-(\d+)$/);
-            if (match) {
-                // 格式为"1-16"，判断当前周是否在范围内
-                const [_, start, end] = match.map(Number);
-                return currentWeek >= start && currentWeek <= end;
-            }
-            // 其他格式（如逗号分隔），检查是否包含当前周次
-            return course.weeks.includes(String(currentWeek));
+            // 周次不匹配则排除（兼容 1-16周 / 单双周 等写法）
+            return this.isCourseInWeek(course.weeks, currentWeek);
         }).map(c => ({ ...c, isEnded: false }))   // 初始化未结束状态
           .sort((a, b) => (a.slots[0] || 99) - (b.slots[0] || 99));  // 按第一节次升序排列
 
@@ -544,9 +603,8 @@ Page({
     // ===== AI 智能分析今日安排 =====
     async aiAnalyze() {
         if (this.data.aiLoading) {
-            const t = '### AI 正在分析…\n\n正在生成分析报告，请稍候......\n（该过程通常需要十几秒）';
-            this.setData({ aiResult: t, aiResultHtml: markdownToHtml(t), showAiResult: true });
-            this.initSheetHeight();
+            // 正在分析中再次点击：聚焦浮层并提示，不重复发起请求
+            this.setData({ showAiResult: true });
             wx.showToast({ title: 'AI 正在分析...', icon: 'none' });
             return;
         }
@@ -555,8 +613,10 @@ Page({
             return;
         }
         const key = 'k' + this.data.selectedDay;
+        // 命中缓存直接展示
         if (this.data.aiCache[key]) {
             this.setData({
+                aiError: '',
                 aiResult: this.data.aiCache[key],
                 aiResultHtml: markdownToHtml(this.data.aiCache[key]),
                 showAiResult: true
@@ -564,14 +624,15 @@ Page({
             this.initSheetHeight();
             return;
         }
-        this.setData({ aiLoading: true });
-        const loadingText = '### AI 正在分析…\n\n正在读取今日课程安排并生成分析报告，请稍候......\n（该过程通常需要十几秒）';
+        // 先算好浮层高度再展示，避免首帧 sheetHeight 为 0 的遮罩空窗
+        this.initSheetHeight();
         this.setData({
-            aiResult: loadingText,
-            aiResultHtml: markdownToHtml(loadingText),
+            aiLoading: true,
+            aiError: '',
+            aiResult: '',
+            aiResultHtml: '',
             showAiResult: true
         });
-        this.initSheetHeight();
         const courses = this.data.dayCourses.map(c => ({
             name: c.courseName,
             time: c.timeDisplay,
@@ -588,21 +649,19 @@ Page({
             });
             const content = res.data && res.data.content ? String(res.data.content).trim() : '';
             if (!content) {
-                const t = '### 暂无分析结果\n\nAI 未返回有效内容，请稍后重试。';
-                this.setData({ aiResult: t, aiResultHtml: markdownToHtml(t) });
+                this.setData({ aiError: 'AI 未返回有效内容，请稍后重试' });
                 return;
             }
             const cache = Object.assign({}, this.data.aiCache);
             cache[key] = content;
             this.setData({
                 aiCache: cache,
+                aiError: '',
                 aiResult: content,
                 aiResultHtml: markdownToHtml(content)
             });
         } catch (err) {
-            const msg = (err && err.msg) || '分析失败';
-            const t = '### 分析失败\n\n' + msg + '\n\n请稍后重试，或联系管理员检查「AI 配置」是否正确、额度是否充足。';
-            this.setData({ aiResult: t, aiResultHtml: markdownToHtml(t) });
+            this.setData({ aiError: (err && err.msg) || '网络异常，请检查网络后重试' });
         } finally {
             this.setData({ aiLoading: false });
         }

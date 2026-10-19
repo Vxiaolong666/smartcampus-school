@@ -1154,7 +1154,8 @@ switch($act){
 
         $userId = intval($_SESSION['userId']);
         $semester = isset($data['semester']) ? strval($data['semester']) : '';
-        $dataHash = md5($raw);
+        // 带版本号：升级 max_tokens / 续写策略后使旧的截断缓存自动失效
+        $dataHash = md5($raw . '|v2');
 
         // 命中缓存且数据未变化则直接返回，避免重复生成
         $cached = $DB->getRow("SELECT content, data_hash FROM nteam_ai_grade_analysis WHERE user_id=? AND semester=?", [$userId, $semester]);
@@ -1295,7 +1296,8 @@ switch($act){
             ['role' => 'user', 'content' => $prompt],
         ];
         $ai = new \lib\AiHelper();
-        $dataHash = md5($raw);
+        // 带版本号：升级 max_tokens / 续写策略后使旧的截断缓存自动失效
+        $dataHash = md5($raw . '|v2');
         $bizType = ($type === 'statistics') ? 'power_statistics' : 'power_query';
         $result = $ai->analyzeCached($DB, $userId, $bizType, $dataHash, $messages);
         if (!$result['success']) {
@@ -1701,7 +1703,8 @@ switch($act){
             ['role' => 'user', 'content' => $prompt],
         ];
         $ai = new \lib\AiHelper();
-        $dataHash = md5($raw);
+        // 带版本号：升级 max_tokens / 续写策略后使旧的截断缓存自动失效
+        $dataHash = md5($raw . '|v2');
         $bizType = ($type === 'semester') ? 'schedule_semester' : 'schedule_today';
         $result = $ai->analyzeCached($DB, $userId, $bizType, $dataHash, $messages);
         if (!$result['success']) {

@@ -24,6 +24,7 @@ Page({
     showAiResult: false,     // AI 分析结果浮层
     aiResult: '',            // AI 分析结果（Markdown）
     aiResultHtml: '',        // 渲染用 HTML
+    aiError: '',             // 分析失败提示（空字符串表示无错误）
     aiLoading: false,        // 是否正在分析
     aiCache: {},             // 分析结果缓存（按学期）
     windowHeight: 0,
@@ -243,9 +244,7 @@ Page({
   // ===== AI 智能分析成绩 =====
   async aiAnalyze() {
     if (this.data.aiLoading) {
-      const t = '### AI 正在分析…\n\n正在生成分析报告，请稍候......\n（该过程通常需要十几秒）';
-      this.setData({ aiResult: t, aiResultHtml: markdownToHtml(t), showAiResult: true });
-      this.initSheetHeight();
+      this.setData({ showAiResult: true });
       wx.showToast({ title: 'AI 正在分析...', icon: 'none' });
       return;
     }
@@ -256,6 +255,7 @@ Page({
     const semesterName = (this.data.semesters[this.data.semesterIndex] && this.data.semesters[this.data.semesterIndex].semesterName) || '';
     if (this.data.aiCache[semesterName]) {
       this.setData({
+        aiError: '',
         aiResult: this.data.aiCache[semesterName],
         aiResultHtml: markdownToHtml(this.data.aiCache[semesterName]),
         showAiResult: true
@@ -263,7 +263,15 @@ Page({
       this.initSheetHeight();
       return;
     }
-    this.setData({ aiLoading: true });
+    // 先算好浮层高度再展示，避免首帧 sheetHeight 为 0 的遮罩空窗
+    this.initSheetHeight();
+    this.setData({
+      aiLoading: true,
+      aiError: '',
+      aiResult: '',
+      aiResultHtml: '',
+      showAiResult: true
+    });
     const payload = {
       achievement: this.data.grades.map(g => ({
         courseName: g.courseName,
@@ -280,20 +288,20 @@ Page({
       const res = await api.aiAnalyzeGrades(payload);
       const content = (res.data && res.data.content) ? String(res.data.content).trim() : '';
       if (!content) {
-        wx.showToast({ title: '暂无分析结果，请重试', icon: 'none' });
+        this.setData({ aiError: 'AI 未返回有效内容，请稍后重试' });
         return;
       }
       const cache = Object.assign({}, this.data.aiCache);
       cache[semesterName] = content;
       this.setData({
         aiCache: cache,
+        aiError: '',
         aiResult: content,
         aiResultHtml: markdownToHtml(content),
         showAiResult: true
       });
-      this.initSheetHeight();
     } catch (err) {
-      wx.showToast({ title: (err && err.msg) || '分析失败', icon: 'none' });
+      this.setData({ aiError: (err && err.msg) || '网络异常，请检查网络后重试' });
     } finally {
       this.setData({ aiLoading: false });
     }
@@ -315,6 +323,8 @@ Page({
       }
       this.setData({ windowHeight: h });
     }
+    // 兜底 600px：极端情况下取不到视口高度时，仍保证浮层有可见面板而不是 0 高度
+    h = h || 600;
     this.setData({ sheetHeight: Math.round(h * 0.8) });
   },
 

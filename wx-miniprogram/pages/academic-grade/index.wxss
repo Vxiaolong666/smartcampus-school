@@ -377,3 +377,87 @@ page {
 .detail-btn::after {
     border: none;
 }
+
+/* ==================== AI 分析浮层（本页增强，与 uniapp 端一致） ==================== */
+
+/* 标题区：浅色渐变 + AI 徽标 */
+.ai-modal-header {
+    background: linear-gradient(180deg, #f7fbfd 0%, #ffffff 100%);
+    padding: 16rpx 44rpx 22rpx;
+}
+
+.ai-modal-title-wrap {
+    display: flex;
+    align-items: center;
+}
+
+.ai-modal-badge {
+    margin-right: 14rpx;
+    padding: 4rpx 14rpx;
+    font-size: 22rpx;
+    font-weight: bold;
+    line-height: 1.4;
+    color: #ffffff;
+    letter-spacing: 1rpx;
+    border-radius: 10rpx;
+    background: linear-gradient(135deg, #13c2c2, #1890ff);
+    box-shadow: 0 4rpx 12rpx rgba(19, 194, 194, 0.28);
+}
+
+/* 分析失败：与全站 cb-load-fail 视觉一致 */
+.ai-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40rpx 20rpx 20rpx;
+    text-align: center;
+}
+
+.ai-error-icon {
+    width: 120rpx;
+    height: 120rpx;
+    margin-bottom: 24rpx;
+    opacity: 0.85;
+}
+
+.ai-error-title {
+    font-size: 32rpx;
+    font-weight: bold;
+    color: #48416f;
+    margin-bottom: 12rpx;
+}
+
+.ai-error-desc {
+    font-size: 26rpx;
+    color: #948eb3;
+    line-height: 1.6;
+}
+
+.ai-error-btn {
+    margin-top: 32rpx;
+    height: 72rpx;
+    line-height: 72rpx;
+    padding: 0 60rpx;
+    font-size: 28rpx;
+    font-weight: bold;
+    color: #ffffff;
+    border-radius: 36rpx;
+    background: linear-gradient(135deg, #13c2c2, #1890ff);
+    box-shadow: 0 10rpx 24rpx rgba(19, 194, 194, 0.28);
+}
+
+.ai-error-btn:active {
+    opacity: 0.9;
+    transform: scale(0.98);
+}
+
+/* 结果页脚注 */
+.ai-result-foot {
+    margin-top: 28rpx;
+    padding-top: 20rpx;
+    border-top: 1rpx dashed #eceaf5;
+    text-align: center;
+    font-size: 22rpx;
+    color: #b0abc7;
+    letter-spacing: 0.5rpx;
+}

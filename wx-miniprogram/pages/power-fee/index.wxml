@@ -118,7 +118,7 @@
     </view>
 
     <!-- AI 智能分析电费 -->
-    <view wx:if="{{results.length > 0}}" class="ai-analyze-wrap">
+    <view wx:if="{{!loading && !queryLoading && results.length > 0}}" class="ai-analyze-wrap">
       <view class="ai-analyze-btn {{aiLoading ? 'ai-loading' : ''}}" bindtap="aiAnalyze">
         <text wx:if="{{!aiLoading}}">AI 智能分析电费</text>
         <text wx:else>分析中…</text>
@@ -131,12 +131,32 @@
     <view class="ai-modal" style="height: {{sheetHeight}}px" catchtap="noop">
       <view class="ai-modal-handle"></view>
       <view class="ai-modal-header">
-        <text class="ai-modal-title">AI 智能电费分析</text>
+        <view class="ai-modal-title-wrap">
+          <text class="ai-modal-badge">AI</text>
+          <text class="ai-modal-title">智能电费分析</text>
+        </view>
         <text class="ai-modal-close" catchtap="closeAiResult">✕</text>
       </view>
-      <scroll-view scroll-y="true" class="ai-modal-body" catchtap="noop">
+      <!-- 正在分析：复用全站统一的圆环 loading，垂直居中 -->
+      <view wx:if="{{aiLoading}}" class="ai-modal-center-body">
+        <cb-loading class="ai-modal-center-item" compact="{{true}}" large="{{true}}" text="AI 正在分析…"
+          subTexts="{{['读取电费数据，约需十几秒', '正在核对余额与用量…', '正在撰写电费建议…', '马上就好，请稍候…']}}"
+          slowAfter="{{16000}}" slowText="分析时间有点久…" slowSubText="可稍候，或关闭后重新分析" />
+      </view>
+      <view wx:elif="{{aiError}}" class="ai-modal-center-body">
+        <!-- 分析失败：复用全站统一的网络异常样式，垂直居中 -->
+        <view class="ai-error ai-modal-center-item">
+          <image class="ai-error-icon" src="/assets/wxmp-network-error.svg" mode="widthFix"></image>
+          <view class="ai-error-title">分析失败</view>
+          <view class="ai-error-desc">{{aiError}}</view>
+          <view class="ai-error-btn" catchtap="aiAnalyze">重新分析</view>
+        </view>
+      </view>
+      <scroll-view wx:else scroll-y="true" class="ai-modal-body" catchtap="noop">
         <view class="ai-modal-body-inner">
+          <!-- 分析结果 -->
           <rich-text nodes="{{aiResultHtml}}" class="ai-modal-content"></rich-text>
+          <view class="ai-result-foot">内容由 AI 生成，仅供参考</view>
         </view>
       </scroll-view>
     </view>

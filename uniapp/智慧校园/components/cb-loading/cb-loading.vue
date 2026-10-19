@@ -1,5 +1,5 @@
 <template>
-	<view class="cb-loading" :class="{ 'cb-loading--compact': compact }">
+	<view class="cb-loading" :class="{ 'cb-loading--compact': compact, 'cb-loading--large': large }">
 		<view class="cb-loading__spinner">
 			<view class="cb-loading__ring"></view>
 		</view>
@@ -12,7 +12,7 @@
 			<text
 				v-if="showSub && displaySub"
 				class="cb-loading__sub"
-				:class="animate ? (flipA ? 'cb-loading__sub--a' : 'cb-loading__sub--b') : ''"
+				:class="subAnimate ? (flipSubA ? 'cb-loading__sub--a' : 'cb-loading__sub--b') : ''"
 			>{{ displaySub }}</text>
 		</view>
 	</view>
@@ -50,6 +50,11 @@ export default {
 			type: String,
 			default: ''
 		},
+		// 副标题轮换列表（传入后即使固定了 text，副标题也会依次轮换）
+		subTexts: {
+			type: Array,
+			default: () => []
+		},
 		// 是否展示副标题
 		showSub: {
 			type: Boolean,
@@ -57,6 +62,11 @@ export default {
 		},
 		// 内嵌在卡片内时使用更紧凑的间距与字号
 		compact: {
+			type: Boolean,
+			default: false
+		},
+		// 强调场景（如 AI 分析弹窗）：圆环与文字整体放大
+		large: {
 			type: Boolean,
 			default: false
 		},
@@ -86,8 +96,10 @@ export default {
 			displayText: '',
 			displaySub: '',
 			flipA: true,
+			flipSubA: true,
 			// 首个文案直接展示，不做入场动画
 			animate: false,
+			subAnimate: false,
 			slow: false
 		};
 	},
@@ -106,10 +118,27 @@ export default {
 
 	methods: {
 		startTextLoop() {
-			// 指定了固定文案：不再轮换，副标题取 subText
+			// 指定了固定主文案：主文案保持不动，副标题可按 subTexts 依次轮换
 			if (this.text) {
+				const subs = (this.subTexts || []).filter(s => !!s);
+				this._subIndex = 0;
 				this.displayText = this.text;
-				this.displaySub = this.subText;
+				this.displaySub = subs.length ? subs[0] : this.subText;
+
+				if (subs.length > 1) {
+					this._textTimer = setInterval(() => {
+						if (this.slow) return;
+						this._subIndex = (this._subIndex + 1) % subs.length;
+						this.switchSub(subs[this._subIndex]);
+					}, 2400);
+				}
+
+				if (this.slowAfter > 0) {
+					this._slowTimer = setTimeout(() => {
+						this.slow = true;
+						this.switchText(this.slowText || SLOW_TIP.text, this.slowSubText || SLOW_TIP.sub);
+					}, this.slowAfter);
+				}
 				return;
 			}
 
@@ -133,12 +162,21 @@ export default {
 			}
 		},
 
-		// 换文案时来回切换动画类名，保证每次切换都有入场动画
+		// 换整组文案（主文案 + 副标题）时来回切换动画类名，保证每次切换都有入场动画
 		switchText(text, sub) {
 			this.displayText = text;
 			this.displaySub = sub || '';
 			this.flipA = !this.flipA;
+			this.flipSubA = !this.flipSubA;
 			this.animate = true;
+			this.subAnimate = true;
+		},
+
+		// 只轮换副标题：主文案保持不动，避免固定标题反复重播入场动画
+		switchSub(sub) {
+			this.displaySub = sub || '';
+			this.flipSubA = !this.flipSubA;
+			this.subAnimate = true;
 		},
 
 		stopTextLoop() {
@@ -206,12 +244,12 @@ export default {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	margin-top: 28rpx;
+	margin-top: 34rpx;
 	padding: 0 24rpx;
 }
 
 .cb-loading--compact .cb-loading__texts {
-	margin-top: 22rpx;
+	margin-top: 34rpx;
 }
 
 .cb-loading__text {
@@ -240,6 +278,29 @@ export default {
 .cb-loading--compact .cb-loading__sub {
 	margin-top: 8rpx;
 	font-size: 22rpx;
+}
+
+/* 强调场景（AI 分析弹窗等）：圆环与文字整体放大，不影响默认 / compact 的页面加载 */
+.cb-loading--large .cb-loading__spinner {
+	width: 112rpx;
+	height: 112rpx;
+}
+
+.cb-loading--large .cb-loading__ring {
+	border-width: 8rpx;
+}
+
+.cb-loading--large .cb-loading__texts {
+	margin-top: 40rpx;
+}
+
+.cb-loading--large .cb-loading__text {
+	font-size: 34rpx;
+}
+
+.cb-loading--large .cb-loading__sub {
+	margin-top: 12rpx;
+	font-size: 26rpx;
 }
 
 /* 主文案 / 副标题错峰入场（a / b 交替，保证每次切换都能重播） */

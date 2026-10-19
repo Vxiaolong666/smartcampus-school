@@ -28,6 +28,11 @@ Component({
       type: String,
       value: ''
     },
+    // 副标题轮换列表（传入后即使固定了 text，副标题也会依次轮换）
+    subTexts: {
+      type: Array,
+      value: []
+    },
     // 是否展示副标题
     showSub: {
       type: Boolean,
@@ -35,6 +40,11 @@ Component({
     },
     // 内嵌在卡片内时使用更紧凑的间距与字号
     compact: {
+      type: Boolean,
+      value: false
+    },
+    // 强调场景（如 AI 分析弹窗）：圆环与文字整体放大
+    large: {
       type: Boolean,
       value: false
     },
@@ -62,8 +72,10 @@ Component({
     displayText: '',
     displaySub: '',
     flipA: true,
+    flipSubA: true,
     // 首个文案直接展示，不做入场动画
     animate: false,
+    subAnimate: false,
     slow: false
   },
 
@@ -78,12 +90,32 @@ Component({
 
   methods: {
     startTextLoop() {
-      // 指定了固定文案：不再轮换，副标题取 subText
+      // 指定了固定主文案：主文案保持不动，副标题可按 subTexts 依次轮换
       if (this.data.text) {
+        const subs = (this.data.subTexts || []).filter(s => !!s);
+        this._subIndex = 0;
         this.setData({
           displayText: this.data.text,
-          displaySub: this.data.subText
+          displaySub: subs.length ? subs[0] : this.data.subText
         });
+
+        if (subs.length > 1) {
+          this._textTimer = setInterval(() => {
+            if (this.data.slow) return;
+            this._subIndex = (this._subIndex + 1) % subs.length;
+            this.switchSub(subs[this._subIndex]);
+          }, 2400);
+        }
+
+        if (this.data.slowAfter > 0) {
+          this._slowTimer = setTimeout(() => {
+            this.switchText(
+              this.data.slowText || SLOW_TIP.text,
+              this.data.slowSubText || SLOW_TIP.sub,
+              true
+            );
+          }, this.data.slowAfter);
+        }
         return;
       }
 
@@ -112,14 +144,25 @@ Component({
       }
     },
 
-    // 换文案时来回切换动画类名，保证每次切换都有入场动画
+    // 换整组文案（主文案 + 副标题）时来回切换动画类名，保证每次切换都有入场动画
     switchText(text, sub, slow) {
       this.setData({
         displayText: text,
         displaySub: sub || '',
         flipA: !this.data.flipA,
+        flipSubA: !this.data.flipSubA,
         animate: true,
+        subAnimate: true,
         slow: slow === true ? true : this.data.slow
+      });
+    },
+
+    // 只轮换副标题：主文案保持不动，避免固定标题反复重播入场动画
+    switchSub(sub) {
+      this.setData({
+        displaySub: sub || '',
+        flipSubA: !this.data.flipSubA,
+        subAnimate: true
       });
     },
 

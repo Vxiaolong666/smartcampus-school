@@ -137,6 +137,7 @@
               </view>
               <view class="glance-card-value">¥{{powerInfo.balance}}</view>
               <view class="glance-card-info">{{powerInfo.roomName}}</view>
+              <view class="glance-card-info" wx:if="{{powerInfo.estimated_days != null}}">预计可用 {{powerInfo.estimated_days}} 天</view>
             </block>
             <block wx:elif="{{noDormitory}}">
               <view class="glance-card-header">

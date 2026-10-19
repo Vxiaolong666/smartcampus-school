@@ -149,6 +149,7 @@
 								</view>
 								<view class="glance-card-value">¥{{ powerInfo.balance }}</view>
 								<view class="glance-card-info">{{ powerInfo.roomName }}</view>
+								<view class="glance-card-info" v-if="powerInfo.estimated_days != null">预计可用 {{ powerInfo.estimated_days }} 天</view>
 							</block>
 							<block v-else-if="noDormitory">
 								<view class="glance-card-header">

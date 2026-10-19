@@ -54,6 +54,7 @@ Page({
         showAiResult: false,     // AI 分析结果浮层
         aiResult: '',            // AI 分析结果（Markdown 原文）
         aiResultHtml: '',        // 渲染用 HTML
+        aiError: '',             // 分析失败提示（空字符串表示无错误）
         aiLoading: false,        // 是否正在分析
         aiCache: {},             // 分析结果缓存（按周次）
         windowHeight: 0,
@@ -498,12 +499,7 @@ Page({
     async aiAnalyze() {
         if (this.data.aiLoading) {
             // 正在分析中再次点击：聚焦浮层并提示，不重复发起请求
-            this.setData({
-                aiResult: '### AI 正在分析…\n\n正在生成分析报告，请稍候......\n（该过程通常需要十几秒）',
-                aiResultHtml: markdownToHtml('### AI 正在分析…\n\n正在生成分析报告，请稍候......\n（该过程通常需要十几秒）'),
-                showAiResult: true
-            });
-            this.initSheetHeight();
+            this.setData({ showAiResult: true });
             wx.showToast({ title: 'AI 正在分析...', icon: 'none' });
             return;
         }
@@ -515,6 +511,7 @@ Page({
         // 命中缓存直接展示
         if (this.data.aiCache[key]) {
             this.setData({
+                aiError: '',
                 aiResult: this.data.aiCache[key],
                 aiResultHtml: markdownToHtml(this.data.aiCache[key]),
                 showAiResult: true
@@ -522,14 +519,15 @@ Page({
             this.initSheetHeight();
             return;
         }
-        this.setData({ aiLoading: true });
-        const loadingText = '### AI 正在分析…\n\n正在读取课表数据并生成分析报告，请稍候......\n（该过程通常需要十几秒）';
+        // 先算好浮层高度再展示，避免首帧 sheetHeight 为 0 的遮罩空窗
+        this.initSheetHeight();
         this.setData({
-            aiResult: loadingText,
-            aiResultHtml: markdownToHtml(loadingText),
+            aiLoading: true,
+            aiError: '',
+            aiResult: '',
+            aiResultHtml: '',
             showAiResult: true
         });
-        this.initSheetHeight();
         const courses = this.data.courses.map(c => ({
             name: c.courseName,
             weekDay: c.weekDay,
@@ -548,21 +546,19 @@ Page({
             });
             const content = res.data && res.data.content ? String(res.data.content).trim() : '';
             if (!content) {
-                const emptyText = '### 暂无分析结果\n\nAI 未返回有效内容，请稍后重试。';
-                this.setData({ aiResult: emptyText, aiResultHtml: markdownToHtml(emptyText) });
+                this.setData({ aiError: 'AI 未返回有效内容，请稍后重试' });
                 return;
             }
             const cache = Object.assign({}, this.data.aiCache);
             cache[key] = content;
             this.setData({
                 aiCache: cache,
+                aiError: '',
                 aiResult: content,
                 aiResultHtml: markdownToHtml(content)
             });
         } catch (err) {
-            const msg = (err && err.msg) || '分析失败';
-            const errText = '### 分析失败\n\n' + msg + '\n\n请稍后重试，或联系管理员检查「AI 配置」是否正确、额度是否充足。';
-            this.setData({ aiResult: errText, aiResultHtml: markdownToHtml(errText) });
+            this.setData({ aiError: (err && err.msg) || '网络异常，请检查网络后重试' });
         } finally {
             this.setData({ aiLoading: false });
         }

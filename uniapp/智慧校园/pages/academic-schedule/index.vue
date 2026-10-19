@@ -119,7 +119,7 @@
 				</view>
 			</view>
 
-			<view v-if="courses.length > 0" class="ai-analyze-wrap">
+			<view v-if="!loading && courses.length > 0" class="ai-analyze-wrap">
 				<view class="ai-analyze-btn" :class="{ 'ai-loading': aiLoading }" @click="aiAnalyze">
 					<text v-if="!aiLoading">AI 智能分析课表</text>
 					<text v-else>分析中…</text>
@@ -134,12 +134,39 @@
 					@touchmove="onSheetDragMove"
 					@touchend="onSheetDragEnd"></view>
 				<view class="ai-modal-header">
-					<text class="ai-modal-title">AI 智能课表分析</text>
+					<view class="ai-modal-title-wrap">
+						<text class="ai-modal-badge">AI</text>
+						<text class="ai-modal-title">智能课表分析</text>
+					</view>
 					<text class="ai-modal-close" @click="closeAiResult">✕</text>
 				</view>
-				<scroll-view scroll-y="true" class="ai-modal-body" @touchstart="onAiBodyTouchStart" @touchmove.stop="onAiBodyTouchMove">
+				<!-- 正在分析：复用全站统一的圆环 loading，垂直居中 -->
+				<view v-if="aiLoading" class="ai-modal-center-body">
+					<cb-loading
+						class="ai-modal-center-item"
+						compact
+						large
+						text="AI 正在分析…"
+						:sub-texts="['读取课表数据，约需十几秒', '正在梳理课程与节次…', '正在撰写课表分析…', '马上就好，请稍候…']"
+						:slow-after="16000"
+						slow-text="分析时间有点久…"
+						slow-sub-text="可稍候，或关闭后重新分析"
+					/>
+				</view>
+				<view v-else-if="aiError" class="ai-modal-center-body">
+					<!-- 分析失败：复用全站统一的网络异常样式，垂直居中 -->
+					<view class="ai-error ai-modal-center-item">
+						<image class="ai-error-icon" src="/static/assets/wxmp-network-error.svg" mode="widthFix"></image>
+						<view class="ai-error-title">分析失败</view>
+						<view class="ai-error-desc">{{ aiError }}</view>
+						<view class="ai-error-btn" @click="aiAnalyze">重新分析</view>
+					</view>
+				</view>
+				<scroll-view v-else scroll-y="true" class="ai-modal-body" @touchstart="onAiBodyTouchStart" @touchmove.stop="onAiBodyTouchMove">
 					<view class="ai-modal-body-inner">
+						<!-- 分析结果 -->
 						<rich-text :nodes="aiResultHtml" class="ai-modal-content"></rich-text>
+						<view class="ai-result-foot">内容由 AI 生成，仅供参考</view>
 					</view>
 				</scroll-view>
 			</view>
@@ -299,6 +326,7 @@ export default {
 			detailBtnShadow: 'rgba(19, 194, 194, 0.35)',
 			showAiResult: false,
 			aiResult: '',
+			aiError: '',
 			aiLoading: false,
 			aiCache: {},
 			windowHeight: 0,
@@ -662,25 +690,32 @@ export default {
 		},
 
 		async aiAnalyze() {
+			// 【调试】强制加载时长（毫秒）：>0 时每次分析都先展示该时长的加载态，便于查看 loading 效果
+			// 正式发布请改回 0（或删除相关代码）
+			const AI_DEBUG_DELAY = 10000;
 			if (this.aiLoading) {
-			// 正在分析中允许再次点击：重新聚焦分析弹窗并提示，不重复发起请求
-			this.aiResult = '### AI 正在分析…\n\n正在生成分析报告，请稍候......\n（该过程通常需要十几秒）';
-			this.showAiResult = true;
-			uni.showToast({ title: 'AI 正在分析...', icon: 'none' });
-			return;
-		}
+				// 正在分析中允许再次点击：重新聚焦分析弹窗并提示，不重复发起请求
+				this.showAiResult = true;
+				uni.showToast({ title: 'AI 正在分析...', icon: 'none' });
+				return;
+			}
 			if (this.courses.length === 0) {
 				uni.showToast({ title: '暂无课程数据', icon: 'none' });
 				return;
 			}
 			const key = 'w' + this.weekIndex + '|' + this.currentMode + '|' + this.courses.length;
-			if (this.aiCache[key]) {
+			// 【调试】强制加载期间忽略页面缓存，便于反复观察加载态
+			if (AI_DEBUG_DELAY <= 0 && this.aiCache[key]) {
+				this.aiError = '';
 				this.aiResult = this.aiCache[key];
 				this.showAiResult = true;
 				return;
 			}
+			// 先算好浮层高度再展示，避免首帧 sheetHeight 为 0 的遮罩空窗
+			this.initSheetHeight();
 			this.aiLoading = true;
-			this.aiResult = '### AI 正在分析…\n\n正在读取课表数据并生成分析报告，请稍候......\n（该过程通常需要十几秒）';
+			this.aiError = '';
+			this.aiResult = '';
 			this.showAiResult = true;
 			const courses = this.courses.map(c => ({
 				name: c.courseName,
@@ -693,6 +728,10 @@ export default {
 				nature: c.courseNature
 			}));
 			try {
+				// 【调试】先展示 10 秒加载态，再发起真实请求
+				if (AI_DEBUG_DELAY > 0) {
+					await new Promise(resolve => setTimeout(resolve, AI_DEBUG_DELAY));
+				}
 				const res = await api.aiAnalyzeSchedule({
 					type: 'semester',
 					week: this.weekIndex === 0 ? this.currentWeek : this.weekIndex,
@@ -700,14 +739,14 @@ export default {
 				});
 				const content = res.data && res.data.content ? String(res.data.content).trim() : '';
 				if (!content) {
-					this.aiResult = '### 暂无分析结果\n\nAI 未返回有效内容，请稍后重试。';
+					this.aiError = 'AI 未返回有效内容，请稍后重试';
 					return;
 				}
 				this.aiCache[key] = content;
 				this.aiResult = content;
+				this.aiError = '';
 			} catch (err) {
-				const msg = (err && err.msg) || '分析失败';
-				this.aiResult = '### 分析失败\n\n' + msg + '\n\n请稍后重试，或联系管理员检查「AI 配置」是否正确、额度是否充足。';
+				this.aiError = (err && err.msg) || '网络异常，请检查网络后重试';
 			} finally {
 				this.aiLoading = false;
 			}
@@ -1211,8 +1250,29 @@ page {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-	padding: 14rpx 44rpx 22rpx;
+	flex-shrink: 0;
+	padding: 16rpx 44rpx 22rpx;
 	border-bottom: 1rpx solid #f0f0f4;
+	background: linear-gradient(180deg, #f7fbfd 0%, #ffffff 100%);
+}
+
+.ai-modal-title-wrap {
+	display: flex;
+	align-items: center;
+}
+
+/* AI 徽标：与全站主题渐变一致 */
+.ai-modal-badge {
+	margin-right: 14rpx;
+	padding: 4rpx 14rpx;
+	font-size: 22rpx;
+	font-weight: bold;
+	line-height: 1.4;
+	color: #ffffff;
+	letter-spacing: 1rpx;
+	border-radius: 10rpx;
+	background: linear-gradient(135deg, #13c2c2, #1890ff);
+	box-shadow: 0 4rpx 12rpx rgba(19, 194, 194, 0.28);
 }
 
 .ai-modal-title {
@@ -1237,6 +1297,28 @@ page {
 	min-height: 0;
 }
 
+/* 加载态：空间充足时垂直居中；被拖小后自动贴顶并可滚动，避免内容溢出压住标题 */
+.ai-modal-center-body {
+	flex: 1;
+	min-height: 0;
+	display: flex;
+	padding: 20rpx 44rpx;
+	overflow-y: auto;
+	box-sizing: border-box;
+}
+
+/* margin: auto 实现「安全居中」：放得下就居中，放不下就顶部对齐 */
+.ai-modal-center-item {
+	margin: auto;
+	flex-shrink: 0;
+	width: 100%;
+}
+
+/* 失败态：去掉为顶部对齐准备的上下留白，保证在居中容器里视觉居中 */
+.ai-modal-center-item.ai-error {
+	padding: 0 20rpx;
+}
+
 .ai-modal-body-inner {
 	padding: 30rpx 44rpx;
 }
@@ -1247,6 +1329,64 @@ page {
 	color: #48416f;
 	line-height: 1.75;
 	word-break: break-word;
+}
+
+/* ===== 分析失败：与全站 cb-load-fail 视觉一致 ===== */
+.ai-error {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	padding: 40rpx 20rpx 20rpx;
+	text-align: center;
+}
+
+.ai-error-icon {
+	width: 120rpx;
+	height: 120rpx;
+	margin-bottom: 24rpx;
+	opacity: 0.85;
+}
+
+.ai-error-title {
+	font-size: 32rpx;
+	font-weight: bold;
+	color: #48416f;
+	margin-bottom: 12rpx;
+}
+
+.ai-error-desc {
+	font-size: 26rpx;
+	color: #948eb3;
+	line-height: 1.6;
+}
+
+.ai-error-btn {
+	margin-top: 32rpx;
+	height: 72rpx;
+	line-height: 72rpx;
+	padding: 0 60rpx;
+	font-size: 28rpx;
+	font-weight: bold;
+	color: #ffffff;
+	border-radius: 36rpx;
+	background: linear-gradient(135deg, #13c2c2, #1890ff);
+	box-shadow: 0 10rpx 24rpx rgba(19, 194, 194, 0.28);
+}
+
+.ai-error-btn:active {
+	opacity: 0.9;
+	transform: scale(0.98);
+}
+
+/* ===== 结果页脚注 ===== */
+.ai-result-foot {
+	margin-top: 28rpx;
+	padding-top: 20rpx;
+	border-top: 1rpx dashed #eceaf5;
+	text-align: center;
+	font-size: 22rpx;
+	color: #b0abc7;
+	letter-spacing: 0.5rpx;
 }
 
 /* AI 弹窗打开时隐藏固定在视口的 banner 背景。

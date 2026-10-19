@@ -52,12 +52,12 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-top: 28rpx;
+  margin-top: 34rpx;
   padding: 0 24rpx;
 }
 
 .cb-loading--compact .cb-loading__texts {
-  margin-top: 22rpx;
+  margin-top: 34rpx;
 }
 
 .cb-loading__text {
@@ -86,6 +86,29 @@
 .cb-loading--compact .cb-loading__sub {
   margin-top: 8rpx;
   font-size: 22rpx;
+}
+
+/* 强调场景（AI 分析弹窗等）：圆环与文字整体放大，不影响默认 / compact 的页面加载 */
+.cb-loading--large .cb-loading__spinner {
+  width: 112rpx;
+  height: 112rpx;
+}
+
+.cb-loading--large .cb-loading__ring {
+  border-width: 8rpx;
+}
+
+.cb-loading--large .cb-loading__texts {
+  margin-top: 40rpx;
+}
+
+.cb-loading--large .cb-loading__text {
+  font-size: 34rpx;
+}
+
+.cb-loading--large .cb-loading__sub {
+  margin-top: 12rpx;
+  font-size: 26rpx;
 }
 
 /* 主文案 / 副标题错峰入场（a / b 交替，保证每次切换都能重播） */

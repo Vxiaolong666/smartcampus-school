@@ -1948,7 +1948,8 @@ switch($act) {
 
         $userId = intval($user['user_id']);
         $semester = isset($data['semester']) ? strval($data['semester']) : '';
-        $dataHash = md5($raw);
+        // 带版本号：升级 max_tokens / 续写策略后使旧的截断缓存自动失效
+        $dataHash = md5($raw . '|v2');
 
         // 命中缓存且数据未变化则直接返回，避免重复生成
         $cached = $DB->getRow("SELECT content, data_hash FROM nteam_ai_grade_analysis WHERE user_id=? AND semester=?", [$userId, $semester]);
@@ -2530,7 +2531,8 @@ switch($act) {
             ['role' => 'user', 'content' => $prompt],
         ];
         $ai = new \lib\AiHelper();
-        $dataHash = md5($raw);
+        // 带版本号：升级 max_tokens / 续写策略后使旧的截断缓存自动失效
+        $dataHash = md5($raw . '|v2');
         $bizType = ($type === 'statistics') ? 'power_statistics' : 'power_query';
         $result = $ai->analyzeCached($DB, $userId, $bizType, $dataHash, $messages);
         if (!$result['success']) {
@@ -2611,7 +2613,8 @@ switch($act) {
             ['role' => 'user', 'content' => $prompt],
         ];
         $ai = new \lib\AiHelper();
-        $dataHash = md5($raw);
+        // 带版本号：升级 max_tokens / 续写策略后使旧的截断缓存自动失效
+        $dataHash = md5($raw . '|v2');
         $bizType = ($type === 'semester') ? 'schedule_semester' : 'schedule_today';
         $result = $ai->analyzeCached($DB, $userId, $bizType, $dataHash, $messages);
         if (!$result['success']) {
@@ -4172,11 +4175,40 @@ switch($act) {
                         $statusClass = 'tag-warning';
                     }
                     
+                    // 预计可用天数：按最近 24 小时用电/扣费速度估算（与「电费查询」接口同一算法）
+                    $estimatedDays = null;
+                    if ($balance !== null && floatval($balance) > 0) {
+                        try {
+                            $startTime = date('Y-m-d H:i:s', strtotime('-24 hours'));
+                            $records = $DB->getAll("SELECT * FROM nteam_power_daily_records 
+                                WHERE room_num = '$roomNum' AND record_time >= '$startTime' 
+                                ORDER BY record_time ASC");
+                            if (count($records) >= 5) {
+                                $firstRecord = $records[0];
+                                $lastRecord = $records[count($records) - 1];
+                                $firstBalance = floatval($firstRecord['balance']);
+                                $lastBalance = floatval($lastRecord['balance']);
+                                if ($firstBalance > $lastBalance) {
+                                    $hoursDiff = (strtotime($lastRecord['record_time']) - strtotime($firstRecord['record_time'])) / 3600;
+                                    if ($hoursDiff > 0) {
+                                        $avgUsagePerHour = ($firstBalance - $lastBalance) / $hoursDiff;
+                                        if ($avgUsagePerHour > 0) {
+                                            $estimatedDays = round((floatval($balance) / $avgUsagePerHour) / 24, 1);
+                                        }
+                                    }
+                                }
+                            }
+                        } catch (Exception $e) {
+                            // 记录表异常时不影响速览卡片主信息
+                        }
+                    }
+                    
                     $glanceData['power_info'] = [
                         'balance' => $balanceDisplay,
                         'roomName' => $roomName,
                         'statusText' => $statusText,
-                        'statusClass' => $statusClass
+                        'statusClass' => $statusClass,
+                        'estimated_days' => $estimatedDays
                     ];
                 }
             } catch (Exception $e) {
