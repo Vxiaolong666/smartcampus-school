@@ -2,8 +2,8 @@
     "name" : "智校通",
     "appid" : "__UNI__4DF7010",
     "description" : "一站式智慧校园服务平台",
-    "versionName" : "1.9.4.3",
-    "versionCode" : 1943,
+    "versionName" : "1.9.4.5",
+    "versionCode" : 1945,
     "transformPx" : false,
     /* 5+App特有相关 */
     "app-plus" : {

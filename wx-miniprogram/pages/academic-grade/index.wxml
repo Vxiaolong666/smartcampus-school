@@ -88,7 +88,8 @@
   <!-- AI 分析结果浮层 -->
   <view wx:if="{{showAiResult}}" class="ai-mask" bindtap="closeAiResult">
     <view class="ai-modal" style="height: {{sheetHeight}}px" catchtap="noop">
-      <view class="ai-modal-handle"></view>
+      <wxs module="aiDrag" src="/utils/ai-drag.wxs"></wxs>
+      <view class="ai-modal-handle" data-win="{{windowHeight}}" catchtouchstart="{{aiDrag.touchstart}}" catchtouchmove="{{aiDrag.touchmove}}" catchtouchend="{{aiDrag.touchend}}"></view>
       <view class="ai-modal-header">
         <view class="ai-modal-title-wrap">
           <text class="ai-modal-badge">AI</text>

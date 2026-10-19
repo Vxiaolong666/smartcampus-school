@@ -1,0 +1,134 @@
+/**
+ * AI 分析浮层拖拽（WXS 版本）
+ *
+ * 拖动过程中直接在视图层修改 .ai-modal 的高度，不经过逻辑层 setData，
+ * 避免高频 setData 造成的掉帧/卡顿；只在松手时把最终高度回传页面同步。
+ *
+ * 用法：
+ *   <wxs module="aiDrag" src="/utils/ai-drag.wxs"></wxs>
+ *   <view class="ai-modal-handle"
+ *     data-win="{{windowHeight}}"
+ *     catchtouchstart="{{aiDrag.touchstart}}"
+ *     catchtouchmove="{{aiDrag.touchmove}}"
+ *     catchtouchend="{{aiDrag.touchend}}"></view>
+ *
+ * 注意：WXS 语法受限，这里刻意不使用 || / && 与 Number() 等写法，
+ * 统一用 if 分支处理，避免部分基础库版本解析异常。
+ */
+
+var startY = 0;
+var startHeight = 0;
+var viewHeight = 0;
+
+function firstTouch(e) {
+  if (e.touches) {
+    if (e.touches.length > 0) {
+      return e.touches[0];
+    }
+  }
+  if (e.changedTouches) {
+    if (e.changedTouches.length > 0) {
+      return e.changedTouches[0];
+    }
+  }
+  return null;
+}
+
+function touchstart(e, ins) {
+  var touch = firstTouch(e);
+  if (!touch) {
+    return;
+  }
+
+  var modal = ins.selectComponent('.ai-modal');
+  if (!modal) {
+    return;
+  }
+
+  var rect = null;
+  if (modal.getBoundingClientRect) {
+    rect = modal.getBoundingClientRect();
+  }
+
+  startY = touch.clientY;
+  startHeight = 0;
+  if (rect) {
+    startHeight = rect.height;
+  }
+
+  viewHeight = 0;
+  if (e.currentTarget) {
+    if (e.currentTarget.dataset) {
+      var win = e.currentTarget.dataset.win;
+      if (win) {
+        viewHeight = parseInt(win, 10);
+      }
+    }
+  }
+  if (!(viewHeight > 0)) {
+    viewHeight = 0;
+  }
+}
+
+function touchmove(e, ins) {
+  var touch = firstTouch(e);
+  if (!touch) {
+    return;
+  }
+
+  var modal = ins.selectComponent('.ai-modal');
+  if (!modal) {
+    return;
+  }
+  if (!modal.setStyle) {
+    return;
+  }
+
+  var h = startHeight - (touch.clientY - startY);
+
+  var maxH = 99999;
+  var minH = 120;
+  if (viewHeight > 0) {
+    maxH = viewHeight;
+    minH = Math.round(viewHeight * 0.25);
+  }
+  if (h > maxH) {
+    h = maxH;
+  }
+  if (h < minH) {
+    h = minH;
+  }
+
+  // 直接改视图层样式，拖动期间不触发 setData
+  modal.setStyle({ height: Math.round(h) + 'px' });
+}
+
+function touchend(e, ins) {
+  var modal = ins.selectComponent('.ai-modal');
+  if (!modal) {
+    return;
+  }
+  if (!modal.getBoundingClientRect) {
+    return;
+  }
+
+  var rect = modal.getBoundingClientRect();
+  var height = 0;
+  if (rect) {
+    height = Math.round(rect.height);
+  }
+  if (!(height > 0)) {
+    return;
+  }
+
+  // 回传最终高度，供页面写回 sheetHeight，保证下次打开时高度一致
+  if (ins.callMethod) {
+    ins.callMethod('onSheetDragEnd', { height: height });
+  }
+}
+
+module.exports = {
+  touchstart: touchstart,
+  touchmove: touchmove,
+  touchend: touchend
+};

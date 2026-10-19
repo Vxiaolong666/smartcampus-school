@@ -1205,7 +1205,8 @@ page {
 
 .ai-modal {
 	width: 100%;
-	background: #fff;
+	/* 渐变从弹窗最顶部（含拖动条区域）开始，与标题区连成一片，避免生硬的白色分界 */
+	background: linear-gradient(180deg, #f7fbfd 0%, #ffffff 220rpx);
 	border-radius: 32rpx 32rpx 0 0;
 	display: flex;
 	flex-direction: column;
@@ -1220,12 +1221,23 @@ page {
 }
 
 .ai-modal-handle {
+	position: relative;
 	width: 72rpx;
 	height: 8rpx;
 	border-radius: 8rpx;
 	background: #d8d4e8;
 	margin: 18rpx auto 2rpx;
 	transition: background 0.2s ease;
+}
+
+/* 扩大拖动热区：视觉仍是细条，但触摸范围向四周扩展，方便按住拖动 */
+.ai-modal-handle::after {
+	content: '';
+	position: absolute;
+	left: -80rpx;
+	right: -80rpx;
+	top: -24rpx;
+	bottom: -24rpx;
 }
 
 .ai-modal-handle:active {
@@ -1239,7 +1251,8 @@ page {
 	flex-shrink: 0;
 	padding: 16rpx 44rpx 22rpx;
 	border-bottom: 1rpx solid #f0f0f4;
-	background: linear-gradient(180deg, #f7fbfd 0%, #ffffff 100%);
+	/* 背景渐变由 .ai-modal 统一提供，这里保持透明以便与拖动条区域连续 */
+	background: transparent;
 }
 
 /* 标题区：AI 徽标 + 标题 */
@@ -1290,6 +1303,8 @@ page {
 	display: flex;
 	padding: 20rpx 44rpx;
 	overflow-y: auto;
+	/* overflow-y 非 visible 时 x 轴会变成 auto，必须显式隐藏，避免内容可左右拖动 */
+	overflow-x: hidden;
 	box-sizing: border-box;
 }
 
@@ -1298,11 +1313,14 @@ page {
 	margin: auto;
 	flex-shrink: 0;
 	width: 100%;
+	max-width: 100%;
+	/* 必须 border-box：否则 width:100% + 内边距会撑出容器，导致内容整体偏右 */
+	box-sizing: border-box;
 }
 
-/* 失败态：去掉为顶部对齐准备的上下留白，保证在居中容器里视觉居中 */
+/* 失败态：容器已提供左右内边距，这里去掉全部留白保证真正居中 */
 .ai-modal-center-item.ai-error {
-	padding: 0 20rpx;
+	padding: 0;
 }
 
 .ai-modal-body-inner {
@@ -1344,6 +1362,9 @@ page {
 	font-size: 26rpx;
 	color: #948eb3;
 	line-height: 1.6;
+	/* 长串（接口报错信息里的 URL / 哈希）不撑破容器，避免出现横向滚动 */
+	word-break: break-word;
+	overflow-wrap: anywhere;
 }
 
 .ai-error-btn {

@@ -296,5 +296,12 @@ Page({
         this.setData({ sheetHeight: Math.round(h * 0.8) });
     },
 
+    // ===== AI 浮层拖拽结束：同步 WXS 计算出的最终高度 =====
+    // 拖动过程由 WXS（utils/ai-drag.wxs）直接修改视图层样式，避免高频 setData 造成卡顿
+    onSheetDragEnd(e) {
+        const height = e && e.detail && e.detail.height ? Math.round(e.detail.height) : 0;
+        if (height > 0) this.setData({ sheetHeight: height });
+    },
+
     noop() {}
 });

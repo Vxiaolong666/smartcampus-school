@@ -382,7 +382,8 @@ page {
 
 /* 标题区：浅色渐变 + AI 徽标 */
 .ai-modal-header {
-    background: linear-gradient(180deg, #f7fbfd 0%, #ffffff 100%);
+    /* 渐变由 .ai-modal 统一提供，这里保持透明以与顶部拖动条区域连续 */
+    background: transparent;
     padding: 16rpx 44rpx 22rpx;
 }
 
