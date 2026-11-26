@@ -15,6 +15,14 @@ require_once '../funsion/ContactMsgs.php';
 @header('Content-Type: application/json; charset=UTF-8');
 
 switch($act){
+    case 'academic_meta_refresh':
+        if (!$isLogin) exit('{"code":-1,"msg":"未登录"}');
+        require_once '../funsion/AcademicSystem.php';
+        $meta = AcademicSystem::refreshMeta($DB);
+        exit(json_encode([
+            'code' => 0,
+            'changed' => $meta['changed'] ? 1 : 0,
+        ], JSON_UNESCAPED_UNICODE));
     case 'login':
         $adminUser = addslashes($_POST['adminUser']);
         $adminPwd = md5($_POST['adminPwd']);
@@ -34,7 +42,7 @@ switch($act){
             session_start();
             if (isset($_SESSION['captcha']) && strtoupper($_SESSION['captcha']) === $captcha) {
                 $captchaValid = true;
-                unset($_SESSION['captcha']);
+                nteam_session_unset('captcha');
             }
         }
         
@@ -48,9 +56,11 @@ switch($act){
         if($adminPwd != $adminData['adminPwd'])exit('{"code":0,"msg":"密码错误"}');
 
         $Admin->loginAdmin($adminUser);
-        $_SESSION['adminUser'] = $adminUser;
-        $_SESSION['adminId'] = $adminData['id'];
-        $_SESSION['adminQq'] = $adminData['adminQq'];
+        nteam_session_set([
+            'adminUser' => $adminUser,
+            'adminId'   => $adminData['id'],
+            'adminQq'   => $adminData['adminQq'],
+        ]);
         $DB->query("insert into `nteam_log` (`adminUser`,`type`,`data`,`ip`,`city`) values ('" . $_SESSION['adminUser'] . "','登录后台中心', NOW(), '".$ip."', '')");
         exit('{"code":1,"msg":"登录成功，请稍后..."}');
     break;
@@ -70,7 +80,7 @@ switch($act){
         }
         $admininfo = $DB->exec($sql);
         if(!$admininfo)exit('{"code":0,"msg":"未修改数据，无需保存！"}');
-        if(!empty($_POST['adminPwd'])){$DB->query("insert into `nteam_log` (`adminUser`,`type`,`data`,`ip`,`city`) values ('" . $_SESSION['adminUser'] . "','修改账号信息', NOW(), '".$ip."', '')");unset($_SESSION['adminUser']);}
+        if(!empty($_POST['adminPwd'])){$DB->query("insert into `nteam_log` (`adminUser`,`type`,`data`,`ip`,`city`) values ('" . $_SESSION['adminUser'] . "','修改账号信息', NOW(), '".$ip."', '')");nteam_session_unset('adminUser');}
         $DB->query("insert into `nteam_log` (`adminUser`,`type`,`data`,`ip`,`city`) values ('" . $_SESSION['adminUser'] . "','修改账号信息', NOW(), '".$ip."', '')");
         if(!empty($_POST['adminPwd'])){
             exit('{"code":2,"msg":"修改成功"}');
@@ -208,10 +218,17 @@ switch($act){
         $qq = addslashes($_POST['qq']);
         $token = addslashes($_POST['token']);
         $yun_url= "https://www.uaovo.com/Ajax.php?act=admintg&sub=".$sub."&msg=".$msg."&qq=".$qq."&token=".$token;
-        $yun_get= file_get_contents($yun_url);
+        $ctx = stream_context_create(['http' => ['timeout' => 8, 'ignore_errors' => true]]);
+        $yun_get = @file_get_contents($yun_url, false, $ctx);
+        if ($yun_get === false) {
+            exit('{"code":0,"msg":"通知服务暂不可用，请稍后重试"}');
+        }
         $yun_json= json_decode($yun_get,true);
-        if ($yun_json['code'] == 0){
-            $_SESSION['Tg_submit']=time();
+        if (!is_array($yun_json)) {
+            exit('{"code":0,"msg":"通知服务返回异常，请稍后重试"}');
+        }
+        if (isset($yun_json['code']) && $yun_json['code'] == 0){
+            nteam_session_set('Tg_submit', time());
             exit('{"code":1,"msg":"'.$yun_json['msg'].'"}');
         }else{
             exit('{"code":0,"msg":"'.$yun_json['msg'].'"}');
@@ -1770,31 +1787,6 @@ switch($act){
                 exit('{"code":0,"msg":"删除成功！"}');
             }
             exit('{"code":-1,"msg":"删除失败"}');
-        }
-    break;
-
-    // 轮播图状态切换（列表页点击状态徽章，仅改 status，不整页刷新）
-    case 'banner_toggle_status':
-        if(!$isLogin)exit('{"code":-1,"msg":"未登录"}');
-        if($adminData['adminRank']!=1){exit('{"code":-1,"msg":"您的账号没有权限使用此功能！"}');}
-        {
-            $id = intval(isset($_POST['id']) ? $_POST['id'] : 0);
-            if ($id <= 0) exit('{"code":-1,"msg":"参数错误"}');
-
-            $rs = @$DB->query("SELECT `status` FROM nteam_banners WHERE `id`={$id}");
-            $row = $rs ? $rs->fetch() : null;
-            if (!$row) exit('{"code":-1,"msg":"轮播图不存在"}');
-
-            $status = intval($row['status']) ? 0 : 1;
-            if ($DB->exec("update nteam_banners set `status`={$status} where `id`={$id}") === false) {
-                exit('{"code":-1,"msg":"操作失败"}');
-            }
-            $DB->query("insert into `nteam_log` (`adminUser`,`type`,`data`,`ip`,`city`) values ('" . $_SESSION['adminUser'] . "','修改了轮播图状态(ID:{$id} → " . ($status ? '启用' : '禁用') . ")', NOW(), '".$ip."', '')");
-            exit(json_encode(array(
-                'code' => 0,
-                'msg'  => $status ? '已启用' : '已禁用',
-                'data' => array('id' => $id, 'status' => $status),
-            ), JSON_UNESCAPED_UNICODE));
         }
     break;
 

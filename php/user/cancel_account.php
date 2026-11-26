@@ -11,7 +11,7 @@ if (!isset($_SESSION['userId'])) {
 $userId = intval($_SESSION['userId']);
 $user = $DB->getRow("SELECT * FROM nteam_users WHERE id='$userId'");
 if (!$user) {
-    unset($_SESSION['userId'], $_SESSION['userName'], $_SESSION['userEmail'], $_SESSION['userQq']);
+    nteam_session_unset(['userId', 'userName', 'userEmail', 'userQq']);
     header('Location:./login.php');
     exit;
 }

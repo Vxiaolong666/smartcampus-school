@@ -23,6 +23,7 @@ include('../Common/Core_brain.php');
     <link rel="stylesheet" href="./assets/css/scrollbar.css">
     <link rel="stylesheet" href="./assets/js/plugins/magnific-popup/magnific-popup.css">
     <link href="./assets/js/plugins/nprogress/nprogress.min.css" rel="stylesheet">
+    <?php include('../Common/css_guard.php'); ?>
     <script src="./assets/js/lib/jquery.min.js"></script>
     <script src="./assets/js/plugins/jquery.pjax/jquery.pjax.min.js"></script>
     <script src="./assets/js/plugins/nprogress/nprogress.min.js"></script>

@@ -41,7 +41,7 @@ class AiHelper
             'model'       => $useModel,
             'messages'    => $messages,
             'temperature' => isset($opts['temperature']) ? floatval($opts['temperature']) : 0.7,
-            'max_tokens'  => isset($opts['max_tokens']) ? intval($opts['max_tokens']) : 4096,
+            'max_tokens'  => isset($opts['max_tokens']) ? intval($opts['max_tokens']) : 1500,
         ];
         $headers = [
             'Content-Type: application/json',
@@ -104,46 +104,7 @@ class AiHelper
                 return ['success' => false, 'msg' => 'AI分析失败：请联系客服处理：服务响应为空，请稍后重试'];
             }
 
-            // 模型因 max_tokens 被截断（finish_reason=length）时自动续写拼接，避免返回半截内容
-            $finishReason = isset($data['choices'][0]['finish_reason']) ? strval($data['choices'][0]['finish_reason']) : '';
-            $continueCount = 0;
-            while ($finishReason === 'length' && $continueCount < 2) {
-                $continueCount++;
-                $payload['messages'] = array_merge($messages, [
-                    ['role' => 'assistant', 'content' => $content],
-                    ['role' => 'user', 'content' => '请直接接着上面未输出完的内容继续，不要重复已输出的任何内容，也不要重新开头。'],
-                ]);
-
-                $ch2 = curl_init($url);
-                curl_setopt_array($ch2, [
-                    CURLOPT_POST           => true,
-                    CURLOPT_HTTPHEADER     => $headers,
-                    CURLOPT_POSTFIELDS     => json_encode($payload, JSON_UNESCAPED_UNICODE),
-                    CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_TIMEOUT        => 90,
-                    CURLOPT_CONNECTTIMEOUT => 15,
-                    CURLOPT_SSL_VERIFYPEER => false,
-                    CURLOPT_SSL_VERIFYHOST => false,
-                ]);
-                $response2 = curl_exec($ch2);
-                curl_close($ch2);
-
-                if ($response2 === false) {
-                    break;
-                }
-                $data2 = json_decode($response2, true);
-                if (!is_array($data2) || !isset($data2['choices'][0]['message']['content'])) {
-                    break;
-                }
-                $more = trim($data2['choices'][0]['message']['content']);
-                if ($more === '') {
-                    break;
-                }
-                $content .= $more;
-                $finishReason = isset($data2['choices'][0]['finish_reason']) ? strval($data2['choices'][0]['finish_reason']) : '';
-            }
-
-            return ['success' => true, 'content' => $content, 'truncated' => ($finishReason === 'length')];
+            return ['success' => true, 'content' => $content];
         }
 
         return ['success' => false, 'msg' => 'AI分析失败：请联系客服处理：服务繁忙，请稍后重试'];

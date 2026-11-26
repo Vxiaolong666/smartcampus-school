@@ -12,6 +12,7 @@ if(isset($_SESSION['userId']))header('Location:./');
     <title>找回密码 - <?php echo conf('Name');?></title>
     <link rel="shortcut icon" href="../assets/media/favicon.png" type="image/x-icon">
     <link rel="stylesheet" id="css-main" href="./assets/css/oneui.min-5.6.css">
+    <?php include('../Common/css_guard.php'); ?>
     <link rel="stylesheet" href="./assets/css/scrollbar-immersive.css">
     <script src="https://ssl.captcha.qq.com/TCaptcha.js"></script>
     <style>

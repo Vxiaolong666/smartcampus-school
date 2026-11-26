@@ -31,32 +31,18 @@ $gradeTemplates = $DB->getAll("SELECT id, template_id, name FROM nteam_wx_templa
 $checkColumn = $DB->getRow("SHOW COLUMNS FROM nteam_academic_push_config LIKE 'schedule_template_id'");
 $hasTemplateColumns = $checkColumn ? true : false;
 
-$semesterList = [];
-$academicAccount = $DB->getRow("SELECT * FROM nteam_academic_accounts WHERE status = 1 LIMIT 1");
-if ($academicAccount) {
-    require_once('../funsion/AcademicSystem.php');
-    $tokenResult = AcademicSystem::getValidToken($DB, $academicAccount['user_id'], $academicAccount['student_id'], $academicAccount['password']);
-    if ($tokenResult['success']) {
-        $semesterResult = AcademicSystem::getSemesterList($tokenResult['token']);
-        if (isset($semesterResult['code']) && $semesterResult['code'] == 1 && !empty($semesterResult['data'])) {
-            $semesterList = $semesterResult['data'];
-        }
-    }
-}
+// 学期列表与课程模式只读文件缓存，页面渲染阶段不再同步外呼教务系统。
+// 缓存缺失时由 Adminq/foot.php 异步请求 Ajax.php?act=academic_meta_refresh 回填。
+require_once('../funsion/AcademicSystem.php');
+$semesterList  = AcademicSystem::getMeta('semesters');
+$scheduleModes = AcademicSystem::getMeta('modes');
+$semesterList  = is_array($semesterList) ? $semesterList : [];
+$scheduleModes = is_array($scheduleModes) ? $scheduleModes : [];
 
 // 自动迁移：确保 default_schedule_mode 字段存在（无需手动执行 SQL）
 $checkDefaultCol = $DB->getRow("SHOW COLUMNS FROM nteam_academic_push_config LIKE 'default_schedule_mode'");
 if (!$checkDefaultCol) {
     $DB->exec("ALTER TABLE nteam_academic_push_config ADD COLUMN default_schedule_mode VARCHAR(50) NULL DEFAULT NULL COMMENT '系统默认课程表类型(kbjcmsid)'");
-}
-
-// 拉取课程表类型（modes）供后台选择系统默认类型
-$scheduleModes = [];
-if ($academicAccount && isset($tokenResult['success']) && $tokenResult['success']) {
-    $modeResult = AcademicSystem::getScheduleMode($tokenResult['token']);
-    if (isset($modeResult['code']) && $modeResult['code'] == 1 && !empty($modeResult['data'])) {
-        $scheduleModes = $modeResult['data'];
-    }
 }
 
 $stats = [
@@ -266,7 +252,7 @@ $pushTypeMap = [
                                     <?php endif; ?>
                                 </select>
                                 <?php if (empty($semesterList)): ?>
-                                <div class="form-text text-warning">无法获取学期列表，请确保有已绑定的教务账号</div>
+                                <div class="form-text text-warning">学期列表正在后台异步加载，稍后会自动刷新；若长时间为空请检查教务账号绑定。</div>
                                 <?php endif; ?>
                             </div>
                         </div>
@@ -292,7 +278,7 @@ $pushTypeMap = [
                                     <?php endif; ?>
                                 </select>
                                 <?php if (empty($scheduleModes)): ?>
-                                <div class="form-text text-warning">无法获取课程表类型列表，请确保有已绑定的教务账号</div>
+                                <div class="form-text text-warning">课程表类型正在后台异步加载，稍后会自动刷新；若长时间为空请检查教务账号绑定。</div>
                                 <?php endif; ?>
                             </div>
                         </div>

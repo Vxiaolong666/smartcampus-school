@@ -9,59 +9,27 @@ if ($adminData['adminRank'] == 2) {
 require_once('../funsion/ScheduleTime.php');
 require_once('../funsion/AcademicSystem.php');
 
-// 课程模式下拉选项：取自教务「课程模式」接口（与前台课程表页同一来源），与具体学生无关。
-// 会话缓存 10 分钟；接口不可用时退化为手动输入，并在 5 分钟内不重复重试，避免后台页面变慢。
-$modeOptions    = [];
-$modeFetchError = '';
-$refreshModes   = (isset($_GET['refresh_modes']) && $_GET['refresh_modes'] == 1);
-$modeCache      = isset($_SESSION['schedule_mode_options']) ? $_SESSION['schedule_mode_options'] : null;
-$modeFailAt     = isset($_SESSION['schedule_mode_fail_time']) ? intval($_SESSION['schedule_mode_fail_time']) : 0;
+// 课程模式下拉只读文件缓存，页面渲染阶段不调用教务接口；
+// 缓存缺失时由 Adminq/foot.php 异步拉取并自动刷新页面。
+require_once('../funsion/AcademicSystem.php');
+$refreshModes = (isset($_GET['refresh_modes']) && $_GET['refresh_modes'] == 1);
+if ($refreshModes) {
+    // 仅用户主动点击“重新获取列表”时同步刷新一次
+    AcademicSystem::refreshMeta($DB, true);
+}
 
-if (!$refreshModes && is_array($modeCache) && !empty($modeCache['list'])
-    && (time() - intval($modeCache['time'])) < 600) {
-    $modeOptions = $modeCache['list'];
-} elseif (!$refreshModes && $modeFailAt > 0 && (time() - $modeFailAt) < 300) {
-    $modeFetchError = '教务模式列表暂时获取失败，已跳过后台自动重试';
-} else {
-    $modeAccounts = $DB->getAll("SELECT user_id, student_id, password FROM nteam_academic_accounts ORDER BY id ASC LIMIT 2");
-    if (empty($modeAccounts)) {
-        $modeFetchError = '系统中还没有用户绑定教务账号';
-    } else {
-        try {
-            foreach ($modeAccounts as $acc) {
-                $tk = AcademicSystem::getValidToken($DB, $acc['user_id'], $acc['student_id'], $acc['password']);
-                if (empty($tk['success'])) {
-                    $modeFetchError = $tk['msg'] ?? '教务账号登录失败';
-                    continue;
-                }
-                $modeRes = AcademicSystem::getScheduleMode($tk['token']);
-                if (isset($modeRes['code']) && $modeRes['code'] == 1 && !empty($modeRes['data']) && is_array($modeRes['data'])) {
-                    foreach ($modeRes['data'] as $mo) {
-                        $mid = isset($mo['kbjcmsid']) ? trim((string) $mo['kbjcmsid']) : '';
-                        if ($mid === '') continue;
-                        $modeOptions[$mid] = isset($mo['kbjcmsmc']) ? trim((string) $mo['kbjcmsmc']) : '';
-                    }
-                }
-                if (!empty($modeOptions)) {
-                    $modeFetchError = '';
-                    break;
-                }
-                $modeFetchError = '教务接口未返回课程模式';
-            }
-        } catch (Exception $e) {
-            // 教务系统不可达等异常：静默降级为手动填写模式 ID
-            $modeOptions    = [];
-            $modeFetchError = '教务接口异常：' . $e->getMessage();
+$modeList    = AcademicSystem::getMeta('modes');
+$modeOptions = [];
+if (is_array($modeList)) {
+    foreach ($modeList as $mo) {
+        $mid = isset($mo['kbjcmsid']) ? trim((string) $mo['kbjcmsid']) : '';
+        if ($mid === '') {
+            continue;
         }
-    }
-
-    if (!empty($modeOptions)) {
-        $_SESSION['schedule_mode_options']   = ['time' => time(), 'list' => $modeOptions];
-        $_SESSION['schedule_mode_fail_time'] = 0;
-    } else {
-        $_SESSION['schedule_mode_fail_time'] = time();
+        $modeOptions[$mid] = isset($mo['kbjcmsmc']) ? trim((string) $mo['kbjcmsmc']) : '';
     }
 }
+$modeFetchError = empty($modeOptions) ? '教务课程模式正在后台异步加载，页面将自动刷新' : '';
 
 include './head.php';
 

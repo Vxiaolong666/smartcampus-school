@@ -21,9 +21,8 @@ app = {
             type    : (data === null || data === undefined) ? 'GET' : 'POST',
             cache   : false,
             dataType: 'json',
-            timeout : 0,
+            timeout : 30000,
             success : function (data) {
-                app.close(loading);
                 if (data.code === -1 || data.code === -2) {
                     if (typeof (fail) === 'function') {
                         fail(data)
@@ -35,12 +34,15 @@ app = {
                 }
             },
             error   : function (xhr, status, error) {
-                app.close(loading);
                 if (typeof (fail) === 'function') {
                     fail(xhr)
                 } else {
                     app.notify('网络链接错误', 'danger');
                 }
+            },
+            complete: function () {
+                // 成功、失败或超时都关闭遮罩，避免页面一直处于“卡住”状态
+                app.close(loading);
             }
         })
     },
@@ -64,7 +66,6 @@ app = {
             timeout : ajaxTime,
             data    : parameter,
             success : function (data) {
-                app.close(loading);
                 if (callback == null) {
                     return;
                 }
@@ -79,12 +80,14 @@ app = {
                 }
             },
             error   : function (xhr, status, error) {
-                app.close(loading);
                 if (typeof (callerror) === 'function') {
                     callerror(xhr)
                 } else {
                     app.notify('网络链接错误', 'danger');
                 }
+            },
+            complete: function () {
+                app.close(loading);
             }
         });
     },
@@ -538,24 +541,32 @@ function nv (b, a)
     return (isnull(b)) ? (!isnull(a) ? a : "") : b
 }
 
+// pjax 插件已用响应片段替换 #pjax-container，旧实现又二次注入整页 HTML，
+// 导致 DOM 膨胀、脚本重复执行、遮罩与监听残留，表现为“越切越卡”。
+var loadedScripts = [];
+$('script[src]').each(function () {
+    loadedScripts.push(this.src);
+});
+var appPjaxUrl = '';
+
 $(document).pjax('a[data-pjax]', '#pjax-container', {fragment: '#pjax-container', timeout: 8000});
-$(document).on('pjax:success', function (event) {
-    // 更新页面内容
-    $('#pjax-container').html(event.responseText);
 
-    // 将页面中的 <script> 标签插入到 DOM 中
-    var scripts = $(event.responseText).find('script[src]');
-    scripts.each(function () {
-        if ($.inArray(this.src, loadedScripts) === -1) {
-            // 如果脚本没有加载过，则插入到 DOM 中
-            var script = document.createElement('script');
-            script.type = 'text/javascript';
-            script.src = this.src;
-            document.body.appendChild(script);
+$(document).on('pjax:send', function (event, xhr, options) {
+    NProgress.start();
+    appPjaxUrl = (options && options.url) ? options.url : window.location.href;
+});
 
-            // 将已加载的脚本添加到 loadedScripts 数组中，避免重复加载
-            loadedScripts.push(this.src);
+$(document).on('pjax:end', function () {
+    // 页面级外链脚本只加载一次，公共脚本已在 head 中，不重复插入
+    $('#pjax-container').find('script[src]').each(function () {
+        var src = this.src;
+        if (!src || $.inArray(src, loadedScripts) !== -1) {
+            return;
         }
+        loadedScripts.push(src);
+        var s = document.createElement('script');
+        s.src = src;
+        document.head.appendChild(s);
     });
 });
 
@@ -563,16 +574,29 @@ $(window).on('popstate', function () {
     $.pjax.reload('#pjax-container', {fragment: '#pjax-container', timeout: 8000});
 });
 
-
-$(document).on('pjax:send', function () {
-    NProgress.start();
-});
 $(document).on('pjax:complete', function () {
     if (window.innerWidth <= 991) {
         One.layout('sidebar_close');
     }
     NProgress.done();
     app.reload();
+});
+$(document).on('pjax:timeout', function () {
+    NProgress.done();
+    if (window.layer && layer.closeAll) {
+        layer.closeAll('loading');
+    }
+    // 插件对 timeout 的 abort 不会自动整页跳转，这里兜底
+    if (appPjaxUrl && appPjaxUrl !== window.location.href) {
+        window.location.href = appPjaxUrl;
+    }
+});
+$(document).on('pjax:error', function () {
+    NProgress.done();
+    if (window.layer && layer.closeAll) {
+        layer.closeAll('loading');
+    }
+    // GET 请求失败时插件已自动整页跳转，这里只做状态清理
 });
 
 app.reload();

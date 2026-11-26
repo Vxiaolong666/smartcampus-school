@@ -13,7 +13,6 @@
     </footer>
 </div>
 
-<script type="text/javascript" src="./assets/admin/js/jquery.min.js"></script>
 <script src="./assets/admin/js/time.js"></script>
 
 <style>
@@ -111,6 +110,7 @@ window.AiAnalyze = {
             type: 'POST',
             data: data,
             dataType: 'json',
+            timeout: 30000,
             success: function (res) {
                 if (res.code == 0) {
                     var html = window.mdToHtml

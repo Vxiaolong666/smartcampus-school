@@ -155,7 +155,7 @@ if ($bind) {
     }
 
     loginUser($DB, $user);
-    $_SESSION['cancelRevoked'] = ($cancelState === 'revoked') ? 1 : 0;
+    nteam_session_set('cancelRevoked', ($cancelState === 'revoked') ? 1 : 0);
     header('Location:./');
     exit;
 }
@@ -173,8 +173,10 @@ function loginUser($DB, $user)
     global $Gets;
     $ip = $Gets->ip();
     $DB->exec("UPDATE nteam_users SET last_login_time=NOW(), last_login_ip='$ip' WHERE id='{$user['id']}'");
-    $_SESSION['userId'] = $user['id'];
-    $_SESSION['userName'] = $user['username'];
-    $_SESSION['userEmail'] = $user['email'];
-    $_SESSION['userQq'] = $user['qq'];
+    nteam_session_set([
+        'userId'    => $user['id'],
+        'userName'  => $user['username'],
+        'userEmail' => $user['email'],
+        'userQq'    => $user['qq'],
+    ]);
 }

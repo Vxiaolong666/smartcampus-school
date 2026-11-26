@@ -11,10 +11,7 @@ $userId = $_SESSION['userId'];
 $userData = $DB->getRow("SELECT id, username, email, qq, points, level, register_time, last_login_time, nickname, avatar, wx_openid FROM nteam_users WHERE id='$userId'");
 
 if(!$userData){
-    unset($_SESSION['userId']);
-    unset($_SESSION['userName']);
-    unset($_SESSION['userEmail']);
-    unset($_SESSION['userQq']);
+    nteam_session_unset(['userId', 'userName', 'userEmail', 'userQq']);
     header('Location:./login.php');
     exit;
 }

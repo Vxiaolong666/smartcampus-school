@@ -33,7 +33,7 @@ $notLogin = true;
 include('../Common/Core_brain.php');
 
 if(isset($_GET['logout'])){
-    unset($_SESSION['adminUser']);
+    nteam_session_unset('adminUser');
     header('Location:./login.php');
 }
 
@@ -48,6 +48,7 @@ if($isLogin)header('Location:./');
     <title>后台登录 - <?php echo conf('Name');?></title>
     <link rel="shortcut icon" href="../assets/media/favicon.png" type="image/x-icon">
     <link rel="stylesheet" id="css-main" href="./assets/css/oneui.min-5.6.css">
+    <?php include('../Common/css_guard.php'); ?>
     <script src="https://ssl.captcha.qq.com/TCaptcha.js"></script>
     <style>
         body {

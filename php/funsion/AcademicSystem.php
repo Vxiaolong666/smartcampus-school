@@ -63,8 +63,8 @@ class AcademicSystem {
             CURLOPT_SSL_VERIFYPEER => false,
             CURLOPT_SSL_VERIFYHOST => false,
             CURLOPT_HTTPHEADER => $headers,
-            CURLOPT_CONNECTTIMEOUT => 5,
-            CURLOPT_TIMEOUT => 15,
+            CURLOPT_CONNECTTIMEOUT => 3,
+            CURLOPT_TIMEOUT => 10,
             CURLOPT_ENCODING => '',
         ];
         
@@ -132,6 +132,12 @@ class AcademicSystem {
     
     public static function getValidToken($DB, $userId, $studentId, $password) {
         self::setRefreshCredentials($DB, $userId, $studentId, $password);
+
+        // 登录失败时短暂熔断，避免教务异常时每个页面都等待一次登录超时
+        $failKey = 'login_fail_' . md5((string) $userId);
+        if (self::cacheGet($failKey) !== null) {
+            return ['success' => false, 'token' => null, 'msg' => '教务登录暂时不可用，请稍后重试'];
+        }
         
         $account = $DB->getRow("SELECT token, token_time FROM nteam_academic_accounts WHERE user_id='$userId'");
         
@@ -159,6 +165,7 @@ class AcademicSystem {
                 $now = date('Y-m-d H:i:s');
                 $DB->exec("UPDATE nteam_academic_accounts SET token='$token', token_time='$now' WHERE user_id='$userId'");
             } else {
+                self::cachePut($failKey, 1, 60);
                 return [
                     'success' => false,
                     'token' => null,
@@ -210,28 +217,96 @@ class AcademicSystem {
         return false;
     }
     
-    private static function requestWithRetry($url, $token, $params = []) {
-        $result = self::makeRequest($url, $token, $params);
-        
-        if (!$result['success']) {
-            return [
-                'code' => -1,
-                'msg' => '请求失败：' . $result['error']
-            ];
+    private static function cacheDir() {
+        $dir = dirname(__DIR__) . '/cache/academic';
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0777, true);
         }
-        
+        return (is_dir($dir) && is_writable($dir)) ? $dir : '';
+    }
+
+    /**
+     * 读取教务接口缓存；命中则完全跳过外部 HTTP 调用。
+     */
+    private static function cacheGet($key) {
+        $dir = self::cacheDir();
+        if ($dir === '') {
+            return null;
+        }
+        // 使用 .php + exit 前缀，避免缓存文件被直接通过 HTTP 下载导致数据泄露
+        $file = $dir . '/' . $key . '.php';
+        if (!is_file($file)) {
+            return null;
+        }
+        $raw = @file_get_contents($file);
+        if ($raw === false) {
+            return null;
+        }
+        $prefix = '<?php exit;?>';
+        if (strpos($raw, $prefix) !== 0) {
+            return null;
+        }
+        $cached = json_decode(substr($raw, strlen($prefix)), true);
+        if (!is_array($cached) || !isset($cached['expire']) || $cached['expire'] < time()) {
+            return null;
+        }
+        return $cached['v'];
+    }
+
+    private static function cachePut($key, $value, $ttl) {
+        $dir = self::cacheDir();
+        if ($dir === '') {
+            return;
+        }
+        $payload = '<?php exit;?>' . json_encode(['expire' => time() + $ttl, 'v' => $value], JSON_UNESCAPED_UNICODE);
+        @file_put_contents($dir . '/' . $key . '.php', $payload, LOCK_EX);
+    }
+
+    /**
+     * 学期/课程模式变化很少，缓存 1 小时；课表与成绩 10 分钟；学籍 30 分钟。
+     * 失败结果只缓存 1 分钟，避免教务异常时每个页面都等待超时。
+     */
+    private static function cacheTtl($url, $data) {
+        if (!is_array($data) || !isset($data['code']) || $data['code'] != 1) {
+            return 60;
+        }
+        if (strpos($url, 'semesterList') !== false || strpos($url, 'Get_sjkbms') !== false) {
+            return 3600;
+        }
+        if (strpos($url, 'xsXjxx_ck') !== false) {
+            return 1800;
+        }
+        return 600;
+    }
+
+    private static function requestWithRetry($url, $token, $params = []) {
+        $cacheKey = md5($url . '|' . $token . '|' . json_encode($params));
+        $cached = self::cacheGet($cacheKey);
+        if ($cached !== null) {
+            return $cached;
+        }
+
+        $result = self::makeRequest($url, $token, $params);
+
+        if (!$result['success']) {
+            $data = ['code' => -1, 'msg' => '请求失败：' . $result['error']];
+            self::cachePut($cacheKey, $data, 60);
+            return $data;
+        }
+
         $data = $result['data'];
-        
+
         if (self::isTokenExpired($data)) {
             $newToken = self::refreshToken();
             if ($newToken) {
                 $result = self::makeRequest($url, $newToken, $params);
                 if ($result['success']) {
-                    return $result['data'];
+                    $data = $result['data'];
                 }
             }
         }
-        
+
+        self::cachePut($cacheKey, $data, self::cacheTtl($url, $data));
         return $data;
     }
     
@@ -273,5 +348,57 @@ class AcademicSystem {
     public static function getScheduleMode($token) {
         $url = 'https://jwh5.gdpnc.cn/njwhd/Get_sjkbms';
         return self::requestWithRetry($url, $token);
+    }
+
+    /**
+     * 后台下拉框使用的教务元数据：页面渲染只读文件缓存，不触发外部 HTTP。
+     * 缓存缺失时由前端异步调用 refreshMeta() 拉取并回填，避免阻塞页面打开。
+     */
+    public static function getMeta($name) {
+        return self::cacheGet('meta_' . $name);
+    }
+
+    public static function refreshMeta($DB, $force = false) {
+        $semesters = self::getMeta('semesters');
+        $modes     = self::getMeta('modes');
+        if (!$force && $semesters !== null && $modes !== null) {
+            return ['changed' => false, 'semesters' => $semesters, 'modes' => $modes];
+        }
+
+        $account = $DB->getRow("SELECT user_id, student_id, password FROM nteam_academic_accounts WHERE status = 1 ORDER BY id ASC LIMIT 1");
+        if (!$account) {
+            self::cachePut('meta_semesters', [], 60);
+            self::cachePut('meta_modes', [], 60);
+            return ['changed' => false, 'semesters' => $semesters, 'modes' => $modes];
+        }
+
+        $tk = self::getValidToken($DB, $account['user_id'], $account['student_id'], $account['password']);
+        if (empty($tk['success'])) {
+            self::cachePut('meta_semesters', [], 60);
+            self::cachePut('meta_modes', [], 60);
+            return ['changed' => false, 'semesters' => $semesters, 'modes' => $modes];
+        }
+
+        if ($semesters === null) {
+            $res = self::getSemesterList($tk['token']);
+            if (isset($res['code']) && $res['code'] == 1 && !empty($res['data']) && is_array($res['data'])) {
+                $semesters = $res['data'];
+                self::cachePut('meta_semesters', $semesters, 3600);
+            } else {
+                self::cachePut('meta_semesters', [], 60);
+            }
+        }
+
+        if ($modes === null) {
+            $res = self::getScheduleMode($tk['token']);
+            if (isset($res['code']) && $res['code'] == 1 && !empty($res['data']) && is_array($res['data'])) {
+                $modes = $res['data'];
+                self::cachePut('meta_modes', $modes, 3600);
+            } else {
+                self::cachePut('meta_modes', [], 60);
+            }
+        }
+
+        return ['changed' => true, 'semesters' => $semesters, 'modes' => $modes];
     }
 }

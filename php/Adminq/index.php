@@ -7,28 +7,54 @@ $title='后台管理';
 include('../Common/Core_brain.php');
 include './head.php';
 
-$stats = $DB->getRow("
-    SELECT 
-        (SELECT COUNT(*) FROM nteam_admin) as admin_nums,
-        (SELECT COUNT(*) FROM nteam_users) as user_nums,
-        (SELECT COUNT(*) FROM nteam_academic_accounts) as academic_accounts,
-        (SELECT COUNT(*) FROM nteam_dormitory_bindings WHERE status=1) as dormitory_bindings,
-        (SELECT COUNT(*) FROM nteam_announcements WHERE is_published=1) as announcements,
-        (SELECT COUNT(*) FROM nteam_push_logs WHERE status=1) as push_success,
-        (SELECT COUNT(*) FROM nteam_push_logs WHERE status=2) as push_failed,
-        (SELECT COUNT(*) FROM nteam_academic_push_logs WHERE status=1) as academic_push_success,
-        (SELECT COUNT(*) FROM nteam_academic_push_logs WHERE status=2) as academic_push_failed
-");
+// 首页统计含多表 COUNT（部分字段无法走索引），缓存 5 分钟，避免每次打开都全表扫描
+$statsCacheDir  = dirname(__DIR__) . '/cache';
+$statsCacheFile = $statsCacheDir . '/admin_stats.php';
+$statsPrefix    = '<?php exit;?>';
+if (!is_dir($statsCacheDir)) {
+    @mkdir($statsCacheDir, 0777, true);
+}
+$statsCache = null;
+if (is_file($statsCacheFile) && (time() - filemtime($statsCacheFile)) < 300) {
+    $raw = @file_get_contents($statsCacheFile);
+    if ($raw !== false && strpos($raw, $statsPrefix) === 0) {
+        $statsCache = json_decode(substr($raw, strlen($statsPrefix)), true);
+    }
+}
+
+if (is_array($statsCache) && isset($statsCache['stats'], $statsCache['todayStats'])) {
+    $stats      = $statsCache['stats'];
+    $todayStats = $statsCache['todayStats'];
+} else {
+    $stats = $DB->getRow("
+        SELECT 
+            (SELECT COUNT(*) FROM nteam_admin) as admin_nums,
+            (SELECT COUNT(*) FROM nteam_users) as user_nums,
+            (SELECT COUNT(*) FROM nteam_academic_accounts) as academic_accounts,
+            (SELECT COUNT(*) FROM nteam_dormitory_bindings WHERE status=1) as dormitory_bindings,
+            (SELECT COUNT(*) FROM nteam_announcements WHERE is_published=1) as announcements,
+            (SELECT COUNT(*) FROM nteam_push_logs WHERE status=1) as push_success,
+            (SELECT COUNT(*) FROM nteam_push_logs WHERE status=2) as push_failed,
+            (SELECT COUNT(*) FROM nteam_academic_push_logs WHERE status=1) as academic_push_success,
+            (SELECT COUNT(*) FROM nteam_academic_push_logs WHERE status=2) as academic_push_failed
+    ");
+
+    $todayStats = $DB->getRow("
+        SELECT 
+            (SELECT COUNT(*) FROM nteam_users WHERE DATE(register_time) = CURDATE()) as new_users_today,
+            (SELECT COUNT(*) FROM nteam_push_logs WHERE DATE(created_at) = CURDATE()) as push_today,
+            (SELECT COUNT(*) FROM nteam_academic_push_logs WHERE DATE(created_at) = CURDATE()) as academic_push_today
+    ");
+
+    if (is_writable($statsCacheDir)) {
+        @file_put_contents($statsCacheFile, $statsPrefix . json_encode([
+            'stats'      => $stats,
+            'todayStats' => $todayStats,
+        ]), LOCK_EX);
+    }
+}
 
 $mysqlversion = $DB->query("select VERSION()")->fetch()[0];
-
-$todayStart = date('Y-m-d 00:00:00');
-$todayStats = $DB->getRow("
-    SELECT 
-        (SELECT COUNT(*) FROM nteam_users WHERE DATE(register_time) = CURDATE()) as new_users_today,
-        (SELECT COUNT(*) FROM nteam_push_logs WHERE DATE(created_at) = CURDATE()) as push_today,
-        (SELECT COUNT(*) FROM nteam_academic_push_logs WHERE DATE(created_at) = CURDATE()) as academic_push_today
-");
 ?>
 <div id="pjax-container">
     <div class="content animated fadeIn">

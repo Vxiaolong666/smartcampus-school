@@ -30,7 +30,7 @@ switch($act){
         } elseif (!empty($captcha)) {
             if (isset($_SESSION['captcha']) && strtoupper($_SESSION['captcha']) === $captcha) {
                 $captchaValid = true;
-                unset($_SESSION['captcha']);
+                nteam_session_unset('captcha');
             }
         }
         
@@ -163,7 +163,7 @@ switch($act){
         } elseif (!empty($captcha)) {
             if (isset($_SESSION['captcha']) && strtoupper($_SESSION['captcha']) === $captcha) {
                 $captchaValid = true;
-                unset($_SESSION['captcha']);
+                nteam_session_unset('captcha');
             }
         }
         
@@ -200,20 +200,19 @@ switch($act){
         $updateSql = "UPDATE nteam_users SET last_login_time=NOW(), last_login_ip='$ip' WHERE id='{$userData['id']}'";
         $DB->exec($updateSql);
         
-        $_SESSION['userId'] = $userData['id'];
-        $_SESSION['userName'] = $userData['username'];
-        $_SESSION['userEmail'] = $userData['email'];
-        $_SESSION['userQq'] = $userData['qq'];
-        $_SESSION['cancelRevoked'] = ($cancelState === 'revoked') ? 1 : 0;
+        nteam_session_set([
+            'userId'        => $userData['id'],
+            'userName'      => $userData['username'],
+            'userEmail'     => $userData['email'],
+            'userQq'        => $userData['qq'],
+            'cancelRevoked' => ($cancelState === 'revoked') ? 1 : 0,
+        ]);
         
         exit('{"code":0,"msg":"登录成功"}');
     break;
     
     case 'logout':
-        unset($_SESSION['userId']);
-        unset($_SESSION['userName']);
-        unset($_SESSION['userEmail']);
-        unset($_SESSION['userQq']);
+        nteam_session_unset(['userId', 'userName', 'userEmail', 'userQq']);
         exit('{"code":0,"msg":"退出成功"}');
     break;
     
@@ -234,7 +233,7 @@ switch($act){
         } elseif (!empty($captcha)) {
             if (isset($_SESSION['captcha']) && strtoupper($_SESSION['captcha']) === $captcha) {
                 $captchaValid = true;
-                unset($_SESSION['captcha']);
+                nteam_session_unset('captcha');
             }
         }
         
@@ -308,7 +307,7 @@ switch($act){
         } elseif (!empty($captcha)) {
             if (isset($_SESSION['captcha']) && strtoupper($_SESSION['captcha']) === $captcha) {
                 $captchaValid = true;
-                unset($_SESSION['captcha']);
+                nteam_session_unset('captcha');
             }
         }
         
@@ -433,7 +432,7 @@ switch($act){
         } elseif (!empty($captcha)) {
             if (isset($_SESSION['captcha']) && strtoupper($_SESSION['captcha']) === $captcha) {
                 $captchaValid = true;
-                unset($_SESSION['captcha']);
+                nteam_session_unset('captcha');
             }
         }
         
@@ -466,10 +465,7 @@ switch($act){
         $updateSql = "UPDATE nteam_users SET password='$newPassword' WHERE id='$userId'";
         
         if ($DB->exec($updateSql) !== false) {
-            unset($_SESSION['userId']);
-            unset($_SESSION['userName']);
-            unset($_SESSION['userEmail']);
-            unset($_SESSION['userQq']);
+            nteam_session_unset(['userId', 'userName', 'userEmail', 'userQq']);
             exit('{"code":0,"msg":"密码修改成功，请重新登录"}');
         } else {
             exit('{"code":-1,"msg":"密码修改失败，请稍后重试"}');
@@ -1154,8 +1150,7 @@ switch($act){
 
         $userId = intval($_SESSION['userId']);
         $semester = isset($data['semester']) ? strval($data['semester']) : '';
-        // 带版本号：升级 max_tokens / 续写策略后使旧的截断缓存自动失效
-        $dataHash = md5($raw . '|v2');
+        $dataHash = md5($raw);
 
         // 命中缓存且数据未变化则直接返回，避免重复生成
         $cached = $DB->getRow("SELECT content, data_hash FROM nteam_ai_grade_analysis WHERE user_id=? AND semester=?", [$userId, $semester]);
@@ -1296,8 +1291,7 @@ switch($act){
             ['role' => 'user', 'content' => $prompt],
         ];
         $ai = new \lib\AiHelper();
-        // 带版本号：升级 max_tokens / 续写策略后使旧的截断缓存自动失效
-        $dataHash = md5($raw . '|v2');
+        $dataHash = md5($raw);
         $bizType = ($type === 'statistics') ? 'power_statistics' : 'power_query';
         $result = $ai->analyzeCached($DB, $userId, $bizType, $dataHash, $messages);
         if (!$result['success']) {
@@ -1396,9 +1390,11 @@ switch($act){
             exit('{"code":-1,"msg":"账号未绑定邮箱，无法发送验证码"}');
         }
         $code = sprintf('%06d', random_int(0, 999999));
-        $_SESSION['cancel_code'] = $code;
-        $_SESSION['cancel_code_time'] = time();
-        $_SESSION['cancel_code_email'] = $user['email'];
+        nteam_session_set([
+            'cancel_code'       => $code,
+            'cancel_code_time'  => time(),
+            'cancel_code_email' => $user['email'],
+        ]);
 
         $siteName = conf('Name');
         $mailContent = '<html><head><meta charset="UTF-8"></head><body style="font-family:Arial,sans-serif;line-height:1.6;color:#333;">'
@@ -1412,7 +1408,7 @@ switch($act){
             . '</div></body></html>';
         $res = cancelSendMail($user['email'], '账号注销验证码 - ' . $siteName, $mailContent);
         if ($res !== true) {
-            unset($_SESSION['cancel_code'], $_SESSION['cancel_code_time'], $_SESSION['cancel_code_email']);
+            nteam_session_unset(['cancel_code', 'cancel_code_time', 'cancel_code_email']);
             exit('{"code":-1,"msg":"验证码发送失败，请稍后重试"}');
         }
         exit('{"code":0,"msg":"验证码已发送至您的邮箱"}');
@@ -1527,7 +1523,7 @@ switch($act){
         } elseif (!empty($captcha)) {
             if (isset($_SESSION['captcha']) && strtoupper($_SESSION['captcha']) === $captcha) {
                 $captchaValid = true;
-                unset($_SESSION['captcha']);
+                nteam_session_unset('captcha');
             }
         }
         if (!$captchaValid) {
@@ -1539,7 +1535,7 @@ switch($act){
             exit('{"code":-1,"msg":"' . $verify . '"}');
         }
         // 签发核验凭据，第四步提交时凭此免重复核验
-        $_SESSION['cancel_pass'] = cancelIssueVerifyPass($DB, $userId, isset($user['email']) ? $user['email'] : '');
+        nteam_session_set('cancel_pass', cancelIssueVerifyPass($DB, $userId, isset($user['email']) ? $user['email'] : ''));
         exit('{"code":0,"msg":"身份核验通过"}');
     break;
 
@@ -1554,7 +1550,7 @@ switch($act){
         $userId = intval($_SESSION['userId']);
         $user = $DB->getRow("SELECT * FROM nteam_users WHERE id='$userId'");
         if (!$user) {
-            unset($_SESSION['userId'], $_SESSION['userName'], $_SESSION['userEmail'], $_SESSION['userQq']);
+            nteam_session_unset(['userId', 'userName', 'userEmail', 'userQq']);
             exit('{"code":-1,"msg":"请先登录"}');
         }
         if (!empty($user['is_cancelling']) && intval($user['is_cancelling']) === 1) {
@@ -1572,7 +1568,7 @@ switch($act){
         if ($sessPass !== '') {
             // 仅校验不消费：待注销流程成功后再清理，避免中途失败导致用户需重新核验
             if (!cancelCheckVerifyPass($DB, $userId, $sessPass, false)) {
-                unset($_SESSION['cancel_pass']);
+                nteam_session_unset('cancel_pass');
                 exit('{"code":-3,"msg":"身份核验已超时，请返回上一步重新核验"}');
             }
         } else {
@@ -1586,7 +1582,7 @@ switch($act){
             } elseif (!empty($captcha)) {
                 if (isset($_SESSION['captcha']) && strtoupper($_SESSION['captcha']) === $captcha) {
                     $captchaValid = true;
-                    unset($_SESSION['captcha']);
+                    nteam_session_unset('captcha');
                 }
             }
             if (!$captchaValid) {
@@ -1611,7 +1607,7 @@ switch($act){
                 exit('{"code":-1,"msg":"注销失败['.$del['error'].']"}');
             }
             $DB->exec("UPDATE nteam_account_deletions SET status='deleted', delete_time=NOW() WHERE id='".intval($auditId)."'");
-            unset($_SESSION['cancel_pass'], $_SESSION['userId'], $_SESSION['userName'], $_SESSION['userEmail'], $_SESSION['userQq']);
+            nteam_session_unset(['cancel_pass', 'userId', 'userName', 'userEmail', 'userQq']);
             exit('{"code":0,"msg":"账号已注销","immediate":1}');
         }
 
@@ -1625,7 +1621,7 @@ switch($act){
         }
         // 注销申请已提交：清理本次核验凭据
         $DB->exec("DELETE FROM nteam_tokens WHERE user_id='$userId' AND token_type='cancel_pass'");
-        unset($_SESSION['cancel_pass'], $_SESSION['userId'], $_SESSION['userName'], $_SESSION['userEmail'], $_SESSION['userQq']);
+        nteam_session_unset(['cancel_pass', 'userId', 'userName', 'userEmail', 'userQq']);
         exit('{"code":0,"msg":"注销申请已提交，账号将在 '.substr($expire, 0, 10).' 正式注销，期间登录可撤销","expire_time":"'.$expire.'"}');
     break;
 
@@ -1703,8 +1699,7 @@ switch($act){
             ['role' => 'user', 'content' => $prompt],
         ];
         $ai = new \lib\AiHelper();
-        // 带版本号：升级 max_tokens / 续写策略后使旧的截断缓存自动失效
-        $dataHash = md5($raw . '|v2');
+        $dataHash = md5($raw);
         $bizType = ($type === 'semester') ? 'schedule_semester' : 'schedule_today';
         $result = $ai->analyzeCached($DB, $userId, $bizType, $dataHash, $messages);
         if (!$result['success']) {

@@ -181,7 +181,11 @@ function cancelVerifyIdentity($DB, $user, $cfg, $password = '', $emailCode = '',
             && hash_equals((string) $_SESSION['cancel_code'], $code)) {
             $ok = true;
             if ($consume) {
-                unset($_SESSION['cancel_code'], $_SESSION['cancel_code_time'], $_SESSION['cancel_code_email']);
+                if (function_exists('nteam_session_unset')) {
+                    nteam_session_unset(['cancel_code', 'cancel_code_time', 'cancel_code_email']);
+                } else {
+                    unset($_SESSION['cancel_code'], $_SESSION['cancel_code_time'], $_SESSION['cancel_code_email']);
+                }
             }
         }
         // App 端：数据库中的验证码

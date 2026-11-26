@@ -20,7 +20,6 @@ try {
     $bannerTableChk = $DB->query("SHOW TABLES LIKE 'nteam_banners'");
     if ($bannerTableChk && $bannerTableChk->fetch()) {
         $rows = $DB->getAll("SELECT * FROM nteam_banners WHERE `status`=1 ORDER BY `sort` ASC, `id` ASC");
-        // 过滤未配置图片的记录，避免空图占位
         foreach ($rows as $row) {
             if (!empty($row['image'])) {
                 $banners[] = $row;
@@ -39,28 +38,89 @@ $sceneTypeNames = [
     'subscription_alert' => '额度提醒'
 ];
 
-// 今日日期（M月D日 周X）：与小程序/uniapp 首页展示口径一致
 $weekdayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
 $todayText = date('n月j日') . ' ' . $weekdayNames[intval(date('w'))];
+$emailVerified = intval($userData['email_verified']) === 1;
+$academicBound = !empty($academicAccount);
+$dormitoryBound = intval($dormitoryCount) > 0;
 ?>
+<style>
+/* ===== 用户中心首页：沿用后台卡片与配色体系 ===== */
+.user-home-hero {
+    background: linear-gradient(135deg, #eef4ff 0%, #f7faff 55%, #ffffff 100%);
+    border-bottom: 1px solid #e9edf4;
+    padding: 28px 32px;
+}
+.user-home-avatar {
+    width: 64px; height: 64px; border-radius: 16px;
+    background: linear-gradient(135deg, #409eff, #337ecc);
+    color: #fff; display: flex; align-items: center; justify-content: center;
+    font-size: 32px; box-shadow: 0 6px 18px rgba(64, 158, 255, .25);
+    flex-shrink: 0;
+}
+.user-home-title { color: #1f2740; }
+.user-home-stat-icon,
+.user-home-quick-icon {
+    width: 48px; height: 48px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; flex-shrink: 0;
+}
+.user-home-stat-icon.primary, .user-home-quick-icon.primary { background: #eaf2ff; color: #337ecc; }
+.user-home-stat-icon.info, .user-home-quick-icon.info { background: #e6f7fb; color: #0c8ca8; }
+.user-home-stat-icon.warning, .user-home-quick-icon.warning { background: #fff4e5; color: #d97706; }
+.user-home-stat-icon.success, .user-home-quick-icon.success { background: #e9f7ef; color: #1e9e6a; }
+.user-home-stat-icon.danger, .user-home-quick-icon.danger { background: #fff0f0; color: #d9455f; }
+.user-home-quick {
+    display: block; height: 100%; padding: 18px;
+    border: 1px solid #edf0f5; border-radius: 12px;
+    text-decoration: none; transition: all .2s ease;
+    background: #fff;
+}
+.user-home-quick:hover {
+    border-color: #cfe0ff; box-shadow: 0 6px 18px rgba(30, 50, 90, .08);
+    transform: translateY(-2px); text-decoration: none;
+}
+.user-home-quick .quick-title { color: #1f2740; font-weight: 600; }
+.user-home-quick .quick-desc { color: #8a93a5; font-size: 12px; margin-top: 3px; }
+.user-home-quick:hover .quick-title { color: #337ecc; }
+.user-home-banner .user-banner-block { max-width: 100%; }
+@media (max-width: 575px) {
+    .user-home-hero { padding: 20px; }
+    .user-home-avatar { width: 52px; height: 52px; font-size: 26px; border-radius: 12px; }
+}
+</style>
 
 <div id="pjax-container">
+    <!-- 欢迎区 -->
     <div class="content animated fadeIn">
-        <div class="d-flex flex-column flex-md-row justify-content-md-between align-items-md-center py-2 text-center text-md-start">
-            <div class="flex-grow-1 mb-1 mb-md-0">
-                <h1 class="h3 fw-bold mb-2">
-                    用户中心
-                </h1>
-                <h2 class="h6 fw-medium fw-medium text-muted mb-0">
-                    欢迎 <a class="fw-semibold" href="javascript:void(0)"><?php echo htmlspecialchars($userData['username']); ?></a>，祝您使用愉快。
-                </h2>
-                <!-- 今日日期 + 当前教学周（与小程序/uniapp 首页一致；周次异步获取，取不到时只显示日期） -->
-                <div class="d-flex align-items-center justify-content-center justify-content-md-start mt-2">
-                    <span class="fs-sm text-muted text-nowrap">
-                        <i class="fa fa-calendar-alt me-1 opacity-50"></i><?php echo $todayText; ?>
-                    </span>
-                    <!-- text-bg-primary：主题未定义 -lt 系列背景类，而 .badge 默认白字，用该组合保证底色+文字对比正常 -->
-                    <span class="badge text-bg-primary fw-semibold text-nowrap flex-shrink-0 ms-2" id="userWeekBadge" style="display:none;"></span>
+        <div class="block block-rounded mb-0 overflow-hidden">
+            <div class="user-home-hero">
+                <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between">
+                    <div class="d-flex align-items-center">
+                        <div class="user-home-avatar"><i class="fa fa-user-circle"></i></div>
+                        <div class="ms-3">
+                            <h1 class="h3 fw-bold mb-1 user-home-title">欢迎回来，<?php echo htmlspecialchars($userData['username'], ENT_QUOTES, 'UTF-8'); ?></h1>
+                            <div class="fs-sm text-muted">
+                                <i class="fa fa-envelope me-1 opacity-50"></i><?php echo htmlspecialchars($userData['email'], ENT_QUOTES, 'UTF-8'); ?>
+                                <?php if($emailVerified): ?>
+                                    <span class="badge bg-success ms-2">已验证</span>
+                                <?php else: ?>
+                                    <span class="badge bg-warning ms-2">未验证</span>
+                                <?php endif; ?>
+                            </div>
+                            <div class="mt-2 d-flex align-items-center flex-wrap gap-2">
+                                <span class="badge bg-body-light text-muted fw-semibold">
+                                    <i class="fa fa-calendar-alt me-1"></i><?php echo $todayText; ?>
+                                </span>
+                                <span class="badge text-bg-primary fw-semibold" id="userWeekBadge" style="display:none;"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-3 mt-md-0">
+                        <a href="profile.php" class="btn btn-alt-primary">
+                            <i class="fa fa-user-edit opacity-50 me-1"></i>个人资料
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -80,91 +140,44 @@ $todayText = date('n月j日') . ' ' . $weekdayNames[intval(date('w'))];
         .user-banner-carousel {
             position: relative;
             width: 100%;
-            padding-bottom: 48%; /* 750 x 360 图片比例 */
+            padding-bottom: 48%;
             overflow: hidden;
             touch-action: pan-y;
         }
         .user-banner-track {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            transition: transform .5s ease;
-            will-change: transform;
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%;
+            display: flex; transition: transform .5s ease; will-change: transform;
         }
-        .user-banner-slide {
-            flex: 0 0 100%;
-            height: 100%;
-        }
+        .user-banner-slide { flex: 0 0 100%; height: 100%; }
         .user-banner-slide img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            display: block;
-            cursor: pointer;
-            -webkit-user-select: none;
-            user-select: none;
-            -webkit-user-drag: none;
+            width: 100%; height: 100%; object-fit: cover; display: block; cursor: pointer;
+            -webkit-user-select: none; user-select: none; -webkit-user-drag: none;
         }
         .user-banner-dots {
-            position: absolute;
-            left: 0;
-            right: 0;
-            bottom: 12px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 6px;
+            position: absolute; left: 0; right: 0; bottom: 12px;
+            display: flex; justify-content: center; align-items: center; gap: 6px;
         }
         .user-banner-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, .55);
-            box-shadow: 0 0 4px rgba(0, 0, 0, .25);
-            cursor: pointer;
-            transition: all .3s ease;
+            width: 8px; height: 8px; border-radius: 50%;
+            background: rgba(255, 255, 255, .55); box-shadow: 0 0 4px rgba(0, 0, 0, .25);
+            cursor: pointer; transition: all .3s ease;
         }
-        .user-banner-dot.active {
-            width: 20px;
-            border-radius: 4px;
-            background: #fff;
-        }
+        .user-banner-dot.active { width: 20px; border-radius: 4px; background: #fff; }
         .user-banner-arrow {
-            position: absolute;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 38px;
-            height: 38px;
-            border-radius: 50%;
-            background: rgba(0, 0, 0, .25);
-            color: #fff;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-            line-height: 1;
-            cursor: pointer;
-            z-index: 2;
-            opacity: .85;
-            transition: background .25s ease, opacity .25s ease;
-            -webkit-user-select: none;
-            user-select: none;
+            position: absolute; top: 50%; transform: translateY(-50%);
+            width: 38px; height: 38px; border-radius: 50%;
+            background: rgba(0, 0, 0, .25); color: #fff;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px; line-height: 1; cursor: pointer; z-index: 2;
+            opacity: .85; transition: background .25s ease, opacity .25s ease;
+            -webkit-user-select: none; user-select: none;
         }
-        .user-banner-arrow:hover {
-            background: rgba(0, 0, 0, .5);
-            opacity: 1;
-        }
-        .user-banner-arrow-prev {
-            left: 12px;
-        }
-        .user-banner-arrow-next {
-            right: 12px;
-        }
+        .user-banner-arrow:hover { background: rgba(0, 0, 0, .5); opacity: 1; }
+        .user-banner-arrow-prev { left: 12px; }
+        .user-banner-arrow-next { right: 12px; }
     </style>
-    <div class="content animated fadeIn">
+    <div class="content user-home-banner animated fadeIn">
         <div class="user-banner-block">
             <div class="user-banner-carousel" id="userBannerCarousel">
                 <div class="user-banner-track" id="userBannerTrack">
@@ -173,7 +186,6 @@ $todayText = date('n月j日') . ' ' . $weekdayNames[intval(date('w'))];
                         if (!empty($bannerImg) && strpos($bannerImg, 'http') !== 0) {
                             $bannerImg = $siteBasePath . $bannerImg;
                         }
-                        // 网页端跳转：优先 url_web；为空时回退到通用 url 中的站外 http(s) 地址
                         $bannerUrl = isset($b['url_web']) ? $b['url_web'] : '';
                         if ($bannerUrl === '') {
                             $genericUrl = isset($b['url']) ? $b['url'] : '';
@@ -188,12 +200,8 @@ $todayText = date('n月j日') . ' ' . $weekdayNames[intval(date('w'))];
                     <?php endforeach; ?>
                 </div>
                 <?php if(count($banners) > 1): ?>
-                <div class="user-banner-arrow user-banner-arrow-prev" id="userBannerPrev" aria-label="上一张">
-                    <i class="fa fa-angle-left"></i>
-                </div>
-                <div class="user-banner-arrow user-banner-arrow-next" id="userBannerNext" aria-label="下一张">
-                    <i class="fa fa-angle-right"></i>
-                </div>
+                <div class="user-banner-arrow user-banner-arrow-prev" id="userBannerPrev" aria-label="上一张"><i class="fa fa-angle-left"></i></div>
+                <div class="user-banner-arrow user-banner-arrow-next" id="userBannerNext" aria-label="下一张"><i class="fa fa-angle-right"></i></div>
                 <div class="user-banner-dots" id="userBannerDots">
                     <?php foreach($banners as $i => $b): ?>
                     <span class="user-banner-dot<?php echo $i === 0 ? ' active' : ''; ?>" data-index="<?php echo intval($i); ?>"></span>
@@ -205,99 +213,80 @@ $todayText = date('n月j日') . ' ' . $weekdayNames[intval(date('w'))];
     </div>
     <?php endif; ?>
 
+    <!-- 状态概览 -->
     <div class="content animated fadeIn">
         <div class="row items-push">
-            <div class="col-sm-6 col-xxl-4">
-                <div class="block block-rounded d-flex flex-column h-100 mb-0">
-                    <div class="block-content block-content-full flex-grow-1 d-flex justify-content-between align-items-center">
-                        <dl class="mb-0">
-                            <dt class="fs-3 fw-bold"><?php echo htmlspecialchars($userData['username']); ?></dt>
-                            <dd class="fs-sm fw-medium text-muted mb-0">用户名</dd>
-                        </dl>
-                        <div class="item item-rounded-lg bg-body-light">
-                            <i class="fa fa-user fs-3 text-primary"></i>
+            <div class="col-6 col-lg-3">
+                <div class="block block-rounded h-100 mb-0">
+                    <div class="block-content block-content-full d-flex align-items-center">
+                        <div class="user-home-stat-icon primary me-3"><i class="fa fa-graduation-cap"></i></div>
+                        <div style="min-width: 0;">
+                            <div class="fs-lg fw-bold"><?php echo $academicBound ? '已绑定' : '未绑定'; ?></div>
+                            <div class="fs-sm text-muted">教务账号</div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="col-sm-6 col-xxl-4">
-                <div class="block block-rounded d-flex flex-column h-100 mb-0">
-                    <div class="block-content block-content-full flex-grow-1 d-flex justify-content-between align-items-center">
-                        <dl class="mb-0" style="min-width: 0; flex: 1;">
-                            <dt class="fs-3 fw-bold text-truncate"><?php echo htmlspecialchars($userData['email']); ?></dt>
-                            <dd class="fs-sm fw-medium text-muted mb-0">
-                                邮箱 
-                                <?php if($userData['email_verified'] == 1): ?>
-                                    <span class="badge bg-success ms-1">已验证</span>
-                                <?php else: ?>
-                                    <span class="badge bg-warning ms-1">未验证</span>
-                                <?php endif; ?>
-                            </dd>
-                        </dl>
-                        <div class="item item-rounded-lg bg-body-light ms-3 flex-shrink-0">
-                            <i class="fa fa-envelope fs-3 text-primary"></i>
+            <div class="col-6 col-lg-3">
+                <div class="block block-rounded h-100 mb-0">
+                    <div class="block-content block-content-full d-flex align-items-center">
+                        <div class="user-home-stat-icon info me-3"><i class="fa fa-home"></i></div>
+                        <div style="min-width: 0;">
+                            <div class="fs-lg fw-bold"><?php echo $dormitoryBound ? $dormitoryCount . ' 个' : '未绑定'; ?></div>
+                            <div class="fs-sm text-muted">宿舍绑定</div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="col-sm-6 col-xxl-4">
-                <div class="block block-rounded d-flex flex-column h-100 mb-0">
-                    <div class="block-content block-content-full flex-grow-1 d-flex justify-content-between align-items-center">
-                        <dl class="mb-0">
-                            <dt class="fs-3 fw-bold">
-                                <?php if($academicAccount): ?>
-                                    <?php echo htmlspecialchars($academicAccount['student_id']); ?>
-                                <?php else: ?>
-                                    未绑定
-                                <?php endif; ?>
-                            </dt>
-                            <dd class="fs-sm fw-medium text-muted mb-0">
-                                教务账号 
-                                <?php if($academicAccount): ?>
-                                    <span class="badge bg-success ms-1">已绑定</span>
-                                <?php else: ?>
-                                    <span class="badge bg-secondary ms-1">未绑定</span>
-                                <?php endif; ?>
-                            </dd>
-                        </dl>
-                        <div class="item item-rounded-lg bg-body-light">
-                            <i class="fa fa-graduation-cap fs-3 text-primary"></i>
+            <div class="col-6 col-lg-3">
+                <div class="block block-rounded h-100 mb-0">
+                    <div class="block-content block-content-full d-flex align-items-center">
+                        <div class="user-home-stat-icon warning me-3"><i class="fa fa-bell"></i></div>
+                        <div style="min-width: 0;">
+                            <div class="fs-lg fw-bold"><?php echo count($lowSubscriptions); ?> 项</div>
+                            <div class="fs-sm text-muted">订阅待补充</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="block block-rounded h-100 mb-0">
+                    <div class="block-content block-content-full d-flex align-items-center">
+                        <div class="user-home-stat-icon success me-3"><i class="fa fa-envelope"></i></div>
+                        <div style="min-width: 0;">
+                            <div class="fs-lg fw-bold"><?php echo $emailVerified ? '已验证' : '未验证'; ?></div>
+                            <div class="fs-sm text-muted">邮箱状态</div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    
+
     <?php if(!empty($lowSubscriptions)): ?>
     <div class="content animated fadeIn">
         <div class="block block-rounded">
-            <div class="block-header block-header-default bg-warning-lt">
-                <h3 class="block-title">
-                    <i class="fa fa-bell text-warning me-2"></i>
-                    <span class="text-warning">订阅次数不足提醒</span>
-                </h3>
+            <div class="block-header block-header-default">
+                <h3 class="block-title"><i class="fa fa-bell text-warning me-2"></i>订阅次数不足提醒</h3>
             </div>
             <div class="block-content block-content-full">
                 <div class="alert alert-warning mb-3">
                     <i class="fa fa-exclamation-triangle me-2"></i>
-                    以下订阅消息类型的剩余次数不足，请及时在小程序中增加订阅，以免错过重要通知：
+                    以下订阅消息类型的剩余次数不足，请及时在小程序中增加订阅，以免错过重要通知。
                 </div>
-                <div class="row">
+                <div class="row items-push">
                     <?php foreach($lowSubscriptions as $sub): ?>
-                    <div class="col-md-4 col-sm-6 mb-3">
-                        <div class="d-flex align-items-center p-3 bg-body rounded">
-                            <div class="flex-grow-1">
-                                <div class="fw-bold"><?php echo htmlspecialchars($sub['name']); ?></div>
+                    <div class="col-md-6 col-xl-4">
+                        <div class="d-flex align-items-center p-3 bg-body-light rounded">
+                            <div class="flex-grow-1" style="min-width: 0;">
+                                <div class="fw-semibold text-truncate"><?php echo htmlspecialchars($sub['name'], ENT_QUOTES, 'UTF-8'); ?></div>
                                 <small class="text-muted">
                                     <?php echo isset($sceneTypeNames[$sub['scene_type']]) ? $sceneTypeNames[$sub['scene_type']] : '通知'; ?>
                                 </small>
                             </div>
-                            <div class="text-end">
-                                <span class="badge <?php echo $sub['subscribe_count'] > 0 ? 'bg-warning' : 'bg-danger'; ?> fs-5">
-                                    <?php echo $sub['subscribe_count']; ?>次
-                                </span>
-                            </div>
+                            <span class="badge <?php echo $sub['subscribe_count'] > 0 ? 'bg-warning' : 'bg-danger'; ?> fs-6 ms-3">
+                                <?php echo intval($sub['subscribe_count']); ?> 次
+                            </span>
                         </div>
                     </div>
                     <?php endforeach; ?>
@@ -306,32 +295,142 @@ $todayText = date('n月j日') . ' ' . $weekdayNames[intval(date('w'))];
                     <a href="subscription.php" class="btn btn-warning">
                         <i class="fab fa-weixin me-1"></i>查看订阅详情
                     </a>
-                    <span class="text-muted ms-3">请在微信小程序中点击对应模板的"立即订阅"按钮增加次数</span>
+                    <span class="text-muted ms-3 fs-sm">在微信小程序中点击对应模板的「立即订阅」即可增加次数</span>
                 </div>
             </div>
         </div>
     </div>
     <?php endif; ?>
-    
+
+    <!-- 快捷入口 -->
     <div class="content animated fadeIn">
-        <div class="row">
-            <div class="col-md-12">
-                <div class="block block-rounded">
+        <div class="block block-rounded">
+            <div class="block-header block-header-default">
+                <h3 class="block-title"><i class="fa fa-th-large text-primary me-2"></i>快捷入口</h3>
+            </div>
+            <div class="block-content block-content-full">
+                <div class="row items-push">
+                    <div class="col-sm-6 col-xl-3">
+                        <a class="user-home-quick" href="grade.php">
+                            <div class="d-flex align-items-center">
+                                <div class="user-home-quick-icon primary"><i class="fa fa-chart-bar"></i></div>
+                                <div class="ms-3 flex-grow-1">
+                                    <div class="quick-title">成绩查询</div>
+                                    <div class="quick-desc">各学期成绩与绩点</div>
+                                </div>
+                                <i class="fa fa-chevron-right text-muted opacity-50"></i>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-sm-6 col-xl-3">
+                        <a class="user-home-quick" href="schedule.php">
+                            <div class="d-flex align-items-center">
+                                <div class="user-home-quick-icon info"><i class="fa fa-calendar-alt"></i></div>
+                                <div class="ms-3 flex-grow-1">
+                                    <div class="quick-title">课程表</div>
+                                    <div class="quick-desc">按周查看课程安排</div>
+                                </div>
+                                <i class="fa fa-chevron-right text-muted opacity-50"></i>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-sm-6 col-xl-3">
+                        <a class="user-home-quick" href="student_info.php">
+                            <div class="d-flex align-items-center">
+                                <div class="user-home-quick-icon success"><i class="fa fa-id-card"></i></div>
+                                <div class="ms-3 flex-grow-1">
+                                    <div class="quick-title">学籍信息</div>
+                                    <div class="quick-desc">查看个人学籍档案</div>
+                                </div>
+                                <i class="fa fa-chevron-right text-muted opacity-50"></i>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-sm-6 col-xl-3">
+                        <a class="user-home-quick" href="academic_bind.php">
+                            <div class="d-flex align-items-center">
+                                <div class="user-home-quick-icon primary"><i class="fa fa-graduation-cap"></i></div>
+                                <div class="ms-3 flex-grow-1">
+                                    <div class="quick-title">教务账号</div>
+                                    <div class="quick-desc"><?php echo $academicBound ? '管理已绑定账号' : '绑定后解锁学业功能'; ?></div>
+                                </div>
+                                <i class="fa fa-chevron-right text-muted opacity-50"></i>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-sm-6 col-xl-3">
+                        <a class="user-home-quick" href="power_fee.php">
+                            <div class="d-flex align-items-center">
+                                <div class="user-home-quick-icon warning"><i class="fa fa-bolt"></i></div>
+                                <div class="ms-3 flex-grow-1">
+                                    <div class="quick-title">电费查询</div>
+                                    <div class="quick-desc">宿舍电费与余额</div>
+                                </div>
+                                <i class="fa fa-chevron-right text-muted opacity-50"></i>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-sm-6 col-xl-3">
+                        <a class="user-home-quick" href="dormitory_bind.php">
+                            <div class="d-flex align-items-center">
+                                <div class="user-home-quick-icon info"><i class="fa fa-home"></i></div>
+                                <div class="ms-3 flex-grow-1">
+                                    <div class="quick-title">宿舍绑定</div>
+                                    <div class="quick-desc"><?php echo $dormitoryBound ? '管理已绑定宿舍' : '绑定宿舍查询电费'; ?></div>
+                                </div>
+                                <i class="fa fa-chevron-right text-muted opacity-50"></i>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-sm-6 col-xl-3">
+                        <a class="user-home-quick" href="edit_pwd.php">
+                            <div class="d-flex align-items-center">
+                                <div class="user-home-quick-icon primary"><i class="fa fa-key"></i></div>
+                                <div class="ms-3 flex-grow-1">
+                                    <div class="quick-title">修改密码</div>
+                                    <div class="quick-desc">保障账号安全</div>
+                                </div>
+                                <i class="fa fa-chevron-right text-muted opacity-50"></i>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-sm-6 col-xl-3">
+                        <a class="user-home-quick" href="cancel_account.php">
+                            <div class="d-flex align-items-center">
+                                <div class="user-home-quick-icon danger"><i class="fa fa-user-slash"></i></div>
+                                <div class="ms-3 flex-grow-1">
+                                    <div class="quick-title">注销账户</div>
+                                    <div class="quick-desc">了解注销规则与冷静期</div>
+                                </div>
+                                <i class="fa fa-chevron-right text-muted opacity-50"></i>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 账户与安全 -->
+    <div class="content animated fadeIn">
+        <div class="row items-push">
+            <div class="col-lg-7">
+                <div class="block block-rounded h-100 mb-0">
                     <div class="block-header block-header-default">
-                        <h3 class="block-title"><b>账户信息</b></h3>
+                        <h3 class="block-title"><i class="fa fa-id-badge text-primary me-2"></i>账户信息</h3>
                     </div>
                     <div class="block-content">
-                        <table class="table table-bordered table-striped">
+                        <table class="table table-borderless table-vcenter mb-0">
                             <tbody>
                                 <tr>
-                                    <th style="width: 150px;">用户名</th>
-                                    <td><?php echo htmlspecialchars($userData['username']); ?></td>
+                                    <td class="text-muted fw-semibold" style="width: 130px;">用户名</td>
+                                    <td><?php echo htmlspecialchars($userData['username'], ENT_QUOTES, 'UTF-8'); ?></td>
                                 </tr>
                                 <tr>
-                                    <th>邮箱</th>
+                                    <td class="text-muted fw-semibold">邮箱</td>
                                     <td>
-                                        <?php echo htmlspecialchars($userData['email']); ?>
-                                        <?php if($userData['email_verified'] == 1): ?>
+                                        <?php echo htmlspecialchars($userData['email'], ENT_QUOTES, 'UTF-8'); ?>
+                                        <?php if($emailVerified): ?>
                                             <span class="badge bg-success ms-2">已验证</span>
                                         <?php else: ?>
                                             <span class="badge bg-warning ms-2">未验证</span>
@@ -339,19 +438,18 @@ $todayText = date('n月j日') . ' ' . $weekdayNames[intval(date('w'))];
                                     </td>
                                 </tr>
                                 <tr>
-                                    <th>QQ</th>
-                                    <td><?php echo htmlspecialchars($userData['qq'] ?: '未设置'); ?></td>
+                                    <td class="text-muted fw-semibold">QQ</td>
+                                    <td><?php echo htmlspecialchars($userData['qq'] ? $userData['qq'] : '未设置', ENT_QUOTES, 'UTF-8'); ?></td>
                                 </tr>
                                 <tr>
-                                    <th>教务账号</th>
+                                    <td class="text-muted fw-semibold">教务账号</td>
                                     <td>
-                                        <?php if($academicAccount): ?>
-                                            <?php echo htmlspecialchars($academicAccount['student_id']); ?>
-                                            <?php if($academicAccount['real_name']): ?>
-                                                <span class="text-muted ms-2">(<?php echo htmlspecialchars($academicAccount['real_name']); ?>)</span>
+                                        <?php if($academicBound): ?>
+                                            <?php echo htmlspecialchars($academicAccount['student_id'], ENT_QUOTES, 'UTF-8'); ?>
+                                            <?php if(!empty($academicAccount['real_name'])): ?>
+                                                <span class="text-muted ms-2">(<?php echo htmlspecialchars($academicAccount['real_name'], ENT_QUOTES, 'UTF-8'); ?>)</span>
                                             <?php endif; ?>
                                             <span class="badge bg-success ms-2">已绑定</span>
-                                            <span class="text-muted ms-2">绑定时间：<?php echo $academicAccount['bind_time']; ?></span>
                                         <?php else: ?>
                                             <span class="text-muted">未绑定</span>
                                             <a href="academic_bind.php" class="btn btn-sm btn-alt-primary ms-2">
@@ -361,200 +459,39 @@ $todayText = date('n月j日') . ' ' . $weekdayNames[intval(date('w'))];
                                     </td>
                                 </tr>
                                 <tr>
-                                    <th>注册时间</th>
-                                    <td><?php echo $userData['register_time'] ?: '未知'; ?></td>
+                                    <td class="text-muted fw-semibold">绑定时间</td>
+                                    <td><?php echo $academicBound && !empty($academicAccount['bind_time']) ? htmlspecialchars($academicAccount['bind_time'], ENT_QUOTES, 'UTF-8') : '—'; ?></td>
                                 </tr>
                                 <tr>
-                                    <th>最后登录时间</th>
-                                    <td><?php echo $userData['last_login_time'] ?: '未知'; ?></td>
-                                </tr>
-                                <tr>
-                                    <th>最后登录IP</th>
-                                    <td><?php echo $userData['last_login_ip'] ?: '未知'; ?></td>
+                                    <td class="text-muted fw-semibold">注册时间</td>
+                                    <td><?php echo $userData['register_time'] ? htmlspecialchars($userData['register_time'], ENT_QUOTES, 'UTF-8') : '未知'; ?></td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
-    
-    <div class="content animated fadeIn">
-        <div class="row">
-            <div class="col-md-3">
-                <div class="block block-rounded">
+            <div class="col-lg-5">
+                <div class="block block-rounded h-100 mb-0">
                     <div class="block-header block-header-default">
-                        <h3 class="block-title"><b>成绩查询</b></h3>
+                        <h3 class="block-title"><i class="fa fa-shield-alt text-success me-2"></i>登录与安全</h3>
                     </div>
-                    <div class="block-content">
-                        <div class="py-3 text-center">
-                            <div class="mb-3">
-                                <i class="fa fa-chart-bar fa-3x text-primary"></i>
-                            </div>
-                            <div class="fs-5 fw-semibold">成绩查询</div>
-                            <div class="pt-3">
-                                <a class="btn btn-alt-primary" href="grade.php">
-                                    <i class="fa fa-chart-bar opacity-50 me-1"></i> <b>立即查询</b>
-                                </a>
-                            </div>
+                    <div class="block-content block-content-full">
+                        <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                            <span class="text-muted fs-sm">最后登录</span>
+                            <span class="fw-semibold"><?php echo $userData['last_login_time'] ? htmlspecialchars($userData['last_login_time'], ENT_QUOTES, 'UTF-8') : '未知'; ?></span>
                         </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="block block-rounded">
-                    <div class="block-header block-header-default">
-                        <h3 class="block-title"><b>课程查询</b></h3>
-                    </div>
-                    <div class="block-content">
-                        <div class="py-3 text-center">
-                            <div class="mb-3">
-                                <i class="fa fa-calendar-alt fa-3x text-primary"></i>
-                            </div>
-                            <div class="fs-5 fw-semibold">课程查询</div>
-                            <div class="pt-3">
-                                <a class="btn btn-alt-primary" href="schedule.php">
-                                    <i class="fa fa-calendar-alt opacity-50 me-1"></i> <b>立即查询</b>
-                                </a>
-                            </div>
+                        <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                            <span class="text-muted fs-sm">登录 IP</span>
+                            <span class="fw-semibold"><?php echo $userData['last_login_ip'] ? htmlspecialchars($userData['last_login_ip'], ENT_QUOTES, 'UTF-8') : '未知'; ?></span>
                         </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="block block-rounded">
-                    <div class="block-header block-header-default">
-                        <h3 class="block-title"><b>学籍查询</b></h3>
-                    </div>
-                    <div class="block-content">
-                        <div class="py-3 text-center">
-                            <div class="mb-3">
-                                <i class="fa fa-id-card fa-3x text-primary"></i>
-                            </div>
-                            <div class="fs-5 fw-semibold">学籍查询</div>
-                            <div class="pt-3">
-                                <a class="btn btn-alt-primary" href="student_info.php">
-                                    <i class="fa fa-id-card opacity-50 me-1"></i> <b>立即查询</b>
-                                </a>
-                            </div>
+                        <div class="d-flex justify-content-between align-items-center py-2">
+                            <span class="text-muted fs-sm">账号状态</span>
+                            <span class="badge bg-success">正常</span>
                         </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="block block-rounded">
-                    <div class="block-header block-header-default">
-                        <h3 class="block-title"><b>教务账号绑定</b></h3>
-                    </div>
-                    <div class="block-content">
-                        <div class="py-3 text-center">
-                            <div class="mb-3">
-                                <i class="fa fa-graduation-cap fa-3x text-primary"></i>
-                            </div>
-                            <div class="fs-5 fw-semibold">
-                                <?php if($academicAccount): ?>
-                                    已绑定
-                                <?php else: ?>
-                                    未绑定
-                                <?php endif; ?>
-                            </div>
-                            <div class="pt-3">
-                                <a class="btn btn-alt-primary" href="academic_bind.php">
-                                    <i class="fa fa-graduation-cap opacity-50 me-1"></i> <b><?php echo $academicAccount ? '管理绑定' : '立即绑定'; ?></b>
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="content animated fadeIn">
-        <div class="row">
-            <div class="col-md-3">
-                <div class="block block-rounded">
-                    <div class="block-header block-header-default">
-                        <h3 class="block-title"><b>电费查询</b></h3>
-                    </div>
-                    <div class="block-content">
-                        <div class="py-3 text-center">
-                            <div class="mb-3">
-                                <i class="fa fa-bolt fa-3x text-warning"></i>
-                            </div>
-                            <div class="fs-5 fw-semibold">电费查询</div>
-                            <div class="pt-3">
-                                <a class="btn btn-alt-warning" href="power_fee.php">
-                                    <i class="fa fa-bolt opacity-50 me-1"></i> <b>立即查询</b>
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="block block-rounded">
-                    <div class="block-header block-header-default">
-                        <h3 class="block-title"><b>宿舍绑定</b></h3>
-                    </div>
-                    <div class="block-content">
-                        <div class="py-3 text-center">
-                            <div class="mb-3">
-                                <i class="fa fa-home fa-3x text-info"></i>
-                            </div>
-                            <div class="fs-5 fw-semibold">
-                                <?php if($dormitoryCount > 0): ?>
-                                    已绑定 <?php echo $dormitoryCount; ?> 个
-                                <?php else: ?>
-                                    未绑定
-                                <?php endif; ?>
-                            </div>
-                            <div class="pt-3">
-                                <a class="btn btn-alt-info" href="dormitory_bind.php">
-                                    <i class="fa fa-home opacity-50 me-1"></i> <b><?php echo $dormitoryCount > 0 ? '管理宿舍' : '立即绑定'; ?></b>
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="block block-rounded">
-                    <div class="block-header block-header-default">
-                        <h3 class="block-title"><b>修改密码</b></h3>
-                    </div>
-                    <div class="block-content">
-                        <div class="py-3 text-center">
-                            <div class="mb-3">
-                                <i class="fa fa-key fa-3x text-primary"></i>
-                            </div>
-                            <div class="fs-5 fw-semibold">修改密码</div>
-                            <div class="pt-3">
-                                <a class="btn btn-alt-primary" href="edit_pwd.php">
-                                    <i class="fa fa-key opacity-50 me-1"></i> <b>立即修改</b>
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="block block-rounded">
-                    <div class="block-header block-header-default">
-                        <h3 class="block-title"><b>注销账户</b></h3>
-                    </div>
-                    <div class="block-content">
-                        <div class="py-3 text-center">
-                            <div class="mb-3">
-                                <i class="fa fa-user-slash fa-3x text-danger"></i>
-                            </div>
-                            <div class="fs-5 fw-semibold">注销账户</div>
-                            <div class="pt-3">
-                                <a class="btn btn-alt-danger" href="cancel_account.php">
-                                    <i class="fa fa-user-slash opacity-50 me-1"></i> <b>前往注销</b>
-                                </a>
-                            </div>
+                        <div class="d-grid gap-2 mt-3">
+                            <a href="edit_pwd.php" class="btn btn-alt-primary"><i class="fa fa-key opacity-50 me-1"></i>修改登录密码</a>
+                            <a href="profile.php" class="btn btn-alt-secondary"><i class="fa fa-user-edit opacity-50 me-1"></i>编辑个人资料</a>
                         </div>
                     </div>
                 </div>
@@ -563,7 +500,7 @@ $todayText = date('n月j日') . ' ' . $weekdayNames[intval(date('w'))];
     </div>
 </div>
 
-<?php if(!empty($_SESSION['cancelRevoked'])): unset($_SESSION['cancelRevoked']); ?>
+<?php if(!empty($_SESSION['cancelRevoked'])): nteam_session_unset('cancelRevoked'); ?>
 <script>
 $(function(){ layer.alert('您的注销申请已自动撤销，账号已恢复正常。', {icon: 1}); });
 </script>
@@ -613,7 +550,6 @@ $(function(){ layer.alert('您的注销申请已自动撤销，账号已恢复�
             })(d);
         }
 
-        // 左右箭头
         var prevBtn = carousel.querySelector('.user-banner-arrow-prev');
         var nextBtn = carousel.querySelector('.user-banner-arrow-next');
         if (prevBtn) prevBtn.addEventListener('click', function () { goTo(index - 1); play(); });
@@ -660,7 +596,6 @@ $(function(){ layer.alert('您的注销申请已自动撤销，账号已恢复�
     } else {
         initUserBanner();
     }
-    // pjax 局部刷新后重新初始化
     if (window.jQuery) {
         jQuery(document).on('pjax:end pjax:complete', initUserBanner);
     }
@@ -688,7 +623,6 @@ $(function(){ layer.alert('您的注销申请已自动撤销，账号已恢复�
     } else {
         initUserWeekBadge();
     }
-    // pjax 局部刷新后重新初始化
     if (window.jQuery) {
         jQuery(document).on('pjax:end pjax:complete', initUserWeekBadge);
     }
